@@ -205,7 +205,12 @@ function renderNetworkAnalysis(r,x,b){
 
 
 let HACERLO_LOCAL_AI_ENGINE=null;
-const HACERLO_LOCAL_AI_MODEL='Llama-3.2-1B-Instruct-q4f16_1-MLC';
+let HACERLO_LOCAL_AI_MODEL=null;
+const HACERLO_LOCAL_AI_CANDIDATES=[
+  'Llama-3.2-1B-Instruct-q4f32_1-MLC',
+  'Qwen2.5-0.5B-Instruct-q4f32_1-MLC',
+  'SmolLM2-360M-Instruct-q4f32_1-MLC'
+];
 
 function localAIBlock(x){
  const a=x&&x.localAIAnalysis;
@@ -216,7 +221,7 @@ function localAIBlock(x){
      <p class="muted" style="margin-top:5px">NetworkX calcula. La IA local interpreta y formula hipótesis. RDAIM las contrasta.</p></div>
      <button class="primary" onclick="runLocalNetworkAI()">✦ ${a?'Volver a interpretar':'Interpretar con IA local'}</button>
    </div>
-   <div id="local-ai-status" class="notice" style="margin-top:10px">${navigator.gpu?'WebGPU detectado. En el primer uso se descargará el modelo local y el navegador lo almacenará en caché.':'WebGPU no está disponible en este navegador/equipo. El análisis NetworkX continúa funcionando sin IA.'}</div>
+   <div id="local-ai-status" class="notice" style="margin-top:10px">${navigator.gpu?'WebGPU detectado. HACERLO probará automáticamente modelos locales compatibles, de mayor a menor capacidad. La primera descarga queda en caché.':'WebGPU no está disponible. NetworkX continúa funcionando sin IA local.'}</div>
    ${a?renderLocalAIResult(a):''}
  </section>`;
 }
@@ -235,17 +240,41 @@ function renderLocalAIResult(a){
 }
 async function ensureLocalAI(){
  if(HACERLO_LOCAL_AI_ENGINE)return HACERLO_LOCAL_AI_ENGINE;
- if(!navigator.gpu)throw new Error('Este navegador no expone WebGPU. Usa una versión reciente de Chrome o Edge con WebGPU habilitado.');
+ if(!navigator.gpu)throw new Error('WebGPU no está disponible en este navegador.');
  const status=document.getElementById('local-ai-status');
- status.textContent='Preparando motor local…';
  const webllm=await import('https://esm.run/@mlc-ai/web-llm');
- HACERLO_LOCAL_AI_ENGINE=await webllm.CreateMLCEngine(HACERLO_LOCAL_AI_MODEL,{
-   initProgressCallback:(r)=>{
-     const el=document.getElementById('local-ai-status');
-     if(el)el.textContent='Modelo local · '+(r.text||('cargando '+Math.round((r.progress||0)*100)+'%'));
+
+ // Detectamos el adaptador real antes de descargar modelos.
+ let adapter=null;
+ try{adapter=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});}catch(_e){}
+ if(!adapter){
+   try{adapter=await navigator.gpu.requestAdapter();}catch(_e){}
+ }
+ if(!adapter)throw new Error('Edge reporta WebGPU, pero no entregó un adaptador utilizable a la aplicación.');
+
+ let lastError=null;
+ for(const model of HACERLO_LOCAL_AI_CANDIDATES){
+   try{
+     if(status)status.textContent='Probando modelo local compatible: '+model+'…';
+     const engine=await webllm.CreateMLCEngine(model,{
+       initProgressCallback:(r)=>{
+         const el=document.getElementById('local-ai-status');
+         if(el)el.textContent='IA local · '+model+' · '+(r.text||('cargando '+Math.round((r.progress||0)*100)+'%'));
+       }
+     });
+     HACERLO_LOCAL_AI_ENGINE=engine;
+     HACERLO_LOCAL_AI_MODEL=model;
+     if(status)status.textContent='IA local lista ✓ · '+model;
+     return engine;
+   }catch(err){
+     console.warn('HACERLO IA: modelo no compatible',model,err);
+     lastError=err;
+     // Liberamos recursos antes de intentar el siguiente modelo.
+     try{if(HACERLO_LOCAL_AI_ENGINE?.unload)await HACERLO_LOCAL_AI_ENGINE.unload();}catch(_e){}
+     HACERLO_LOCAL_AI_ENGINE=null;
    }
- });
- return HACERLO_LOCAL_AI_ENGINE;
+ }
+ throw new Error('No fue posible iniciar ninguno de los modelos locales compatibles. '+(lastError?.message||''));
 }
 function networkAIPayload(x){
  const na=x.networkAnalysis||{};
