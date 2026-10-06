@@ -103,7 +103,7 @@ function measureText(e){
  if(e.measureType==='influence')return `Influencia ${e.measureValue}/5`;
  return `${e.measureValue}`;
 }
-function evidenceDash(e){return ['Hipótesis','Hipotética','Estimada','Inferida'].includes(e.evidence)?'5 4':'none'}
+function evidenceDash(e){return ['Declarada','Hipótesis','Hipotética'].includes(e.evidence)?'3 5':'none'}
 function renderAdoptionGraphPage(a,head,x){
  migrateLegacyGraphEdges(x);
  const ns=x.nodes||[],all=x.edges||[],types=[...new Set(all.map(edgeRelation).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
@@ -113,7 +113,7 @@ function renderAdoptionGraphPage(a,head,x){
  const key=(e)=>`${e.s}|${e.t}|${normalizeRelation(edgeRelation(e))}`;
  const done=new Set(),draw=[];
  for(const e of edges){const k=key(e);if(done.has(k))continue;const rk=`${e.t}|${e.s}|${normalizeRelation(edgeRelation(e))}`,rev=edges.find(q=>key(q)===rk);draw.push({e,rev:rev&&e.s!==e.t?rev:null});done.add(k);if(rev)done.add(rk)}
- const line=(e,rev)=>{let p=coords[e.s],q=coords[e.t];if(!p||!q)return '';let dashed=evidenceDash(e),both=!!rev;return `<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" stroke="${both?'#53cdb5':'#8fc7d8'}" stroke-width="2" stroke-dasharray="${dashed}" ${both?'marker-start="url(#edgeArrowStart)"':''} marker-end="url(#edgeArrow)"><title>${safe(ns[e.s]?.name||'Origen')} ${both?'↔':'→'} ${safe(ns[e.t]?.name||'Destino')} · ${safe(edgeRelation(e))}</title></line>`};
+ const line=(e,rev)=>{let p=coords[e.s],q=coords[e.t];if(!p||!q)return '';let dashed=evidenceDash(e),both=!!rev,dx=q.x-p.x,dy=q.y-p.y,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,r=16,x1=p.x+ux*r,y1=p.y+uy*r,x2=q.x-ux*r,y2=q.y-uy*r;return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${both?'#53cdb5':'#8fc7d8'}" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="${dashed}" ${both?'marker-start="url(#edgeArrowStart)"':''} marker-end="url(#edgeArrow)"><title>${safe(ns[e.s]?.name||'Origen')} ${both?'↔':'→'} ${safe(ns[e.t]?.name||'Destino')} · ${safe(edgeRelation(e))}</title></line>`};
  const relationOptions=GRAPH_RELATIONS.map(r=>`<option value="${safe(r)}">${safe(r)}</option>`).join('');
  const filterOptions=['Todas',...types].map(r=>`<option value="${safe(r)}" ${r===filter?'selected':''}>${safe(r)}</option>`).join('');
  a.innerHTML=head+`<div class="grid"><section class="panel"><h2>Grafo editable</h2>
@@ -138,11 +138,11 @@ function renderAdoptionGraphPage(a,head,x){
  <section class="panel"><h2>Visualización de relaciones</h2>
  <label>Ver capa de relación<select onchange="setGraphRelationFilter(this.value)">${filterOptions}</select></label>
  <svg viewBox="0 0 480 350" role="img" aria-label="Grafo de nodos y conexiones"><defs>
-  <marker id="edgeArrow" viewBox="0 0 10 10" refX="16" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker>
-  <marker id="edgeArrowStart" viewBox="0 0 10 10" refX="-6" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke"/></marker>
+  <marker id="edgeArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker>
+  <marker id="edgeArrowStart" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto" markerUnits="strokeWidth"><path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke"/></marker>
  </defs>${draw.map(d=>line(d.e,d.rev)).join('')}${ns.map((n,i)=>`<circle cx="${coords[i].x}" cy="${coords[i].y}" r="13" fill="${['#17b3d2','#8855ce','#e9a52e','#20b789','#d76e9c','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#e4b864','#e4b864'][['Equipo','Persona','Barrera','Facilitador','Intervención','Tecnología','Plataforma','Base de datos','Repositorio','Documento','Herramienta','Conocimiento','Proceso','Indicador'].indexOf(n.type)]||'#58b6bb'}"/><text x="${coords[i].x}" y="${coords[i].y+27}" fill="white" font-size="11" text-anchor="middle">${safe(n.name).slice(0,20)}</text>`).join('')}</svg>
  <p class="muted">${ns.length} nodos · ${edges.length} aristas en ${filter==='Todas'?'la vista global':'la capa '+safe(filter)}</p>
- <p class="muted">→ relación dirigida · ↔ misma relación registrada en ambos sentidos · línea discontinua: evidencia estimada/hipotética.</p>
+ <p class="muted" style="font-size:11px;line-height:1.25;margin-top:4px;opacity:.72">→ dirigida · ↔ recíproca · ━ observada/registrada/estimada · ┄ declarada/hipotética</p>
  <div style="max-height:290px;overflow:auto">${draw.map(({e,rev})=>`<div style="border-top:1px solid #20435a;padding:9px 0"><b>${safe(ns[e.s]?.name||'Origen')} ${rev?'↔':'→'} ${safe(ns[e.t]?.name||'Destino')}</b> · ${safe(edgeRelation(e))}<br><span class="muted">${safe(ns[e.s]?.name||'Origen')} → ${safe(ns[e.t]?.name||'Destino')}${measureText(e)?' · '+safe(measureText(e)):''} · ${safe(e.evidence||'Sin clasificar')}</span> <button type="button" class="secondary" style="width:auto;padding:4px 8px;margin-left:6px" onclick="deleteGraphEdge(${all.indexOf(e)})">Eliminar conexión</button>${rev?`<br><span class="muted">${safe(ns[rev.s]?.name||'Origen')} → ${safe(ns[rev.t]?.name||'Destino')}${measureText(rev)?' · '+safe(measureText(rev)):''} · ${safe(rev.evidence||'Sin clasificar')}</span> <button type="button" class="secondary" style="width:auto;padding:4px 8px;margin-left:6px" onclick="deleteGraphEdge(${all.indexOf(rev)})">Eliminar conexión</button>`:''}</div>`).join('')||'<div class="empty">No hay relaciones en esta capa.</div>'}</div>
  <section class="panel" style="margin-top:14px"><h3>Análisis computacional de la red</h3><p class="muted">NetworkX analiza ${filter==='Todas'?'la estructura completa':'la capa '+safe(filter)}. Las métricas describen estructura; no prueban causalidad.</p><button class="primary" onclick="analyzeAdoptionNetwork()">Analizar red con NetworkX</button><div id="network-analysis-status" class="notice" style="margin-top:10px"></div><div id="network-analysis-results" style="margin-top:12px"></div></section>
  <p class="notice">La vista global ayuda a explorar el sistema. Para interpretar centralidades con mayor claridad, analiza una capa de relación específica.</p>
