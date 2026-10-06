@@ -275,7 +275,7 @@ async function runLocalNetworkAI(){
 {"system_reading":"texto","structural_findings":["texto"],"hypotheses":[{"title":"texto","rationale":"texto","evidence_limit":"texto"}],"interventions":[{"name":"texto","why":"texto","measure":"texto"}],"what_to_measure":["texto"],"traceability":"texto"}`;
    const response=await engine.chat.completions.create({
      messages:[{role:'system',content:system},{role:'user',content:JSON.stringify(payload)}],
-     temperature:0.25,max_tokens:1000,response_format:{type:'json_object'}
+     temperature:0.25,max_tokens:1000
    });
    let raw=response.choices?.[0]?.message?.content||'{}';
    raw=raw.replace(/^```json\s*/i,'').replace(/```$/,'').trim();
