@@ -56,12 +56,12 @@ if(page==='Pensamiento sistémico'){let vars=x.systemVariables,links=x.systemLin
 if(page==='Simulación de agentes'){a.innerHTML=head+`<div class="grid"><section class="panel"><h2>Mapa de audiencias</h2><p class="muted">Se sincroniza automáticamente con Diseño. También puedes registrar audiencias aquí.</p>${audienceList(x)}<section class="panel"><h3>Cargue masivo de audiencias</h3><p class="muted">Importa CSV con encabezados: nombre,poblacion,impacto,barreras. Puedes abrir y guardar la plantilla con Excel.</p><button type="button" class="secondary" onclick="downloadAudienceTemplate()">↓ Descargar plantilla CSV</button><label>Seleccionar CSV<input type="file" accept=".csv,text/csv" onchange="previewAudienceCSV(this)"></label><div id="audience-import-preview"></div></section><button class="primary" onclick="showAudienceForm('agentsAudience')">+ Agregar audiencia</button><div id="agentsAudience" class="hide">${audienceForm()}</div></section><section class="panel"><h2>Comportamientos por audiencia</h2>${x.audiences.length?x.audiences.map(a=>`<div class="panel"><h3>${safe(a.name)}</h3><p class="muted">${safe(a.population||'—')} personas · Impacto: ${safe(a.impact||'Sin evaluar')}</p>${x.behaviors.filter(b=>b.scope!=='specific'||(b.audienceIds||[]).includes(a.id)).map(b=>`<p>◈ ${safe(b.name)}</p>`).join('')||'<p class="muted">Sin comportamientos asignados</p>'}</div>`).join(''):'<div class="empty">Aún no hay audiencias.</div>'}<p class="notice">La simulación computacional todavía no está implementada. Este mapa constituye su base de entrada.</p></section></div>`;return}
 if(page==='Analítica'){let vals=Object.values(x.dimensions).filter(v=>v!==null),avg=vals.length?Math.round(vals.reduce((a,b)=>a+Number(b),0)/vals.length):'—';a.innerHTML=head+`<div class="triple">${[['INS personas','ins_personas'],['INS proceso','ins_proceso'],['CNPS','cnps']].map(([n,k])=>metricCard(x,n,k)).join('')}</div><div class="triple"><section class="panel"><p class="muted">Dimensiones medidas</p><div class="metric">${vals.length}/6</div></section><section class="panel"><p class="muted">Promedio descriptivo*</p><div class="metric">${avg}${vals.length?'%':''}</div></section><section class="panel"><p class="muted">Acciones completadas</p><div class="metric">${x.actions.filter(a=>a.status==='Completada').length}/${x.actions.length}</div></section></div><div class="grid"><section class="panel"><h2>Adopción por dimensión</h2>${dimensionBars(x)}<p class="notice">*Promedio descriptivo, no índice validado.</p></section><section class="panel"><h2>Indicadores predictivos y de resultados</h2>${indicatorTable(x,['Predictivos','Resultados'])}<button class="secondary" onclick="go('Indicadores')">Configurar indicadores</button></section></div><section class="panel"><h2>Evolución de indicadores</h2><p class="muted">Registra valores sucesivos desde Indicadores para visualizar su evolución.</p>${trendCharts(x)}</section>`;return}}
 
-const GRAPH_RELATIONS=['Consulta a','Informa a','Colabora con','Apoya a','Utiliza','Depende de','Influye en','Supervisa a','Reporta a','Pertenece a','Otra'];
+const GRAPH_RELATIONS=['Consulta a','Informa a','Colabora con','Apoya a','Comparte conocimiento con','Utiliza','Depende de','Influye en','Supervisa a','Reporta a','Pertenece a','Otra'];
 function normalizeRelation(v){return String(v||'Otra').trim()}
 function edgeRelation(e){return e.relation||e.label||'Otra'}
 function relationMeasureConfig(r){
  r=normalizeRelation(r);
- if(['Consulta a','Informa a','Colabora con','Apoya a','Utiliza'].includes(r))return {type:'frequency',label:r==='Utiliza'?'Frecuencia de uso':'Frecuencia',kind:'frequency'};
+ if(['Consulta a','Informa a','Colabora con','Apoya a','Comparte conocimiento con','Utiliza'].includes(r))return {type:'frequency',label:r==='Utiliza'?'Frecuencia de uso':'Frecuencia',kind:'frequency'};
  if(r==='Depende de')return {type:'dependency',label:'Grado de dependencia',kind:'scale'};
  if(r==='Influye en')return {type:'influence',label:'Fuerza de influencia',kind:'scale'};
  return null;
@@ -156,14 +156,152 @@ async function analyzeAdoptionNetwork(){
  const filter=x.networkRelationFilter||'Todas';
  const selected=(x.edges||[]).filter(e=>filter==='Todas'||normalizeRelation(edgeRelation(e))===filter);
  const nodes=x.nodes.map((n,i)=>({id:String(i),label:n.name||('Nodo '+(i+1)),type:n.type||'Otro'}));
- const edges=selected.filter(e=>e.s!=null&&e.t!=null).map(e=>({source:String(e.s),target:String(e.t),intensity:1}));
- s.textContent=filter==='Todas'?'Analizando la estructura completa…':'Analizando la capa «'+filter+'»…';b.innerHTML='';
- try{const resp=await fetch(HACERLO_ENGINE_URL+'/api/network/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nodes,edges})});if(!resp.ok)throw Error('HTTP '+resp.status);const r=await resp.json();x.networkAnalysis={...r,relationFilter:filter,runAt:new Date().toISOString()};save();renderNetworkAnalysis(r,x,b);s.textContent='Análisis completado ✓ · '+(filter==='Todas'?'vista global':filter)}catch(e){console.error(e);s.textContent='No fue posible ejecutar NetworkX: '+e.message}
+ const edges=selected.filter(e=>e.s!=null&&e.t!=null).map(e=>({
+   source:String(e.s),target:String(e.t),relation:edgeRelation(e)||'Otra',
+   evidence:e.evidence||null,measure_type:e.measureType||null,
+   measure_value:e.measureValue==null?null:Number(e.measureValue),measure_unit:e.measureUnit||null
+ }));
+ s.textContent=filter==='Todas'?'Analizando la red multirrelacional…':'Analizando la capa «'+filter+'»…';b.innerHTML='';
+ try{
+   const resp=await fetch(HACERLO_ENGINE_URL+'/api/network/analyze',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({nodes,edges,mode:filter==='Todas'?'multiplex':'layer',relation_filter:filter==='Todas'?null:filter})
+   });
+   if(!resp.ok){let detail='';try{detail=await resp.text()}catch(_e){}throw Error('HTTP '+resp.status+(detail?' · '+detail.slice(0,180):''))}
+   const r=await resp.json();x.networkAnalysis={...r,relationFilter:filter,runAt:new Date().toISOString()};save();renderNetworkAnalysis(r,x,b);
+   s.textContent='Análisis completado ✓ · '+(filter==='Todas'?'multirrelacional':filter)
+ }catch(e){console.error(e);s.textContent='No fue posible ejecutar NetworkX: '+e.message}
 }
+function pct(v){return Math.round(Number(v||0)*1000)/10+'%'}
 function renderNetworkAnalysis(r,x,b){
- const ns=x.nodes||[],m=(r.metrics||[]).map(v=>({...v,label:ns[Number(v.id)]?.name||v.id}));
- const degree=[...m].sort((a,c)=>Number(c.degree_centrality)-Number(a.degree_centrality)).slice(0,5),between=[...m].sort((a,c)=>Number(c.betweenness_centrality)-Number(a.betweenness_centrality)).slice(0,5);
- b.innerHTML=`<div class="triple"><div class="kpi"><span class="muted">Nodos</span><div class="num">${r.nodes??0}</div></div><div class="kpi"><span class="muted">Relaciones dirigidas</span><div class="num">${r.edges??0}</div></div><div class="kpi"><span class="muted">Densidad</span><div class="num">${r.density??0}</div></div></div><div class="grid" style="margin-top:12px"><section class="panel"><h3>Nodos más conectados</h3>${degree.map((v,i)=>`<p><b>${i+1}. ${safe(v.label)}</b> · ${v.degree_centrality}</p>`).join('')||'<p class="muted">Sin datos.</p>'}</section><section class="panel"><h3>Intermediarios estructurales</h3>${between.map((v,i)=>`<p><b>${i+1}. ${safe(v.label)}</b> · ${v.betweenness_centrality}</p>`).join('')||'<p class="muted">Sin datos.</p>'}</section></div><details style="margin-top:12px"><summary>Ver métricas por nodo</summary><div style="overflow-x:auto"><table><tr><th>Nodo</th><th>Centralidad</th><th>Entrada</th><th>Salida</th><th>Intermediación</th></tr>${m.map(v=>`<tr><td>${safe(v.label)}</td><td>${v.degree_centrality}</td><td>${v.in_degree_centrality}</td><td>${v.out_degree_centrality}</td><td>${v.betweenness_centrality}</td></tr>`).join('')}</table></div></details><p class="notice">Estas métricas describen propiedades estructurales de la red registrada; no implican causalidad.</p>`;
+ const safeArr=v=>Array.isArray(v)?v:[];
+ const metricRows=safeArr(r.metrics);
+ const summary=r.summary||{};
+ const signals=safeArr(r.signals);
+ const hypotheses=safeArr(r.intervention_hypotheses);
+ const communities=safeArr(r.communities);
+ const roles=safeArr(r.structural_roles);
+ const composition=safeArr(r.relation_composition);
+ const matrix=safeArr(r.layer_matrix);
+ const mode=r.mode||'layer';
+ const metricTable=metricRows.length?`<details style="margin-top:12px"><summary>Ver métricas por nodo</summary><div style="overflow-x:auto"><table><tr><th>Nodo</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Intermediación</th><th>PageRank</th><th>Capas</th></tr>${metricRows.map(v=>`<tr><td>${safe(v.label||v.id)}</td><td>${safe(v.type||'')}</td><td>${v.in_degree_centrality??0}</td><td>${v.out_degree_centrality??0}</td><td>${v.betweenness_centrality??0}</td><td>${v.pagerank??0}</td><td>${v.layer_count??0}</td></tr>`).join('')}</table></div></details>`:'';
+ if(mode==='multiplex'){
+   b.innerHTML=`<div class="triple"><div class="kpi"><span class="muted">Nodos</span><div class="num">${summary.nodes??r.nodes??0}</div></div><div class="kpi"><span class="muted">Relaciones</span><div class="num">${summary.edges??r.edges??0}</div></div><div class="kpi"><span class="muted">Capas</span><div class="num">${summary.layers??0}</div></div></div>
+   <div class="grid" style="margin-top:12px"><section class="panel"><h3>Composición de la red</h3>${composition.map(v=>`<p><b>${safe(v.relation)}</b> · ${v.edges} conexiones · ${pct(v.share)}</p>`).join('')||'<p class="muted">Sin relaciones registradas.</p>'}</section><section class="panel"><h3>Actores / nodos transversales</h3>${roles.slice(0,6).map(v=>`<p><b>${safe(v.label)}</b> · ${v.layer_count} capas<br><small class="muted">${safe((v.roles||[]).join(' · ')||'Participación estructural')}</small></p>`).join('')||'<p class="muted">Se requieren más relaciones para identificar transversalidad.</p>'}</section></div>
+   <div class="grid" style="margin-top:12px"><section class="panel"><h3>Comunidades estructurales</h3>${communities.map((c,i)=>`<p><b>Comunidad ${i+1}</b> · ${c.size} nodos<br><small class="muted">${safe((c.labels||[]).join(', '))}</small></p>`).join('')||'<p class="muted">No se identificaron comunidades diferenciadas.</p>'}</section><section class="panel"><h3>Señales estructurales</h3>${signals.map(v=>`<p>• ${safe(v)}</p>`).join('')||'<p class="muted">Sin señales destacadas con los datos actuales.</p>'}</section></div>
+   ${matrix.length?`<details style="margin-top:12px"><summary>Matriz nodo × capa</summary><div style="overflow-x:auto"><table><tr><th>Nodo</th>${safeArr(r.layers).map(l=>`<th>${safe(l)}</th>`).join('')}</tr>${matrix.map(row=>`<tr><td><b>${safe(row.label)}</b><br><small class="muted">${safe(row.type||'')}</small></td>${safeArr(r.layers).map(l=>`<td>${row.layers&&row.layers[l]?row.layers[l]:'—'}</td>`).join('')}</tr>`).join('')}</table></div></details>`:''}
+   ${hypotheses.length?`<section class="panel" style="margin-top:12px"><h3>Hipótesis y oportunidades de intervención</h3>${hypotheses.map(h=>`<p><b>${safe(h.title)}</b><br><span class="muted">${safe(h.rationale)}</span><br><small>${safe(h.action)}</small></p>`).join('')}<div class="notice">Son hipótesis para diseñar y contrastar en RDAIM; no son recomendaciones causales demostradas.</div></section>`:''}
+   ${metricTable}${localAIBlock(x)}<p class="notice">La vista «Todas» conserva las capas por separado. PageRank, comunidades y roles describen estructura; no equivalen por sí solos a influencia, causalidad o desempeño.</p>`;
+ }else{
+   const topIn=safeArr(r.top_in),topOut=safeArr(r.top_out),topBetween=safeArr(r.top_betweenness),topPR=safeArr(r.top_pagerank);
+   b.innerHTML=`<div class="triple"><div class="kpi"><span class="muted">Nodos</span><div class="num">${summary.nodes??r.nodes??0}</div></div><div class="kpi"><span class="muted">Relaciones</span><div class="num">${summary.edges??r.edges??0}</div></div><div class="kpi"><span class="muted">Densidad</span><div class="num">${summary.density??r.density??0}</div></div></div>
+   <div class="triple" style="margin-top:12px"><div class="kpi"><span class="muted">Reciprocidad</span><div class="num">${pct(summary.reciprocity)}</div></div><div class="kpi"><span class="muted">Componentes</span><div class="num">${summary.weak_components??0}</div></div><div class="kpi"><span class="muted">Aislados</span><div class="num">${summary.isolates??0}</div></div></div>
+   <div class="grid" style="margin-top:12px"><section class="panel"><h3>Más receptores</h3>${topIn.map(v=>`<p><b>${safe(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}<h3>Más emisores</h3>${topOut.map(v=>`<p><b>${safe(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}</section><section class="panel"><h3>Puentes estructurales</h3>${topBetween.map(v=>`<p><b>${safe(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}<h3>Prominencia · PageRank</h3>${topPR.map(v=>`<p><b>${safe(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}</section></div>
+   <div class="grid" style="margin-top:12px"><section class="panel"><h3>Comunidades</h3>${communities.map((c,i)=>`<p><b>Comunidad ${i+1}</b> · ${c.size} nodos<br><small class="muted">${safe((c.labels||[]).join(', '))}</small></p>`).join('')||'<p class="muted">No se identificaron comunidades diferenciadas.</p>'}</section><section class="panel"><h3>Señales estructurales</h3>${signals.map(v=>`<p>• ${safe(v)}</p>`).join('')||'<p class="muted">Sin señales destacadas con los datos actuales.</p>'}</section></div>
+   ${hypotheses.length?`<section class="panel" style="margin-top:12px"><h3>Hipótesis y oportunidades de intervención</h3>${hypotheses.map(h=>`<p><b>${safe(h.title)}</b><br><span class="muted">${safe(h.rationale)}</span><br><small>${safe(h.action)}</small></p>`).join('')}<div class="notice">Deben contrastarse mediante intervención y medición; no prueban causalidad.</div></section>`:''}
+   ${metricTable}${localAIBlock(x)}<p class="notice">El significado de entrada/salida depende de la relación seleccionada. PageRank se presenta como prominencia estructural, no como «influencia» automática.</p>`;
+ }
+}
+
+
+let HACERLO_LOCAL_AI_ENGINE=null;
+const HACERLO_LOCAL_AI_MODEL='Llama-3.2-1B-Instruct-q4f16_1-MLC';
+
+function localAIBlock(x){
+ const a=x&&x.localAIAnalysis;
+ return `<section class="panel" style="margin-top:14px;border-color:#267e79">
+   <div class="flex" style="justify-content:space-between;gap:12px;align-items:flex-start">
+     <div><div class="subtle" style="letter-spacing:1.5px;color:#4fd4c8">INTELIGENCIA HACERLO · LOCAL</div>
+     <h3 style="margin:5px 0">Interpretación asistida de la red</h3>
+     <p class="muted" style="margin-top:5px">NetworkX calcula. La IA local interpreta y formula hipótesis. RDAIM las contrasta.</p></div>
+     <button class="primary" onclick="runLocalNetworkAI()">✦ ${a?'Volver a interpretar':'Interpretar con IA local'}</button>
+   </div>
+   <div id="local-ai-status" class="notice" style="margin-top:10px">${navigator.gpu?'WebGPU detectado. En el primer uso se descargará el modelo local y el navegador lo almacenará en caché.':'WebGPU no está disponible en este navegador/equipo. El análisis NetworkX continúa funcionando sin IA.'}</div>
+   ${a?renderLocalAIResult(a):''}
+ </section>`;
+}
+function renderLocalAIResult(a){
+ const arr=v=>Array.isArray(v)?v:[];
+ return `<div style="margin-top:14px">
+   <div class="grid">
+    <div><h3>Lectura del sistema</h3><p>${safe(a.system_reading||'')}</p></div>
+    <div><h3>Hallazgos estructurales</h3>${arr(a.structural_findings).map(z=>`<p>• ${safe(z)}</p>`).join('')||'<p class="muted">Sin hallazgos adicionales.</p>'}</div>
+   </div>
+   <h3>Hipótesis a contrastar</h3>${arr(a.hypotheses).map((z,i)=>`<div class="dash-card" style="margin:8px 0"><b>${safe(z.title||('Hipótesis '+(i+1)))}</b><p>${safe(z.rationale||'')}</p><small class="muted">Evidencia/limitación: ${safe(z.evidence_limit||'Debe contrastarse con intervención y medición.')}</small></div>`).join('')}
+   <h3>Opciones de intervención</h3>${arr(a.interventions).map((z,i)=>`<div class="dash-card" style="margin:8px 0"><div class="flex" style="justify-content:space-between;gap:10px"><div><b>${safe(z.name||('Opción '+(i+1)))}</b><p>${safe(z.why||'')}</p><small class="muted">Medir: ${safe(z.measure||'Por definir')}</small></div><button class="secondary" onclick="convertAIIntervention(${i})">Llevar a Intervenciones →</button></div></div>`).join('')}
+   <h3>Qué medir</h3>${arr(a.what_to_measure).map(z=>`<p>• ${safe(z)}</p>`).join('')}
+   <div class="notice"><b>Trazabilidad:</b> ${safe(a.traceability||'Los cálculos provienen de NetworkX; la interpretación e hipótesis son generadas por IA local y no demuestran causalidad.')}</div>
+ </div>`;
+}
+async function ensureLocalAI(){
+ if(HACERLO_LOCAL_AI_ENGINE)return HACERLO_LOCAL_AI_ENGINE;
+ if(!navigator.gpu)throw new Error('Este navegador no expone WebGPU. Usa una versión reciente de Chrome o Edge con WebGPU habilitado.');
+ const status=document.getElementById('local-ai-status');
+ status.textContent='Preparando motor local…';
+ const webllm=await import('https://esm.run/@mlc-ai/web-llm');
+ HACERLO_LOCAL_AI_ENGINE=await webllm.CreateMLCEngine(HACERLO_LOCAL_AI_MODEL,{
+   initProgressCallback:(r)=>{
+     const el=document.getElementById('local-ai-status');
+     if(el)el.textContent='Modelo local · '+(r.text||('cargando '+Math.round((r.progress||0)*100)+'%'));
+   }
+ });
+ return HACERLO_LOCAL_AI_ENGINE;
+}
+function networkAIPayload(x){
+ const na=x.networkAnalysis||{};
+ return {
+   initiative:{name:x.name,scope:x.scope,description:x.description,population:x.population,
+     behaviors:(x.behaviors||[]).map(b=>({name:b.name||b.behavior,audience:b.audience||b.audiences})).slice(0,30),
+     indicators:(x.indicators||[]).map(i=>({name:i.name,type:i.type,value:i.value,target:i.target})).slice(0,20)},
+   network_analysis:na,
+   methodological_rules:[
+    'La estructura de red no demuestra causalidad.',
+    'PageRank significa prominencia estructural, no influencia causal.',
+    'No mezclar semánticamente capas de relación distintas.',
+    'Separar hallazgo matemático, interpretación e hipótesis.',
+    'Proponer alternativas, no prescripciones.',
+    'Indicar qué debería medirse para contrastar cada hipótesis.'
+   ]
+ };
+}
+async function runLocalNetworkAI(){
+ const x=current(),status=document.getElementById('local-ai-status');
+ if(!x||!x.networkAnalysis){alert('Primero ejecuta el análisis NetworkX de la red.');return}
+ try{
+   const engine=await ensureLocalAI();
+   if(status)status.textContent='La Inteligencia HACERLO está interpretando los resultados localmente…';
+   const payload=networkAIPayload(x);
+   const system=`Eres Inteligencia HACERLO, un analista de sistemas organizacionales. Trabajas sobre resultados matemáticos ya calculados por NetworkX. Nunca inventes métricas, relaciones ni causalidad. Distingue explícitamente evidencia, hallazgo estructural, interpretación e hipótesis. Tus opciones de intervención deben ser alternativas para contrastar dentro de RDAIM. Responde EXCLUSIVAMENTE JSON válido en español con esta forma:
+{"system_reading":"texto","structural_findings":["texto"],"hypotheses":[{"title":"texto","rationale":"texto","evidence_limit":"texto"}],"interventions":[{"name":"texto","why":"texto","measure":"texto"}],"what_to_measure":["texto"],"traceability":"texto"}`;
+   const response=await engine.chat.completions.create({
+     messages:[{role:'system',content:system},{role:'user',content:JSON.stringify(payload)}],
+     temperature:0.25,max_tokens:1000,response_format:{type:'json_object'}
+   });
+   let raw=response.choices?.[0]?.message?.content||'{}';
+   raw=raw.replace(/^```json\s*/i,'').replace(/```$/,'').trim();
+   const parsed=JSON.parse(raw);
+   x.localAIAnalysis={...parsed,generatedAt:new Date().toISOString(),model:HACERLO_LOCAL_AI_MODEL,
+     networkRunAt:x.networkAnalysis.runAt||null,relationFilter:x.networkAnalysis.relationFilter||null};
+   save();render();
+ }catch(err){
+   console.error(err);
+   const el=document.getElementById('local-ai-status');
+   if(el)el.textContent='IA local no disponible: '+err.message+' · NetworkX sigue funcionando normalmente.';
+ }
+}
+function convertAIIntervention(index){
+ const x=current(),a=x?.localAIAnalysis?.interventions?.[index];
+ if(!x||!a)return;
+ x.actions=x.actions||[];
+ x.actions.push({
+   name:a.name||'Intervención sugerida por Inteligencia HACERLO',
+   dimension:'Por definir',owner:'',start:'',end:'',
+   hypothesis:a.why||'',measurement:a.measure||'',status:'Pendiente',
+   source:'Inteligencia HACERLO · hipótesis',createdAt:new Date().toISOString()
+ });
+ save();
+ alert('La opción se agregó a Intervenciones como borrador pendiente. Completa responsable, dimensión y fechas antes de ejecutarla.');
+ go('Intervenciones');
 }
 
 function indicatorTable(x,types){let a=x.indicators.filter(v=>!types||types.includes(v.type));return a.length?`<div style="overflow-x:auto"><table><tr><th>Indicador</th><th>Tipo</th><th>Base</th><th>Meta</th><th>Actual</th></tr>${a.map(v=>`<tr><td>${safe(v.name)}${v.behavior?'<br><small class="muted">'+safe(v.behavior)+'</small>':''}</td><td>${safe(v.type)}</td><td>${safe(v.baseline)}</td><td>${safe(v.target)}</td><td>${safe(v.value)}</td></tr>`).join('')}</table></div>`:'<div class="empty">No hay indicadores registrados.</div>'}
