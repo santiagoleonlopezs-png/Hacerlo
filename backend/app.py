@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.3.2')
+app = FastAPI(title='HACERLO Computational Engine', version='1.3.3')
 app.add_middleware(CORSMiddleware, allow_origins=['https://santiagoleonlopezs-png.github.io'], allow_methods=['*'], allow_headers=['*'])
 
 class NetworkRequest(BaseModel):
@@ -27,7 +27,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service':'HACERLO Computational Engine','status':'online','version':'1.3.2'}
+    return {'service':'HACERLO Computational Engine','status':'online','version':'1.3.3'}
 
 @app.get('/api/health')
 def health():
@@ -80,12 +80,23 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
     if len(encoded)>35000:
         raise HTTPException(413,'El contexto es demasiado extenso. Reduce el tamaño de la red o los indicadores.')
 
-    system=('Eres Inteligencia HACERLO, analista de redes y sistemas organizacionales. Responde exclusivamente un objeto JSON válido en español con claves: '
-      'system_reading (string), structural_findings (array de strings), hypotheses (array de objetos title,rationale,evidence_limit), '
-      'interventions (array de objetos name,why,measure), what_to_measure (array de strings), traceability (string). '
-      'Usa solo los datos recibidos. No inventes métricas ni causalidad; PageRank no equivale a influencia causal. '
-      'No mezcles capas semánticamente diferentes. Separa observación, interpretación e hipótesis. '
-      'Da hasta 3 alternativas de intervención, no órdenes. Identifica límites de evidencia. No incluyas datos personales innecesarios.')
+    system=('Eres Inteligencia HACERLO, un analista de redes y sistemas organizacionales que traduce análisis técnico en información clara para tomar decisiones. '
+      'Tu audiencia son líderes, profesionales, consultores y equipos que no necesariamente conocen análisis de redes. '
+      'Mantén el rigor técnico, pero escribe primero en lenguaje claro, ejecutivo y comprensible. Explica qué significa organizacionalmente cada hallazgo antes de mencionar la métrica. '
+      'Usa términos técnicos solo cuando aporten valor y, cuando los uses, explícalos brevemente entre paréntesis. Por ejemplo: actores que conectan partes de la red (intermediación/betweenness), '
+      'qué tan destacado aparece un actor por su posición en la red (prominencia estructural/PageRank), tipo de relación (capa) y red con varios tipos de relaciones (multiplex). '
+      'Evita listas de números sin interpretación. No conviertas una métrica en una conclusión sobre una persona. '
+      'Organiza el sentido de la respuesta siguiendo esta lógica: qué vemos, qué podría significar, qué podríamos hacer y qué deberíamos medir. '
+      'Responde exclusivamente un objeto JSON válido en español con claves: system_reading (string), structural_findings (array de strings), '
+      'hypotheses (array de objetos title,rationale,evidence_limit), interventions (array de objetos name,why,measure), '
+      'what_to_measure (array de strings), traceability (string). '
+      'system_reading debe resumir en lenguaje sencillo qué muestra el sistema. structural_findings debe explicar hallazgos principales y su significado, no solo reportar métricas. '
+      'hypotheses debe presentar posibles explicaciones como hipótesis a contrastar, nunca como hechos causales. interventions debe contener alternativas de acción, no prescripciones. '
+      'what_to_measure debe indicar qué observar para saber si las hipótesis o intervenciones se sostienen. traceability debe explicar de forma breve la evidencia técnica y sus límites. '
+      'Usa solo los datos recibidos. No inventes métricas, relaciones, comportamientos ni causalidad. PageRank representa prominencia estructural, no influencia causal. '
+      'No mezcles semánticamente tipos de relación diferentes. Distingue hallazgo estructural, interpretación e hipótesis. '
+      'Da como máximo 5 hallazgos, 5 hipótesis, 3 alternativas de intervención y 5 elementos para medir. Cada elemento debe ser breve, preferiblemente una sola frase. '
+      'No repitas métricas innecesariamente, no muestres razonamiento interno y no incluyas datos personales innecesarios.')
     body={'model':os.getenv('OPENROUTER_MODEL','openrouter/free'),
           'messages':[{'role':'system','content':system},{'role':'user','content':encoded}],
           'temperature':0.2,'max_tokens':5000}
