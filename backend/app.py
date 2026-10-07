@@ -1,6 +1,8 @@
 import os
 import json
 import time
+import logging
+import re
 from collections import defaultdict, deque
 from typing import Any, Dict, List, Optional
 from urllib.request import Request, urlopen
@@ -11,7 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.2.1')
+logger = logging.getLogger('uvicorn.error')
+
+app = FastAPI(title='HACERLO Computational Engine', version='1.2.2')
 app.add_middleware(CORSMiddleware, allow_origins=['https://santiagoleonlopezs-png.github.io'], allow_methods=['*'], allow_headers=['*'])
 
 class NetworkRequest(BaseModel):
@@ -27,7 +31,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service':'HACERLO Computational Engine','status':'online','version':'1.2.1'}
+    return {'service':'HACERLO Computational Engine','status':'online','version':'1.2.2'}
 
 @app.get('/api/health')
 def health():
@@ -98,21 +102,32 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
         result['provider']='Groq'
         return result
     except HTTPError as exc:
-        # Diagnostic only: expose Groq's error message, never the API key.
+        # Log the provider's diagnostic without printing credentials or personal data.
+        error_code = 'unknown'
+        error_type = 'unknown'
+        provider_message = ''
         try:
-            raw = exc.read().decode('utf-8', errors='replace')
-            parsed = json.loads(raw)
-            groq_message = str(parsed.get('error', {}).get('message') or parsed.get('message') or raw)
+            parsed = json.loads(exc.read(4096).decode('utf-8', errors='replace'))
+            error = parsed.get('error', {})
+            if isinstance(error, dict):
+                error_code = str(error.get('code') or 'unknown')
+                error_type = str(error.get('type') or 'unknown')
+                provider_message = str(error.get('message') or '')
         except Exception:
-            groq_message = ''
-        groq_message = groq_message[:700]
+            pass
+        # Redact bearer tokens, Groq keys, emails and URLs before writing logs.
+        def sanitize(value):
+            value = re.sub(r'Bearer\s+\S+', '[REDACTED]', value, flags=re.I)
+            value = re.sub(r'gsk_[A-Za-z0-9_-]+', '[REDACTED]', value)
+            value = re.sub(r'eyJ[A-Za-z0-9._-]{20,}', '[REDACTED]', value)
+            value = re.sub(r'[\w.+-]+@[\w.-]+', '[EMAIL]', value)
+            value = re.sub(r'https?://\S+', '[URL]', value)
+            return value[:350]
+        logger.warning('HACERLO GROQ DIAGNOSTIC: status=%s type=%s code=%s message=%s',
+                       exc.code, sanitize(error_type), sanitize(error_code), sanitize(provider_message))
         if exc.code == 429:
-            raise HTTPException(429, f'Groq alcanzó su límite temporal. {groq_message}'.strip())
-        if exc.code == 401:
-            raise HTTPException(502, f'Groq devolvió 401 (credencial no válida). {groq_message}'.strip())
-        if exc.code == 403:
-            raise HTTPException(502, f'Groq devolvió 403 (permiso/modelo restringido). {groq_message}'.strip())
-        raise HTTPException(502, f'Groq devolvió HTTP {exc.code}. {groq_message}'.strip())
+            raise HTTPException(429, 'Groq alcanzó su límite temporal; revisa los registros de Render.')
+        raise HTTPException(502, f'Groq respondió HTTP {exc.code}. Revisa Render Logs: HACERLO GROQ DIAGNOSTIC.')
     except (URLError,TimeoutError):
         raise HTTPException(504,'Groq no respondió a tiempo.')
     except (ValueError,KeyError,IndexError,TypeError):
