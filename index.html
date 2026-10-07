@@ -204,77 +204,24 @@ function renderNetworkAnalysis(r,x,b){
 }
 
 
-let HACERLO_LOCAL_AI_ENGINE=null;
-let HACERLO_LOCAL_AI_MODEL=null;
-const HACERLO_LOCAL_AI_CANDIDATES=[
-  'Llama-3.2-1B-Instruct-q4f32_1-MLC',
-  'Qwen2.5-0.5B-Instruct-q4f32_1-MLC',
-  'SmolLM2-360M-Instruct-q4f32_1-MLC'
-];
-
 function localAIBlock(x){
  const a=x&&x.localAIAnalysis;
  return `<section class="panel" style="margin-top:14px;border-color:#267e79">
-   <div class="flex" style="justify-content:space-between;gap:12px;align-items:flex-start">
-     <div><div class="subtle" style="letter-spacing:1.5px;color:#4fd4c8">INTELIGENCIA HACERLO · LOCAL</div>
-     <h3 style="margin:5px 0">Interpretación asistida de la red</h3>
-     <p class="muted" style="margin-top:5px">NetworkX calcula. La IA local interpreta y formula hipótesis. RDAIM las contrasta.</p></div>
-     <button class="primary" onclick="runLocalNetworkAI()">✦ ${a?'Volver a interpretar':'Interpretar con IA local'}</button>
-   </div>
-   <div id="local-ai-status" class="notice" style="margin-top:10px">${navigator.gpu?'WebGPU detectado. HACERLO probará automáticamente modelos locales compatibles, de mayor a menor capacidad. La primera descarga queda en caché.':'WebGPU no está disponible. NetworkX continúa funcionando sin IA local.'}</div>
-   ${a?renderLocalAIResult(a):''}
+ <h3>✦ Inteligencia HACERLO · Groq</h3>
+ <p class="muted">NetworkX calcula. La IA interpreta y propone hipótesis; RDAIM permite contrastarlas.</p>
+ <button class="primary" onclick="runLocalNetworkAI()">✦ ${a?'Volver a interpretar':'Interpretar con IA'}</button>
+ <div id="local-ai-status" class="notice" style="margin-top:10px">Servicio de IA alojado en Groq. Envía resultados y contexto seleccionado al proveedor externo; utiliza solo datos autorizados o anonimizados.</div>
+ ${a?renderLocalAIResult(a):''}
  </section>`;
 }
 function renderLocalAIResult(a){
  const arr=v=>Array.isArray(v)?v:[];
- return `<div style="margin-top:14px">
-   <div class="grid">
-    <div><h3>Lectura del sistema</h3><p>${safe(a.system_reading||'')}</p></div>
-    <div><h3>Hallazgos estructurales</h3>${arr(a.structural_findings).map(z=>`<p>• ${safe(z)}</p>`).join('')||'<p class="muted">Sin hallazgos adicionales.</p>'}</div>
-   </div>
-   <h3>Hipótesis a contrastar</h3>${arr(a.hypotheses).map((z,i)=>`<div class="dash-card" style="margin:8px 0"><b>${safe(z.title||('Hipótesis '+(i+1)))}</b><p>${safe(z.rationale||'')}</p><small class="muted">Evidencia/limitación: ${safe(z.evidence_limit||'Debe contrastarse con intervención y medición.')}</small></div>`).join('')}
-   <h3>Opciones de intervención</h3>${arr(a.interventions).map((z,i)=>`<div class="dash-card" style="margin:8px 0"><div class="flex" style="justify-content:space-between;gap:10px"><div><b>${safe(z.name||('Opción '+(i+1)))}</b><p>${safe(z.why||'')}</p><small class="muted">Medir: ${safe(z.measure||'Por definir')}</small></div><button class="secondary" onclick="convertAIIntervention(${i})">Llevar a Intervenciones →</button></div></div>`).join('')}
-   <h3>Qué medir</h3>${arr(a.what_to_measure).map(z=>`<p>• ${safe(z)}</p>`).join('')}
-   <div class="notice"><b>Trazabilidad:</b> ${safe(a.traceability||'Los cálculos provienen de NetworkX; la interpretación e hipótesis son generadas por IA local y no demuestran causalidad.')}</div>
- </div>`;
-}
-async function ensureLocalAI(){
- if(HACERLO_LOCAL_AI_ENGINE)return HACERLO_LOCAL_AI_ENGINE;
- if(!navigator.gpu)throw new Error('WebGPU no está disponible en este navegador.');
- const status=document.getElementById('local-ai-status');
- const webllm=await import('https://esm.run/@mlc-ai/web-llm');
-
- // Detectamos el adaptador real antes de descargar modelos.
- let adapter=null;
- try{adapter=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});}catch(_e){}
- if(!adapter){
-   try{adapter=await navigator.gpu.requestAdapter();}catch(_e){}
- }
- if(!adapter)throw new Error('Edge reporta WebGPU, pero no entregó un adaptador utilizable a la aplicación.');
-
- let lastError=null;
- for(const model of HACERLO_LOCAL_AI_CANDIDATES){
-   try{
-     if(status)status.textContent='Probando modelo local compatible: '+model+'…';
-     const engine=await webllm.CreateMLCEngine(model,{
-       initProgressCallback:(r)=>{
-         const el=document.getElementById('local-ai-status');
-         if(el)el.textContent='IA local · '+model+' · '+(r.text||('cargando '+Math.round((r.progress||0)*100)+'%'));
-       }
-     });
-     HACERLO_LOCAL_AI_ENGINE=engine;
-     HACERLO_LOCAL_AI_MODEL=model;
-     if(status)status.textContent='IA local lista ✓ · '+model;
-     return engine;
-   }catch(err){
-     console.warn('HACERLO IA: modelo no compatible',model,err);
-     lastError=err;
-     // Liberamos recursos antes de intentar el siguiente modelo.
-     try{if(HACERLO_LOCAL_AI_ENGINE?.unload)await HACERLO_LOCAL_AI_ENGINE.unload();}catch(_e){}
-     HACERLO_LOCAL_AI_ENGINE=null;
-   }
- }
- throw new Error('No fue posible iniciar ninguno de los modelos locales compatibles. '+(lastError?.message||''));
+ return `<div style="margin-top:14px"><h3>Lectura del sistema</h3><p>${safe(a.system_reading||'')}</p>
+ <h3>Hallazgos estructurales</h3>${arr(a.structural_findings).map(z=>`<p>• ${safe(z)}</p>`).join('')}
+ <h3>Hipótesis</h3>${arr(a.hypotheses).map(z=>`<div class="dash-card"><b>${safe(z.title||'')}</b><p>${safe(z.rationale||'')}</p><small class="muted">${safe(z.evidence_limit||'')}</small></div>`).join('')}
+ <h3>Opciones de intervención</h3>${arr(a.interventions).map((z,i)=>`<div class="dash-card"><b>${safe(z.name||'')}</b><p>${safe(z.why||'')}</p><small class="muted">Medir: ${safe(z.measure||'')}</small><p><button class="secondary" onclick="convertAIIntervention(${i})">Llevar a Intervenciones →</button></p></div>`).join('')}
+ <h3>Qué medir</h3>${arr(a.what_to_measure).map(z=>`<p>• ${safe(z)}</p>`).join('')}
+ <div class="notice">${safe(a.traceability||'Interpretación generativa; no demuestra causalidad.')} · Modelo: ${safe(a.model||'')}</div></div>`;
 }
 function networkAIPayload(x){
  const na=x.networkAnalysis||{};
@@ -295,27 +242,26 @@ function networkAIPayload(x){
 }
 async function runLocalNetworkAI(){
  const x=current(),status=document.getElementById('local-ai-status');
- if(!x||!x.networkAnalysis){alert('Primero ejecuta el análisis NetworkX de la red.');return}
+ if(!x||!x.networkAnalysis){alert('Primero ejecuta NetworkX.');return}
  try{
-   const engine=await ensureLocalAI();
-   if(status)status.textContent='La Inteligencia HACERLO está interpretando los resultados localmente…';
-   const payload=networkAIPayload(x);
-   const system=`Eres Inteligencia HACERLO, un analista de sistemas organizacionales. Trabajas sobre resultados matemáticos ya calculados por NetworkX. Nunca inventes métricas, relaciones ni causalidad. Distingue explícitamente evidencia, hallazgo estructural, interpretación e hipótesis. Tus opciones de intervención deben ser alternativas para contrastar dentro de RDAIM. Responde EXCLUSIVAMENTE JSON válido en español con esta forma:
-{"system_reading":"texto","structural_findings":["texto"],"hypotheses":[{"title":"texto","rationale":"texto","evidence_limit":"texto"}],"interventions":[{"name":"texto","why":"texto","measure":"texto"}],"what_to_measure":["texto"],"traceability":"texto"}`;
-   const response=await engine.chat.completions.create({
-     messages:[{role:'system',content:system},{role:'user',content:JSON.stringify(payload)}],
-     temperature:0.25,max_tokens:1000
+   if(status)status.textContent='Consultando Inteligencia HACERLO…';
+   const {data:{session}}=await sb.auth.getSession();
+   if(!session?.access_token)throw new Error('Debes iniciar sesión en HACERLO.');
+   const response=await fetch(HACERLO_ENGINE_URL+'/api/ai/interpret',{
+     method:'POST',headers:{'Content-Type':'application/json',
+       'Authorization':'Bearer '+session.access_token,
+       'X-Supabase-Apikey':SUPABASE_PUBLISHABLE_KEY},
+     body:JSON.stringify(networkAIPayload(x))
    });
-   let raw=response.choices?.[0]?.message?.content||'{}';
-   raw=raw.replace(/^```json\s*/i,'').replace(/```$/,'').trim();
-   const parsed=JSON.parse(raw);
-   x.localAIAnalysis={...parsed,generatedAt:new Date().toISOString(),model:HACERLO_LOCAL_AI_MODEL,
+   if(!response.ok){let error={};try{error=await response.json()}catch(_e){}
+     throw new Error(error.detail||('HTTP '+response.status));}
+   const parsed=await response.json();
+   x.localAIAnalysis={...parsed,generatedAt:new Date().toISOString(),
      networkRunAt:x.networkAnalysis.runAt||null,relationFilter:x.networkAnalysis.relationFilter||null};
    save();render();
- }catch(err){
-   console.error(err);
+ }catch(err){console.error(err);
    const el=document.getElementById('local-ai-status');
-   if(el)el.textContent='IA local no disponible: '+err.message+' · NetworkX sigue funcionando normalmente.';
+   if(el)el.textContent='No se pudo interpretar: '+err.message+' · NetworkX sigue funcionando.';
  }
 }
 function convertAIIntervention(index){
@@ -326,7 +272,7 @@ function convertAIIntervention(index){
    name:a.name||'Intervención sugerida por Inteligencia HACERLO',
    dimension:'Por definir',owner:'',start:'',end:'',
    hypothesis:a.why||'',measurement:a.measure||'',status:'Pendiente',
-   source:'Inteligencia HACERLO · hipótesis',createdAt:new Date().toISOString()
+   source:'Inteligencia HACERLO · hipótesis generativa',createdAt:new Date().toISOString()
  });
  save();
  alert('La opción se agregó a Intervenciones como borrador pendiente. Completa responsable, dimensión y fechas antes de ejecutarla.');
