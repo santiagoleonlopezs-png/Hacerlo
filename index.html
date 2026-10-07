@@ -207,10 +207,10 @@ function renderNetworkAnalysis(r,x,b){
 function localAIBlock(x){
  const a=x&&x.localAIAnalysis;
  return `<section class="panel" style="margin-top:14px;border-color:#267e79">
- <h3>✦ Inteligencia HACERLO · Groq</h3>
+ <h3>✦ Inteligencia HACERLO</h3>
  <p class="muted">NetworkX calcula. La IA interpreta y propone hipótesis; RDAIM permite contrastarlas.</p>
  <button class="primary" onclick="runLocalNetworkAI()">✦ ${a?'Volver a interpretar':'Interpretar con IA'}</button>
- <div id="local-ai-status" class="notice" style="margin-top:10px">Servicio de IA alojado en Groq. Envía resultados y contexto seleccionado al proveedor externo; utiliza solo datos autorizados o anonimizados.</div>
+ <div id="local-ai-status" class="notice" style="margin-top:10px">La IA interpreta los resultados estructurales y propone hipótesis para contrastar mediante RDAIM. Utiliza únicamente datos autorizados o anonimizados.</div>
  ${a?renderLocalAIResult(a):''}
  </section>`;
 }
