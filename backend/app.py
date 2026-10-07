@@ -1,3 +1,67 @@
+import os
+import json
+import time
+from collections import defaultdict, deque
+from typing import Any, Dict, List, Optional
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
+
+from fastapi import FastAPI, HTTPException, Header, Request as FastRequest
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from engine import analyze_network
+
+app = FastAPI(title='HACERLO Computational Engine', version='1.2.1')
+app.add_middleware(CORSMiddleware, allow_origins=['https://santiagoleonlopezs-png.github.io'], allow_methods=['*'], allow_headers=['*'])
+
+class NetworkRequest(BaseModel):
+    nodes: List[Dict[str, Any]]
+    edges: List[Dict[str, Any]]
+    mode: str = 'layer'
+    relation_filter: Optional[str] = None
+
+class AIRequest(BaseModel):
+    initiative: Dict[str, Any] = Field(default_factory=dict)
+    network_analysis: Dict[str, Any] = Field(default_factory=dict)
+    methodological_rules: List[str] = Field(default_factory=list)
+
+@app.get('/')
+def root():
+    return {'service':'HACERLO Computational Engine','status':'online','version':'1.2.1'}
+
+@app.get('/api/health')
+def health():
+    return {'status':'ok','engine':'HACERLO','networkx':'ready-v1.1','ai':'groq-configured' if os.getenv('GROQ_API_KEY') else 'not-configured','mesa':'pending','pysd':'pending'}
+
+@app.post('/api/network/analyze')
+def network_analysis(payload: NetworkRequest):
+    return analyze_network(nodes=payload.nodes,edges=payload.edges,mode=payload.mode,relation_filter=payload.relation_filter)
+
+# Pilot limits. Per-process limits are not a substitute for an API gateway in production.
+_requests = defaultdict(deque)
+
+def post_json(url, body, headers, timeout=45):
+    req=Request(url,data=json.dumps(body,ensure_ascii=False).encode('utf-8'),headers=headers,method='POST')
+    with urlopen(req,timeout=timeout) as response:
+        return json.load(response)
+
+def get_json(url, headers, timeout=12):
+    req=Request(url,headers=headers,method='GET')
+    with urlopen(req,timeout=timeout) as response:
+        return json.load(response)
+
+@app.post('/api/ai/interpret')
+def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Optional[str]=Header(None), x_supabase_apikey: Optional[str]=Header(None)):
+    # Verify session against this HACERLO Supabase project's Auth endpoint.
+    if not authorization or not authorization.startswith('Bearer ') or not x_supabase_apikey:
+        raise HTTPException(401,'Se requiere una sesión de HACERLO válida.')
+    try:
+        user=get_json('https://mflakxgdkpuhemgslgsa.supabase.co/auth/v1/user',{
+            'Authorization':authorization,'apikey':x_supabase_apikey})
+        user_id=user.get('id')
+        if not user_id:
+            raise ValueError('No valid user')
+    except Exception:
         raise HTTPException(401,'La sesión de Supabase no pudo verificarse.')
 
     now=time.monotonic()
