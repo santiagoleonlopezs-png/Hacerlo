@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.3.3')
+app = FastAPI(title='HACERLO Computational Engine', version='1.3.4')
 app.add_middleware(CORSMiddleware, allow_origins=['https://santiagoleonlopezs-png.github.io'], allow_methods=['*'], allow_headers=['*'])
 
 class NetworkRequest(BaseModel):
@@ -27,7 +27,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service':'HACERLO Computational Engine','status':'online','version':'1.3.3'}
+    return {'service':'HACERLO Computational Engine','status':'online','version':'1.3.4'}
 
 @app.get('/api/health')
 def health():
@@ -97,9 +97,76 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
       'No mezcles semánticamente tipos de relación diferentes. Distingue hallazgo estructural, interpretación e hipótesis. '
       'Da como máximo 5 hallazgos, 5 hipótesis, 3 alternativas de intervención y 5 elementos para medir. Cada elemento debe ser breve, preferiblemente una sola frase. '
       'No repitas métricas innecesariamente, no muestres razonamiento interno y no incluyas datos personales innecesarios.')
-    body={'model':os.getenv('OPENROUTER_MODEL','openrouter/free'),
-          'messages':[{'role':'system','content':system},{'role':'user','content':encoded}],
-          'temperature':0.2,'max_tokens':5000}
+    # V1.3.4: FREE-ONLY guard + structured output.
+    # We deliberately keep the model fixed to OpenRouter's free router.
+    # The request requires JSON Schema support, so OpenRouter must choose a
+    # compatible FREE model. There is no paid-model fallback in this code.
+    model='openrouter/free'
+
+    hacerlo_schema={
+        'name':'hacerlo_network_interpretation',
+        'strict':True,
+        'schema':{
+            'type':'object',
+            'properties':{
+                'system_reading':{'type':'string'},
+                'structural_findings':{
+                    'type':'array',
+                    'items':{'type':'string'}
+                },
+                'hypotheses':{
+                    'type':'array',
+                    'items':{
+                        'type':'object',
+                        'properties':{
+                            'title':{'type':'string'},
+                            'rationale':{'type':'string'},
+                            'evidence_limit':{'type':'string'}
+                        },
+                        'required':['title','rationale','evidence_limit'],
+                        'additionalProperties':False
+                    }
+                },
+                'interventions':{
+                    'type':'array',
+                    'items':{
+                        'type':'object',
+                        'properties':{
+                            'name':{'type':'string'},
+                            'why':{'type':'string'},
+                            'measure':{'type':'string'}
+                        },
+                        'required':['name','why','measure'],
+                        'additionalProperties':False
+                    }
+                },
+                'what_to_measure':{
+                    'type':'array',
+                    'items':{'type':'string'}
+                },
+                'traceability':{'type':'string'}
+            },
+            'required':[
+                'system_reading','structural_findings','hypotheses',
+                'interventions','what_to_measure','traceability'
+            ],
+            'additionalProperties':False
+        }
+    }
+
+    body={
+        'model':model,
+        'messages':[{'role':'system','content':system},{'role':'user','content':encoded}],
+        'temperature':0.2,
+        'max_tokens':5000,
+        'response_format':{
+            'type':'json_schema',
+            'json_schema':hacerlo_schema
+        },
+        # OpenRouter must route only to providers/models that support every
+        # parameter above (especially response_format/json_schema).
+        'provider':{'require_parameters':True}
+    }
     try:
         data=post_json('https://openrouter.ai/api/v1/chat/completions',body,
                        {'Authorization':'Bearer '+key,'Content-Type':'application/json','HTTP-Referer':'https://santiagoleonlopezs-png.github.io/Hacerlo/','X-Title':'HACERLO'},timeout=65)
@@ -207,3 +274,4 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
     except (ValueError,KeyError,IndexError,TypeError,json.JSONDecodeError) as exc:
         print('HACERLO OPENROUTER PARSE ERROR: '+type(exc).__name__+' · '+str(exc)[:500], flush=True)
         raise HTTPException(502,'OpenRouter respondió, pero HACERLO no pudo estructurar la interpretación. Revisa Render Logs: HACERLO OPENROUTER PARSE.')
+
