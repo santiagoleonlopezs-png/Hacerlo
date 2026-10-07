@@ -1,8 +1,6 @@
 import os
 import json
 import time
-import logging
-import re
 from collections import defaultdict, deque
 from typing import Any, Dict, List, Optional
 from urllib.request import Request, urlopen
@@ -13,9 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-logger = logging.getLogger('uvicorn.error')
-
-app = FastAPI(title='HACERLO Computational Engine', version='1.2.2')
+app = FastAPI(title='HACERLO Computational Engine', version='1.3.0')
 app.add_middleware(CORSMiddleware, allow_origins=['https://santiagoleonlopezs-png.github.io'], allow_methods=['*'], allow_headers=['*'])
 
 class NetworkRequest(BaseModel):
@@ -31,11 +27,11 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service':'HACERLO Computational Engine','status':'online','version':'1.2.2'}
+    return {'service':'HACERLO Computational Engine','status':'online','version':'1.3.0'}
 
 @app.get('/api/health')
 def health():
-    return {'status':'ok','engine':'HACERLO','networkx':'ready-v1.1','ai':'groq-configured' if os.getenv('GROQ_API_KEY') else 'not-configured','mesa':'pending','pysd':'pending'}
+    return {'status':'ok','engine':'HACERLO','networkx':'ready-v1.1','ai':'openrouter-configured' if os.getenv('OPENROUTER_API_KEY') else 'not-configured','mesa':'pending','pysd':'pending'}
 
 @app.post('/api/network/analyze')
 def network_analysis(payload: NetworkRequest):
@@ -76,9 +72,9 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
         raise HTTPException(429,'Límite de 15 interpretaciones por hora alcanzado. Intenta más tarde.')
     recent.append(now)
 
-    key=os.getenv('GROQ_API_KEY')
+    key=os.getenv('OPENROUTER_API_KEY')
     if not key:
-        raise HTTPException(503,'GROQ_API_KEY no está configurada en Render.')
+        raise HTTPException(503,'OPENROUTER_API_KEY no está configurada en Render.')
     context={'initiative':payload.initiative,'network_analysis':payload.network_analysis,'methodological_rules':payload.methodological_rules}
     encoded=json.dumps(context,ensure_ascii=False,default=str)
     if len(encoded)>35000:
@@ -90,45 +86,53 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
       'Usa solo los datos recibidos. No inventes métricas ni causalidad; PageRank no equivale a influencia causal. '
       'No mezcles capas semánticamente diferentes. Separa observación, interpretación e hipótesis. '
       'Da hasta 3 alternativas de intervención, no órdenes. Identifica límites de evidencia. No incluyas datos personales innecesarios.')
-    body={'model':os.getenv('GROQ_MODEL','openai/gpt-oss-120b'),
+    body={'model':os.getenv('OPENROUTER_MODEL','openrouter/free'),
           'messages':[{'role':'system','content':system},{'role':'user','content':encoded}],
-          'temperature':0.2,'max_tokens':1800,'response_format':{'type':'json_object'}}
+          'temperature':0.2,'max_tokens':1800}
     try:
-        data=post_json('https://api.groq.com/openai/v1/chat/completions',body,
-                       {'Authorization':'Bearer '+key,'Content-Type':'application/json'},timeout=65)
-        result=json.loads(data['choices'][0]['message']['content'])
+        data=post_json('https://openrouter.ai/api/v1/chat/completions',body,
+                       {'Authorization':'Bearer '+key,'Content-Type':'application/json','HTTP-Referer':'https://santiagoleonlopezs-png.github.io/Hacerlo/','X-Title':'HACERLO'},timeout=65)
+        content=data['choices'][0]['message'].get('content','')
+        try:
+            result=json.loads(content)
+        except json.JSONDecodeError:
+            # Some routed free models may wrap JSON in markdown fences.
+            cleaned=content.strip()
+            if cleaned.startswith('```'):
+                cleaned=cleaned.split('\n',1)[1] if '\n' in cleaned else cleaned
+                if cleaned.endswith('```'):
+                    cleaned=cleaned[:-3]
+                cleaned=cleaned.strip()
+                if cleaned.lower().startswith('json'):
+                    cleaned=cleaned[4:].lstrip()
+            result=json.loads(cleaned)
         if not isinstance(result,dict): raise ValueError('La respuesta no es un objeto JSON')
         result['model']=data.get('model',body['model'])
-        result['provider']='Groq'
+        result['provider']='OpenRouter'
         return result
     except HTTPError as exc:
-        # Log the provider's diagnostic without printing credentials or personal data.
-        error_code = 'unknown'
-        error_type = 'unknown'
-        provider_message = ''
         try:
-            parsed = json.loads(exc.read(4096).decode('utf-8', errors='replace'))
-            error = parsed.get('error', {})
-            if isinstance(error, dict):
-                error_code = str(error.get('code') or 'unknown')
-                error_type = str(error.get('type') or 'unknown')
-                provider_message = str(error.get('message') or '')
+            raw = exc.read().decode('utf-8', errors='replace')
+            parsed = json.loads(raw)
+            err = parsed.get('error', {}) if isinstance(parsed, dict) else {}
+            provider_message = str(err.get('message') or parsed.get('message') or raw)
+            provider_code = str(err.get('code') or '')
         except Exception:
-            pass
-        # Redact bearer tokens, Groq keys, emails and URLs before writing logs.
-        def sanitize(value):
-            value = re.sub(r'Bearer\s+\S+', '[REDACTED]', value, flags=re.I)
-            value = re.sub(r'gsk_[A-Za-z0-9_-]+', '[REDACTED]', value)
-            value = re.sub(r'eyJ[A-Za-z0-9._-]{20,}', '[REDACTED]', value)
-            value = re.sub(r'[\w.+-]+@[\w.-]+', '[EMAIL]', value)
-            value = re.sub(r'https?://\S+', '[URL]', value)
-            return value[:350]
-        logger.warning('HACERLO GROQ DIAGNOSTIC: status=%s type=%s code=%s message=%s',
-                       exc.code, sanitize(error_type), sanitize(error_code), sanitize(provider_message))
+            provider_message = ''
+            provider_code = ''
+        provider_message = provider_message[:700]
+        diagnostic = f'OpenRouter HTTP {exc.code}'
+        if provider_code:
+            diagnostic += f' code={provider_code}'
+        if provider_message:
+            diagnostic += f' · {provider_message}'
+        print('HACERLO OPENROUTER DIAGNOSTIC:', diagnostic, flush=True)
         if exc.code == 429:
-            raise HTTPException(429, 'Groq alcanzó su límite temporal; revisa los registros de Render.')
-        raise HTTPException(502, f'Groq respondió HTTP {exc.code}. Revisa Render Logs: HACERLO GROQ DIAGNOSTIC.')
+            raise HTTPException(429, f'OpenRouter alcanzó su límite temporal. {provider_message}'.strip())
+        if exc.code in (401,403):
+            raise HTTPException(502, f'OpenRouter rechazó el acceso (HTTP {exc.code}). {provider_message}'.strip())
+        raise HTTPException(502, diagnostic)
     except (URLError,TimeoutError):
-        raise HTTPException(504,'Groq no respondió a tiempo.')
+        raise HTTPException(504,'OpenRouter no respondió a tiempo.')
     except (ValueError,KeyError,IndexError,TypeError):
         raise HTTPException(502,'La IA no devolvió una interpretación válida.')
