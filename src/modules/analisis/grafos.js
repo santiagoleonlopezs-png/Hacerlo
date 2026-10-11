@@ -125,7 +125,7 @@ function renderAdoptionGraphPage(a,head,x){
  const ns=(x.nodes||[]).map(n=>graphResolvedNode(x,n)),all=x.edges||[],types=[...new Set(all.map(edgeRelation).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
  const filter=x.networkRelationFilter||'Todas';
  const edges=all.filter(e=>filter==='Todas'||normalizeRelation(edgeRelation(e))===filter);
- const coords=ns.map((n,i)=>({x:240+175*Math.cos(i*2*Math.PI/Math.max(ns.length,1)),y:175+120*Math.sin(i*2*Math.PI/Math.max(ns.length,1))}));
+ const coords=ns.map((n,i)=>({x:300+218*Math.cos(i*2*Math.PI/Math.max(ns.length,1)),y:205+142*Math.sin(i*2*Math.PI/Math.max(ns.length,1))}));
  const key=(e)=>`${e.s}|${e.t}|${normalizeRelation(edgeRelation(e))}`;
  const done=new Set(),draw=[];
  for(const e of edges){const k=key(e);if(done.has(k))continue;const rk=`${e.t}|${e.s}|${normalizeRelation(edgeRelation(e))}`,rev=edges.find(q=>key(q)===rk);draw.push({e,rev:rev&&e.s!==e.t?rev:null});done.add(k);if(rev)done.add(rk)}
@@ -133,13 +133,29 @@ function renderAdoptionGraphPage(a,head,x){
  const relationOptions=GRAPH_RELATIONS.map(r=>`<option value="${safe(r)}">${safe(r)}</option>`).join('');
  const filterOptions=['Todas',...types].map(r=>`<option value="${safe(r)}" ${r===filter?'selected':''}>${safe(r)}</option>`).join('');
  a.innerHTML=head+`<style>
-.hacerlo-graph-layout{display:grid;grid-template-columns:minmax(280px,35fr) minmax(0,65fr);gap:18px;align-items:start}
+ .hacerlo-graph-layout{display:grid;grid-template-columns:minmax(0,35fr) minmax(0,65fr);gap:14px;align-items:stretch;width:100%}
+.hacerlo-graph-shell{width:100%;max-width:none;min-width:0}
+.hacerlo-graph-config{margin-bottom:14px}
+.hacerlo-graph-config>summary{cursor:pointer;font-weight:700;font-size:17px;list-style-position:inside}
+.hacerlo-graph-layout .graph-analysis{min-width:0;max-height:740px;overflow:auto}
+.hacerlo-graph-layout .graph-map{min-width:0;max-height:740px;overflow:auto}
+.hacerlo-graph-layout .graph-analysis .grid{grid-template-columns:minmax(0,1fr)}
+.hacerlo-graph-layout .graph-analysis .triple{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hacerlo-graph-layout .graph-analysis .kpi{min-width:0;padding:9px}
+.hacerlo-graph-layout .graph-analysis .num{font-size:clamp(17px,2vw,27px)}
+.hacerlo-graph-layout .graph-analysis table{font-size:12px}
+.graph-node-focus{filter:drop-shadow(0 0 9px #f6bd52);stroke:#fff;stroke-width:3}
+.graph-analysis button.graph-metric-link{display:inline;border:0;background:none;color:#8ad8f3;cursor:pointer;text-align:left;padding:0;font:inherit;text-decoration:underline;text-decoration-style:dotted}
+.graph-legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;margin:8px 0;color:#bad5e3}
+.graph-legend span{white-space:nowrap}
+.graph-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+
 .hacerlo-graph-layout>section{min-width:0}
 .hacerlo-graph-layout details.panel{margin:10px 0;border-radius:12px}
 .hacerlo-graph-layout details>summary{cursor:pointer;padding:5px 0}
-.hacerlo-graph-layout svg{width:100%;height:auto;min-height:330px;border:1px solid #28465a;border-radius:14px;background:radial-gradient(ellipse at center,#153a50 0%,#0a2638 100%)}
-@media(max-width:860px){.hacerlo-graph-layout{grid-template-columns:minmax(0,1fr)}}
-</style><div class="hacerlo-graph-layout"><section class="panel"><h2>Configurar el grafo</h2>
+.hacerlo-graph-layout svg{width:100%;height:auto;min-height:390px;border:1px solid #28465a;border-radius:14px;background:radial-gradient(ellipse at center,#153a50 0%,#0a2638 100%)}
+@media(max-width:760px){.hacerlo-graph-layout{grid-template-columns:minmax(0,1fr)}.hacerlo-graph-layout .graph-analysis,.hacerlo-graph-layout .graph-map{max-height:none}}
+</style><div class="hacerlo-graph-shell"><details class="panel hacerlo-graph-config" ${x.graphSelectedNode!=null||x.graphSelectedEdge!=null?'open':''}><summary>⚙ Configuración del grafo · ${ns.length} nodos · ${all.length} relaciones · ${all.reduce((s,e)=>s+(e.graphFactors||[]).length,0)} alertas/facilitadores</summary><div class="hacerlo-graph-config-content">
  <details class="panel"><summary><b>+ Vincular elemento existente</b></summary><p class="muted">Selecciona un registro de Resultados o Diseño. Los factores del diagnóstico pueden aparecer como nodo, característica o alerta.</p><form onsubmit="graphImportExisting(event)"><label>Elemento existente<select name="linked" required onchange="graphLinkedChoiceChanged(this)"><option value="">Seleccionar elemento…</option>${graphCatalog(x).map(o=>`<option value="${safe(o.kind+'|'+o.id)}">${safe(o.type)} · ${safe(o.name)}</option>`).join('')}</select></label><div class="graph-factor-options" hidden><label>Representar factor como<select name="mode" onchange="graphFactorModeChanged(this)"><option value="node">Nodo</option><option value="attribute">Característica de un nodo</option><option value="alert">Alerta sobre una relación</option></select></label><label class="factor-node-target" hidden>Nodo asociado<select name="target" disabled><option value="">Seleccionar nodo…</option>${ns.map((n,i)=>`<option value="${i}">${safe(n.name)}</option>`).join('')}</select></label><label class="factor-edge-target" hidden>Relación asociada<select name="target" disabled><option value="">Seleccionar relación…</option>${all.map((r,i)=>`<option value="${i}">${safe(ns[r.s]?.name||'')} → ${safe(ns[r.t]?.name||'')} · ${safe(edgeRelation(r))}</option>`).join('')}</select></label><label>Contexto (opcional)<input name="detail" placeholder="Dónde se presenta y en qué condiciones"></label></div><button class="secondary">Guardar vinculación</button></form></details>
  <details class="panel"><summary><b>+ Crear nodo</b></summary><form onsubmit="addNode(event)"><label>Nombre<input name="name" placeholder="Persona, equipo, tecnología, proceso…" required></label><label>Tipo<select name="type" onchange="graphNodeTypeChanged(this)">${graphTypeOptions('Equipo')}</select></label><p class="muted graph-link-hint">Puedes vincular audiencias existentes con el formulario superior.</p><button class="primary">Agregar nodo</button></form></details>
  ${graphEditorPanel(x,ns)}
@@ -163,19 +179,22 @@ function renderAdoptionGraphPage(a,head,x){
 
  </details>
  <p class="muted">La dirección se define por Origen → Destino. La reciprocidad se detecta automáticamente cuando existe la misma relación en ambos sentidos.</p>
- </section>
- <section class="panel"><h2>Explorar y analizar la red</h2><div style="display:flex;gap:9px;margin:12px 0 18px"><button type="button" class="${x.graphRightTab==='analysis'?'secondary':'primary'}" style="flex:1" onclick="graphSetRightTab('map')">◎ Mapa</button><button type="button" class="${x.graphRightTab==='analysis'?'primary':'secondary'}" style="flex:1" onclick="graphSetRightTab('analysis')">▤ Análisis de red</button></div><div ${x.graphRightTab==='analysis'?'hidden':''}><h3>Visualización de relaciones</h3>
+ </div></details><div class="hacerlo-graph-layout">
+ <section class="panel graph-analysis"><h2>📊 Análisis de red</h2><p class="muted">NetworkX · ${filter==='Todas'?'Red completa':'Capa: '+safe(filter)}</p><button class="primary" onclick="analyzeAdoptionNetwork()">Analizar red con NetworkX</button><div id="network-analysis-status" class="notice" style="margin-top:10px"></div><div id="network-analysis-results" style="margin-top:12px"></div><p class="muted" style="font-size:12px">Las métricas describen la estructura; no demuestran causalidad.</p></section>
+ <section class="panel graph-map"><h2>🌐 Mapa de relaciones</h2><h3>Visualización de relaciones</h3>
  <label>Ver capa de relación<select onchange="setGraphRelationFilter(this.value)">${filterOptions}</select></label>
- <svg viewBox="0 0 480 350" role="img" aria-label="Grafo de nodos y conexiones"><defs>
+ <svg viewBox="0 0 600 420" role="img" aria-label="Grafo de nodos y conexiones"><defs>
   <marker id="edgeArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker>
   <marker id="edgeArrowStart" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto" markerUnits="strokeWidth"><path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke"/></marker>
- </defs>${draw.map(d=>line(d.e,d.rev)).join('')}${ns.map((n,i)=>`<circle onclick="graphOpenNodeEditor(${i})" style="cursor:pointer" tabindex="0" role="button" aria-label="Editar nodo ${safe(n.name)}" cx="${coords[i].x}" cy="${coords[i].y}" r="13" fill="${['#17b3d2','#8855ce','#e9a52e','#20b789','#d76e9c','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#e4b864','#e4b864'][['Equipo','Persona','Barrera','Facilitador','Intervención','Tecnología','Plataforma','Base de datos','Repositorio','Documento','Herramienta','Conocimiento','Proceso','Indicador'].indexOf(n.type)]||'#58b6bb'}"/><text x="${coords[i].x}" y="${coords[i].y+27}" fill="white" font-size="11" text-anchor="middle" style="cursor:pointer;pointer-events:none">${safe(n.name).slice(0,20)}</text>`).join('')}</svg>
+ </defs>${draw.map(d=>line(d.e,d.rev)).join('')}${ns.map((n,i)=>`<circle data-graph-node="${i}" onclick="graphOpenNodeEditor(${i})" style="cursor:pointer" tabindex="0" role="button" aria-label="Editar nodo ${safe(n.name)}" cx="${coords[i].x}" cy="${coords[i].y}" r="13" fill="${['#17b3d2','#8855ce','#e9a52e','#20b789','#d76e9c','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#4bc4e5','#e4b864','#e4b864'][['Equipo','Persona','Barrera','Facilitador','Intervención','Tecnología','Plataforma','Base de datos','Repositorio','Documento','Herramienta','Conocimiento','Proceso','Indicador'].indexOf(n.type)]||'#58b6bb'}"/><text x="${coords[i].x}" y="${coords[i].y+27}" fill="white" font-size="11" text-anchor="middle" style="cursor:pointer;pointer-events:none">${safe(n.name).slice(0,20)}</text>`).join('')}</svg>
+ <div class="graph-legend"><span><i style="background:#17b3d2"></i>Equipos</span><span><i style="background:#8855ce"></i>Personas</span><span><i style="background:#e9a52e"></i>Barreras</span><span><i style="background:#20b789"></i>Facilitadores</span><span>⚠ Alerta en relación</span></div>
  <label style="display:flex;align-items:center;gap:9px;font-size:13px"><input type="checkbox" style="width:auto" ${x.graphShowAlerts===false?'':'checked'} onchange="graphToggleAlerts(this)"> Mostrar alertas y facilitadores en las conexiones</label><p class="muted">${ns.length} nodos · ${edges.length} aristas en ${filter==='Todas'?'la vista global':'la capa '+safe(filter)}</p>
  <p class="muted" style="font-size:11px;line-height:1.25;margin-top:4px;opacity:.72">→ dirigida · ↔ recíproca · ━ observada/registrada/estimada · ┄ declarada/hipotética</p>
- </div><div ${x.graphRightTab==='analysis'?'':'hidden'}><section class="panel" style="margin:0"><h3>Análisis computacional de la red</h3><p class="muted">NetworkX analiza ${filter==='Todas'?'la estructura completa':'la capa '+safe(filter)}. Las métricas describen estructura; no prueban causalidad.</p><button class="primary" onclick="analyzeAdoptionNetwork()">Analizar red con NetworkX</button><div id="network-analysis-status" class="notice" style="margin-top:10px"></div><div id="network-analysis-results" style="margin-top:12px"></div></section></div>
+ </div><p class="notice">Selecciona un nodo para editarlo. Filtra una capa para interpretar mejor las centralidades.</p>
+ </section></div></div>`;
+ const previous=x.networkAnalysis;
+ if(previous){const b=document.getElementById('network-analysis-results');if(b){if(previous.relationFilter===filter){renderNetworkAnalysis(previous,x,b);const status=document.getElementById('network-analysis-status');if(status)status.textContent='Último análisis guardado · actualiza para recalcular';}else b.innerHTML='<p class="muted">Cambió la capa de relación. Ejecuta el análisis para actualizar los resultados.</p>';}}
 
- <p class="notice">La vista global ayuda a explorar el sistema. Para interpretar centralidades con mayor claridad, analiza una capa de relación específica.</p>
- </section></div>`;
 }
 async function analyzeAdoptionNetwork(){
  const x=current(),s=document.getElementById('network-analysis-status'),b=document.getElementById('network-analysis-results');
@@ -213,10 +232,10 @@ function renderNetworkAnalysis(r,x,b){
  const composition=safeArr(r.relation_composition);
  const matrix=safeArr(r.layer_matrix);
  const mode=r.mode||'layer';
- const metricTable=metricRows.length?`<details style="margin-top:12px"><summary>Ver métricas por nodo</summary><div style="overflow-x:auto"><table><tr><th>Nodo</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Intermediación</th><th>PageRank</th><th>Capas</th></tr>${metricRows.map(v=>`<tr><td>${safe(v.label||v.id)}</td><td>${safe(v.type||'')}</td><td>${v.in_degree_centrality??0}</td><td>${v.out_degree_centrality??0}</td><td>${v.betweenness_centrality??0}</td><td>${v.pagerank??0}</td><td>${v.layer_count??0}</td></tr>`).join('')}</table></div></details>`:'';
+ const metricTable=metricRows.length?`<details style="margin-top:12px"><summary>Ver métricas por nodo</summary><div style="overflow-x:auto"><table><tr><th>Nodo</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Intermediación</th><th>PageRank</th><th>Capas</th></tr>${metricRows.map(v=>`<tr><td>${graphMetricButton(v.label||v.id)}</td><td>${safe(v.type||'')}</td><td>${v.in_degree_centrality??0}</td><td>${v.out_degree_centrality??0}</td><td>${v.betweenness_centrality??0}</td><td>${v.pagerank??0}</td><td>${v.layer_count??0}</td></tr>`).join('')}</table></div></details>`:'';
  if(mode==='multiplex'){
    b.innerHTML=`<div class="triple"><div class="kpi"><span class="muted">Nodos</span><div class="num">${summary.nodes??r.nodes??0}</div></div><div class="kpi"><span class="muted">Relaciones</span><div class="num">${summary.edges??r.edges??0}</div></div><div class="kpi"><span class="muted">Capas</span><div class="num">${summary.layers??0}</div></div></div>
-   <div class="grid" style="margin-top:12px"><section class="panel"><h3>Composición de la red</h3>${composition.map(v=>`<p><b>${safe(v.relation)}</b> · ${v.edges} conexiones · ${pct(v.share)}</p>`).join('')||'<p class="muted">Sin relaciones registradas.</p>'}</section><section class="panel"><h3>Actores / nodos transversales</h3>${roles.slice(0,6).map(v=>`<p><b>${safe(v.label)}</b> · ${v.layer_count} capas<br><small class="muted">${safe((v.roles||[]).join(' · ')||'Participación estructural')}</small></p>`).join('')||'<p class="muted">Se requieren más relaciones para identificar transversalidad.</p>'}</section></div>
+   <div class="grid" style="margin-top:12px"><section class="panel"><h3>Composición de la red</h3>${composition.map(v=>`<p><b>${safe(v.relation)}</b> · ${v.edges} conexiones · ${pct(v.share)}</p>`).join('')||'<p class="muted">Sin relaciones registradas.</p>'}</section><section class="panel"><h3>Actores / nodos transversales</h3>${roles.slice(0,6).map(v=>`<p><b>${graphMetricButton(v.label)}</b> · ${v.layer_count} capas<br><small class="muted">${safe((v.roles||[]).join(' · ')||'Participación estructural')}</small></p>`).join('')||'<p class="muted">Se requieren más relaciones para identificar transversalidad.</p>'}</section></div>
    <div class="grid" style="margin-top:12px"><section class="panel"><h3>Comunidades estructurales</h3>${communities.map((c,i)=>`<p><b>Comunidad ${i+1}</b> · ${c.size} nodos<br><small class="muted">${safe((c.labels||[]).join(', '))}</small></p>`).join('')||'<p class="muted">No se identificaron comunidades diferenciadas.</p>'}</section><section class="panel"><h3>Señales estructurales</h3>${signals.map(v=>`<p>• ${safe(v)}</p>`).join('')||'<p class="muted">Sin señales destacadas con los datos actuales.</p>'}</section></div>
    ${matrix.length?`<details style="margin-top:12px"><summary>Matriz nodo × capa</summary><div style="overflow-x:auto"><table><tr><th>Nodo</th>${safeArr(r.layers).map(l=>`<th>${safe(l)}</th>`).join('')}</tr>${matrix.map(row=>`<tr><td><b>${safe(row.label)}</b><br><small class="muted">${safe(row.type||'')}</small></td>${safeArr(r.layers).map(l=>`<td>${row.layers&&row.layers[l]?row.layers[l]:'—'}</td>`).join('')}</tr>`).join('')}</table></div></details>`:''}
    ${hypotheses.length?`<section class="panel" style="margin-top:12px"><h3>Hipótesis y oportunidades de intervención</h3>${hypotheses.map(h=>`<p><b>${safe(h.title)}</b><br><span class="muted">${safe(h.rationale)}</span><br><small>${safe(h.action)}</small></p>`).join('')}<div class="notice">Son hipótesis para diseñar y contrastar en RDAIM; no son recomendaciones causales demostradas.</div></section>`:''}
@@ -225,10 +244,19 @@ function renderNetworkAnalysis(r,x,b){
    const topIn=safeArr(r.top_in),topOut=safeArr(r.top_out),topBetween=safeArr(r.top_betweenness),topPR=safeArr(r.top_pagerank);
    b.innerHTML=`<div class="triple"><div class="kpi"><span class="muted">Nodos</span><div class="num">${summary.nodes??r.nodes??0}</div></div><div class="kpi"><span class="muted">Relaciones</span><div class="num">${summary.edges??r.edges??0}</div></div><div class="kpi"><span class="muted">Densidad</span><div class="num">${summary.density??r.density??0}</div></div></div>
    <div class="triple" style="margin-top:12px"><div class="kpi"><span class="muted">Reciprocidad</span><div class="num">${pct(summary.reciprocity)}</div></div><div class="kpi"><span class="muted">Componentes</span><div class="num">${summary.weak_components??0}</div></div><div class="kpi"><span class="muted">Aislados</span><div class="num">${summary.isolates??0}</div></div></div>
-   <div class="grid" style="margin-top:12px"><section class="panel"><h3>Más receptores</h3>${topIn.map(v=>`<p><b>${safe(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}<h3>Más emisores</h3>${topOut.map(v=>`<p><b>${safe(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}</section><section class="panel"><h3>Puentes estructurales</h3>${topBetween.map(v=>`<p><b>${safe(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}<h3>Prominencia · PageRank</h3>${topPR.map(v=>`<p><b>${safe(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}</section></div>
+   <div class="grid" style="margin-top:12px"><section class="panel"><h3>Más receptores</h3>${topIn.map(v=>`<p><b>${graphMetricButton(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}<h3>Más emisores</h3>${topOut.map(v=>`<p><b>${graphMetricButton(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}</section><section class="panel"><h3>Puentes estructurales</h3>${topBetween.map(v=>`<p><b>${graphMetricButton(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}<h3>Prominencia · PageRank</h3>${topPR.map(v=>`<p><b>${graphMetricButton(v.label)}</b> · ${v.value}</p>`).join('')||'<p class="muted">Sin datos.</p>'}</section></div>
    <div class="grid" style="margin-top:12px"><section class="panel"><h3>Comunidades</h3>${communities.map((c,i)=>`<p><b>Comunidad ${i+1}</b> · ${c.size} nodos<br><small class="muted">${safe((c.labels||[]).join(', '))}</small></p>`).join('')||'<p class="muted">No se identificaron comunidades diferenciadas.</p>'}</section><section class="panel"><h3>Señales estructurales</h3>${signals.map(v=>`<p>• ${safe(v)}</p>`).join('')||'<p class="muted">Sin señales destacadas con los datos actuales.</p>'}</section></div>
    ${hypotheses.length?`<section class="panel" style="margin-top:12px"><h3>Hipótesis y oportunidades de intervención</h3>${hypotheses.map(h=>`<p><b>${safe(h.title)}</b><br><span class="muted">${safe(h.rationale)}</span><br><small>${safe(h.action)}</small></p>`).join('')}<div class="notice">Deben contrastarse mediante intervención y medición; no prueban causalidad.</div></section>`:''}
    ${metricTable}<p class="notice">El significado de entrada/salida depende de la relación seleccionada. PageRank se presenta como prominencia estructural, no como «influencia» automática.</p>`;
  }
 }
 
+
+function graphHighlightMetricNode(label){
+ const x=current(),ns=(x.nodes||[]).map(n=>graphResolvedNode(x,n));
+ const i=ns.findIndex(n=>String(n.name||'').toLocaleLowerCase('es')===String(label||'').toLocaleLowerCase('es'));
+ if(i<0)return;
+ document.querySelectorAll('[data-graph-node]').forEach(el=>el.classList.toggle('graph-node-focus',Number(el.getAttribute('data-graph-node'))===i));
+ document.querySelector('.graph-map')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function graphMetricButton(label){return `<button type="button" class="graph-metric-link" onclick="graphHighlightMetricNode(decodeURIComponent('${encodeURIComponent(String(label||''))}'))">${safe(label||'Nodo')}</button>`}
