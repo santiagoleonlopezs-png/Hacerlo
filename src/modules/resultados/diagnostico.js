@@ -1,31 +1,31 @@
 // HACERLO V2.1 — Diagnóstico independiente, persistido en app_state de cada iniciativa.
-// Nombres y preguntas conservados de las tarjetas originales del usuario.
+// Nombres originales conservados; preguntas orientativas en lenguaje claro y temporalmente neutro.
 // Redacción temporalmente neutra: sirve para iniciativas pasadas, presentes o futuras.
 const DIAG_FACTORS={
  'Capacidad':[
- ['🧠','Habilidades cognitivas','¿Se cuenta con las habilidades cognitivas necesarias para realizar el comportamiento?'],
- ['🤝','Habilidades interpersonales','¿Se cuenta con la capacidad relacional necesaria para movilizar a otras personas y asegurar la ejecución?'],
- ['⚖️','Evaluación y toma de decisión','¿Se analizan escenarios, se priorizan alternativas y se toman decisiones alineadas con los objetivos de la iniciativa?'],
- ['🎯','Capacidad de atención','¿Se mantiene el foco y la atención sostenida en las prioridades de la iniciativa?'],
+ ['🧠','Habilidades cognitivas','¿Se cuenta con los conocimientos y la capacidad para aplicarlos en la práctica?'],
+ ['🤝','Habilidades interpersonales','¿Se cuenta con las habilidades para relacionarse, colaborar y trabajar con otras personas?'],
+ ['⚖️','Evaluación y toma de decisión','¿Se pueden evaluar opciones y tomar decisiones acordes con lo que se busca lograr?'],
+ ['🎯','Capacidad de atención','¿Se logra mantener la atención en las actividades y prioridades importantes?'],
  ['💡','Conciencia','¿Se comprende el sentido, alcance e implicaciones del cambio o comportamiento?'],
- ['🎭','Habilidad psicológica','¿Se gestiona el impacto emocional del cambio sin afectar el desempeño?'],
- ['🧩','Memoria','¿Se recuerda y aplica de manera consistente lo definido para el comportamiento?'],
- ['⚡','Energía','¿Se cuenta con el nivel de energía física y mental necesario para realizar y sostener el comportamiento?']],
+ ['🎭','Habilidad psicológica','¿Se pueden manejar las emociones y dificultades asociadas al comportamiento sin afectar el desempeño?'],
+ ['🧩','Memoria','¿Se recuerda y pone en práctica lo necesario para realizar el comportamiento?'],
+ ['⚡','Energía','¿Se cuenta con la energía física y mental necesaria para realizar y sostener el comportamiento?']],
  'Motivación':[
- ['🪪','Identidad','¿Se percibe el comportamiento esperado como coherente con la identidad y el rol en la organización?'],
- ['💡','Creencias','¿Se considera que el cambio puede generar resultados positivos y un impacto relevante?'],
- ['💚','Emociones','¿Las emociones asociadas al cambio favorecen su adopción y ejecución?'],
- ['🎯','Meta','¿Existe claridad sobre la meta del cambio y se reconoce como una prioridad?'],
- ['🌟','Capacidad percibida','¿Existe confianza en la propia capacidad para ejecutar el cambio con éxito?'],
- ['🔁','Hábito','¿El comportamiento esperado está incorporado como hábito en el día a día?'],
- ['🧭','Responsabilidad','¿Está explícitamente asignada la responsabilidad de ejecutar y sostener el cambio?'],
- ['⚙️','Respuesta automática','¿Las respuestas automáticas están alineadas con el comportamiento esperado y no lo contradicen?']],
+ ['🪪','Identidad','¿El comportamiento esperado es coherente con la forma en que las personas se ven a sí mismas y con su rol?'],
+ ['💡','Creencias','¿Se cree que realizar el comportamiento puede generar resultados positivos y útiles?'],
+ ['💚','Emociones','¿Las emociones relacionadas con el comportamiento ayudan o dificultan su realización?'],
+ ['🎯','Meta','¿Está claro qué se busca lograr y se considera una prioridad?'],
+ ['🌟','Capacidad percibida','¿Las personas confían en su capacidad para realizar el comportamiento?'],
+ ['🔁','Hábito','¿El comportamiento forma parte de las prácticas habituales del día a día?'],
+ ['🧭','Responsabilidad','¿Está claro quién tiene la responsabilidad de realizar y sostener el comportamiento?'],
+ ['⚙️','Respuesta automática','¿Las reacciones que surgen de manera automática favorecen el comportamiento esperado?']],
  'Entorno':[
- ['📋','Normas sociales y culturales','¿Las normas refuerzan y validan los comportamientos asociados al cambio?'],
- ['⚙️','Oportunidades en el entorno','¿Se cuenta con un entorno que habilita y facilita la ejecución del comportamiento?'],
- ['🗓️','Recursos y tiempo','¿Se dispone del tiempo y los recursos necesarios para ejecutar el comportamiento?'],
- ['💬','Avisos en el entorno','¿El entorno refuerza y recuerda activamente los comportamientos esperados?'],
- ['🌟','Modelos a seguir','¿Se observan referentes que modelan y legitiman los comportamientos esperados?']]
+ ['📋','Normas sociales y culturales','¿Las normas y costumbres compartidas favorecen el comportamiento esperado?'],
+ ['⚙️','Oportunidades en el entorno','¿El entorno ofrece condiciones que facilitan realizar el comportamiento?'],
+ ['🗓️','Recursos y tiempo','¿Se dispone del tiempo y los recursos necesarios para realizar el comportamiento?'],
+ ['💬','Avisos en el entorno','¿Existen señales o recordatorios que ayudan a realizar el comportamiento?'],
+ ['🌟','Modelos a seguir','¿Existen personas que sirven de ejemplo para realizar el comportamiento esperado?']]
 };
 // Compatibilidad con los factores guardados en versiones anteriores.
 const DIAG_FACTOR_RENAMES={

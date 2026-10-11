@@ -33,3 +33,19 @@ button.nav-group-title:hover,button.nav-group-title.is-current{color:#d4f8ff;bac
 .diag-card small{font-size:12px;line-height:1.45;margin-top:4px;color:#d3e3ec}
 .diag-card.selected{background:#19465c}
 @media(max-width:900px){.nav-group{display:inline-flex;flex-direction:column;vertical-align:top;margin:4px}.nav-group-title{font-size:10px}.nav-child{width:auto}}
+
+/* V2.1: navegación acordeón compacta y tipografía natural */
+.nav-workspace{margin:4px 0 13px;padding-bottom:10px;border-bottom:1px solid #1a3c50}
+.nav-framework-label{padding:6px 11px 9px;font-size:11px;color:#85aabd;font-weight:650;letter-spacing:.025em;text-transform:none}
+.nav-accordion{margin:2px 0;border:0;padding:0}
+.nav-stage{display:flex;align-items:center;gap:10px;width:100%;border:0;border-radius:9px;padding:10px 11px;background:transparent;color:#b6d2e2;text-align:left;font-size:13px;font-weight:600;cursor:pointer;text-transform:none;letter-spacing:0}
+.nav-stage:hover{background:#12374e;color:white}
+.nav-stage.is-current{background:#123b53;color:white}
+.nav-stage-mark{display:grid;place-items:center;width:23px;height:23px;flex:none;border-radius:7px;background:color-mix(in srgb,var(--stage-color) 24%,#082035);border:1px solid var(--stage-color);color:#fff;font-size:12px;font-weight:700}
+.nav-chevron{margin-left:auto;font-size:20px;line-height:1;color:#92b8c9}
+.nav-stage-children{padding:3px 0 7px 18px}
+.nav-stage-children[hidden]{display:none!important}
+.nav-stage-children .nav-child{font-size:12.5px;padding:8px 9px;margin:1px 0;min-height:33px}
+.nav-stage-children .nav-child.active{padding-left:6px}
+.diag-card b{font-size:13px;line-height:1.35;text-transform:none;letter-spacing:0;font-weight:650}
+@media(max-width:900px){.nav-accordion{display:block;min-width:150px}.nav-stage{font-size:12px}.nav-stage-children{padding-left:9px}}

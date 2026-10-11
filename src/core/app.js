@@ -31,27 +31,47 @@ const current=()=>db.initiatives.find(x=>x.id===db.selected);
 // Navegación jerárquica: RDAIM es un marco integrado, no una pantalla superpuesta.
 const HACERLO_NAV_GROUPS=[
  {title:'Espacio de trabajo',items:[['Inicio','⌂'],['Iniciativas','▦']]},
- {title:'Marco RDAIM',items:[['RDAIM','◇']]},
- {title:'R · Resultados',step:0,items:[['Diagnóstico','◈'],['Indicadores','▤']]},
- {title:'D · Diseño',step:1,items:[]},
- {title:'A · Análisis',step:2,items:[['Grafo de adopción','◎'],['Pensamiento sistémico','⟲'],['Simulación de agentes','♧'],['Inteligencia integrada','✧']]},
- {title:'I · Implementación',step:3,items:[['Intervenciones','▥']]},
- {title:'M · Medición',step:4,items:[['Analítica','▥']]}
+ {title:'Resultados',step:0,items:[['Diagnóstico','◈'],['Indicadores','▤']]},
+ {title:'Diseño',step:1,items:[]},
+ {title:'Análisis',step:2,items:[['Grafo de adopción','◎'],['Pensamiento sistémico','⟲'],['Simulación de agentes','♧'],['Inteligencia integrada','✧']]},
+ {title:'Implementación',step:3,items:[['Intervenciones','▥']]},
+ {title:'Medición',step:4,items:[['Analítica','▥']]}
 ];
 const HACERLO_PAGE_PHASE={'Diagnóstico':0,'Indicadores':0,'Grafo de adopción':2,'Pensamiento sistémico':2,'Simulación de agentes':2,'Inteligencia integrada':2,'Intervenciones':3,'Analítica':4};
+// Solo una etapa desplegada. null permite cerrar todas sin cambiar la pantalla.
+let expandedNavStep=null;
+function toggleNavStep(step){
+ expandedNavStep=expandedNavStep===step?null:step;
+ nav();
+}
+function openNavStep(step){
+ phase=step;
+ expandedNavStep=step;
+ nav();
+}
 function nav(){
- $('nav').innerHTML=HACERLO_NAV_GROUPS.map(group=>{
-  const sectionActive=group.step!==undefined && (page==='RDAIM'?phase===group.step:HACERLO_PAGE_PHASE[page]===group.step);
-  const title=group.step===undefined?`<div class="nav-group-title">${group.title}</div>`:`<button type="button" class="nav-group-title nav-group-step ${sectionActive?'is-current':''}" onclick="phase=${group.step};go('RDAIM')">${group.title}<span aria-hidden="true">↗</span></button>`;
-  return `<div class="nav-group">${title}${group.items.map(([n,icon])=>`<button type="button" class="nav nav-child ${page===n?'active':''}" onclick="go('${n}')"><span class="nav-symbol" aria-hidden="true">${icon}</span><span>${n}</span></button>`).join('')}</div>`;
+ $('nav').innerHTML=`<div class="nav-workspace">${HACERLO_NAV_GROUPS[0].items.map(([n,icon])=>`<button type="button" class="nav nav-child ${page===n?'active':''}" onclick="go('${n}')"><span class="nav-symbol" aria-hidden="true">${icon}</span><span>${n}</span></button>`).join('')}</div><div class="nav-framework-label">Marco RDAIM</div>`+
+ HACERLO_NAV_GROUPS.filter(g=>g.step!==undefined).map(group=>{
+  const opened=expandedNavStep===group.step;
+  const active=HACERLO_PAGE_PHASE[page]===group.step || (page==='RDAIM'&&phase===group.step);
+  const id=`nav-stage-${group.step}`;
+  return `<section class="nav-accordion ${opened?'is-open':''} ${active?'has-active':''}">
+   <button type="button" class="nav-stage ${active?'is-current':''}" aria-expanded="${opened}" aria-controls="${id}" onclick="toggleNavStep(${group.step})"><span class="nav-stage-mark" style="--stage-color:${phases[group.step][2]}">${phases[group.step][0]}</span><span>${group.title}</span><span class="nav-chevron" aria-hidden="true">${opened?'⌄':'›'}</span></button>
+   <div class="nav-stage-children" id="${id}" ${opened?'':'hidden'}>${group.items.length?group.items.map(([n,icon])=>`<button type="button" class="nav nav-child ${page===n?'active':''}" onclick="go('${n}')"><span class="nav-symbol" aria-hidden="true">${icon}</span><span>${n}</span></button>`).join(''):`<button type="button" class="nav nav-child ${page==='RDAIM'&&phase===group.step?'active':''}" onclick="phase=${group.step};go('RDAIM')"><span class="nav-symbol" aria-hidden="true">◇</span><span>Vista de Diseño</span></button>`}</div>
+  </section>`;
  }).join('');
 }
-function go(n){if(Object.prototype.hasOwnProperty.call(HACERLO_PAGE_PHASE,n))phase=HACERLO_PAGE_PHASE[n];page=n;nav();render()}
+function go(n){
+ if(Object.prototype.hasOwnProperty.call(HACERLO_PAGE_PHASE,n)){
+  phase=HACERLO_PAGE_PHASE[n];expandedNavStep=phase;
+ }
+ page=n;nav();render();
+}
 function choose(id){db.selected=id;save();go('RDAIM')}
 function createInitiative(e){e.preventDefault();let f=e.target;let o={id:Date.now(),name:f.name.value,description:f.description.value,population:Number(f.population.value)||0,scope:f.scope.value,createdAt:f.createdAt.value||new Date().toISOString().slice(0,10),impact:Number(f.impact.value)||null,effort:Number(f.effort.value)||null,phase:0,dimensions:Object.fromEntries(dims.map(d=>[d,null])),indicators:[],behaviors:[],audiences:[],actions:[],nodes:[],edges:[],causal:[],systemVariables:[],systemLinks:[]};db.initiatives.push(o);db.selected=o.id;save();go('RDAIM')}
 function render(){let x=current(),a=$('app');if(x){x.behaviors=x.behaviors||[];x.audiences=x.audiences||[];x.indicators=x.indicators||[];x.actions=x.actions||[];x.metrics=x.metrics||{};x.metricHistory=x.metricHistory||{};x.measurements=x.measurements||[];x.notes=x.notes||{};x.systemVariables=x.systemVariables||[];x.systemLinks=x.systemLinks||[];x.evidenceRecords=x.evidenceRecords||[];x.modelRuns=x.modelRuns||[];x.scope=x.scope||'inside';}if(page==='Inteligencia integrada'){a.innerHTML=intelligencePage(x);return}if(page==='Inicio'){a.innerHTML=homeDashboard()+portfolioMetricSummary();return}if(page==='Iniciativas'){a.innerHTML=`<div class="grid"><section class="panel"><h2>Mis iniciativas</h2>${db.initiatives.length?db.initiatives.map(i=>`<div class="panel"><h3>${safe(i.name)}</h3><p class="muted">${safe(i.description)}</p><p>${i.population} personas · ${i.scope==='outside'?'Outside':'Inside'} · ${phases[i.phase][1]}</p>${priorityEditor(i)}<button class="primary" onclick="choose(${i.id})">Abrir iniciativa →</button></div>`).join(''):'<div class="empty">Aún no hay iniciativas. Crea la primera.</div>'}</section><section class="panel"><h2>Nueva iniciativa</h2><form onsubmit="createInitiative(event)"><label>Nombre<input name="name" required placeholder="Ej. Adopción de CRM"></label><label>Objetivo y contexto<textarea name="description" required></textarea></label><label>Ámbito<select name="scope"><option value="inside">Inside · Interno</option><option value="outside">Outside · Externo</option></select></label><label>Población estimada<input name="population" type="number" min="0"></label><label>Fecha de ingreso de la iniciativa<input name="createdAt" type="date" required></label><div class="grid"><label>Impacto (1–5)<select name="impact"><option value="">Sin evaluar</option>${[1,2,3,4,5].map(v=>`<option value="${v}">${v}</option>`).join('')}</select></label><label>Esfuerzo (1–5)<select name="effort"><option value="">Sin evaluar</option>${[1,2,3,4,5].map(v=>`<option value="${v}">${v}</option>`).join('')}</select></label></div><button class="primary">Crear iniciativa</button></form></section></div>`;return}
 if(!x){a.innerHTML='<div class="panel">Primero crea una iniciativa desde Inicio.</div>';return}
-let head=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>${safe(x.name)}</h2><p class="muted">${safe(x.description)} · ${x.population} personas</p></div><select style="width:auto" onchange="choose(Number(this.value))">${db.initiatives.map(i=>`<option value="${i.id}" ${i.id===x.id?'selected':''}>${safe(i.name)}</option>`).join('')}</select></div><div class="steps">${phases.map((p,i)=>`<button class="step ${(page==='RDAIM'?phase:(HACERLO_PAGE_PHASE[page]??phase))===i?'selected':''}" style="--c:${p[2]}" onclick="phase=${i};go('RDAIM')"><b>${p[0]}</b>${p[1]}</button>`).join('')}</div></section>`;
+let head=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>${safe(x.name)}</h2><p class="muted">${safe(x.description)} · ${x.population} personas</p></div><select style="width:auto" onchange="choose(Number(this.value))">${db.initiatives.map(i=>`<option value="${i.id}" ${i.id===x.id?'selected':''}>${safe(i.name)}</option>`).join('')}</select></div><div class="steps">${phases.map((p,i)=>`<button class="step ${(page==='RDAIM'?phase:(HACERLO_PAGE_PHASE[page]??phase))===i?'selected':''}" style="--c:${p[2]}" onclick="openNavStep(${i});go('RDAIM')"><b>${p[0]}</b>${p[1]}</button>`).join('')}</div></section>`;
 if(page==='RDAIM'){
 let p=phases[phase],body='';
 if(phase===0)body=`<div class="grid"><section class="panel"><h2>Comportamiento objetivo de la iniciativa</h2><p class="muted">Define qué deben hacer las personas, en qué contexto y cómo se observará.</p><textarea id="objective" placeholder="Ej. Los asesores registran todas las interacciones comerciales en el CRM..." oninput="setObjective(this.value)">${safe(x.objective||'')}</textarea><h3>Resultados esperados</h3><textarea placeholder="Impacto esperado en la organización" oninput="setField('expected',this.value)">${safe(x.expected||'')}</textarea></section><section class="panel"><h2>Todos los indicadores de la iniciativa</h2><p class="muted">Indicadores de gestión, predictivos y de resultados, asociados cuando corresponda a comportamientos.</p>${indicatorTable(x)}<button class="primary" onclick="go('Indicadores')">Configurar indicadores →</button></section></div>`;
