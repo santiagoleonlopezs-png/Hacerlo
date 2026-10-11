@@ -133,7 +133,7 @@ function renderAdoptionGraphPage(a,head,x){
  const relationOptions=GRAPH_RELATIONS.map(r=>`<option value="${safe(r)}">${safe(r)}</option>`).join('');
  const filterOptions=['Todas',...types].map(r=>`<option value="${safe(r)}" ${r===filter?'selected':''}>${safe(r)}</option>`).join('');
  a.innerHTML=head+`<style>
- .hacerlo-graph-layout{display:grid;grid-template-columns:minmax(300px,35fr) minmax(0,65fr);gap:16px;width:100%;min-width:0;align-items:start}
+ .hacerlo-graph-layout{display:grid;grid-template-columns:minmax(0,40fr) minmax(0,60fr);gap:16px;width:100%;min-width:0;align-items:start}
 .hacerlo-graph-shell{width:100%;max-width:none;min-width:0}
 .hacerlo-graph-config{margin:0;padding:14px!important;min-width:0}
 .hacerlo-graph-config>summary{cursor:pointer;font-weight:700;font-size:16px;list-style-position:inside}
@@ -143,26 +143,26 @@ function renderAdoptionGraphPage(a,head,x){
 .hacerlo-graph-config-content>p.muted{grid-column:1/-1;margin:2px 0}
 .hacerlo-graph-config-content>details[open]{align-self:start}
 .hacerlo-graph-config-content>details>div[style*="max-height"]{max-height:none!important;overflow:visible!important}
-.hacerlo-graph-layout .graph-analysis{min-width:0;overflow:visible;max-height:none;grid-column:1/-1;grid-row:2}
-.hacerlo-graph-layout .graph-map{min-width:0;overflow:visible;max-height:none;grid-column:2;grid-row:1;position:sticky;top:12px}
-.hacerlo-graph-layout .graph-analysis .grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-.hacerlo-graph-layout .graph-analysis .triple{grid-template-columns:repeat(3,minmax(0,1fr))}
-.hacerlo-graph-layout .graph-analysis .kpi{min-width:0;padding:9px}
-.hacerlo-graph-layout .graph-analysis .num{font-size:clamp(17px,2vw,27px)}
-.hacerlo-graph-layout .graph-analysis table{font-size:12px}
+.hacerlo-graph-analysis-bottom{width:100%;min-width:0;overflow:visible!important;max-height:none!important;margin-top:18px!important;clear:both}
+.hacerlo-graph-layout .graph-map{min-width:0;overflow:visible;max-height:none;grid-column:2;grid-row:1;align-self:start;position:sticky;top:12px}
+.hacerlo-graph-analysis-bottom .grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.hacerlo-graph-analysis-bottom .triple{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hacerlo-graph-analysis-bottom .kpi{min-width:0;padding:9px}
+.hacerlo-graph-analysis-bottom .num{font-size:clamp(17px,2vw,27px)}
+.hacerlo-graph-analysis-bottom table{font-size:12px}
 .graph-node-focus{filter:drop-shadow(0 0 9px #f6bd52);stroke:#fff;stroke-width:3}
 .graph-analysis button.graph-metric-link{display:inline;border:0;background:none;color:#8ad8f3;cursor:pointer;text-align:left;padding:0;font:inherit;text-decoration:underline;text-decoration-style:dotted}
 .graph-legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;margin:8px 0;color:#bad5e3}
 .graph-legend span{white-space:nowrap}
 .graph-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
 
-.hacerlo-graph-layout>section{min-width:0;overflow:visible!important;max-height:none!important}
+.hacerlo-graph-layout>section,.hacerlo-graph-analysis-bottom{min-width:0;overflow:visible!important;max-height:none!important}
 .hacerlo-graph-layout .hacerlo-graph-config{grid-column:1;grid-row:1}
 .hacerlo-graph-layout .graph-map label{margin-bottom:10px}
 .hacerlo-graph-layout details.panel{margin:10px 0;border-radius:12px}
 .hacerlo-graph-layout details>summary{cursor:pointer;padding:5px 0}
 .hacerlo-graph-layout svg{display:block;width:100%;height:auto;max-height:none;min-height:0;border:1px solid #28465a;border-radius:14px;background:radial-gradient(ellipse at center,#153a50 0%,#0a2638 100%)}
-@media(max-width:900px){.hacerlo-graph-layout{grid-template-columns:minmax(0,1fr)}.hacerlo-graph-layout .graph-map{grid-column:1;grid-row:2;position:static}.hacerlo-graph-layout .graph-analysis{grid-column:1;grid-row:3}}
+@media(max-width:900px){.hacerlo-graph-layout{grid-template-columns:minmax(0,1fr)}.hacerlo-graph-layout .graph-map{grid-column:1;grid-row:2;position:static}.hacerlo-graph-analysis-bottom{grid-column:auto;grid-row:auto}}
 </style><div class="hacerlo-graph-shell"><div class="hacerlo-graph-layout"><details class="panel hacerlo-graph-config" open><summary>⚙ Configuración del grafo · ${ns.length} nodos · ${all.length} relaciones · ${all.reduce((s,e)=>s+(e.graphFactors||[]).length,0)} alertas/facilitadores</summary><div class="hacerlo-graph-config-content">
  <details class="panel"><summary><b>+ Vincular elemento existente</b></summary><p class="muted">Selecciona un registro de Resultados o Diseño. Los factores del diagnóstico pueden aparecer como nodo, característica o alerta.</p><form onsubmit="graphImportExisting(event)"><label>Elemento existente<select name="linked" required onchange="graphLinkedChoiceChanged(this)"><option value="">Seleccionar elemento…</option>${graphCatalog(x).map(o=>`<option value="${safe(o.kind+'|'+o.id)}">${safe(o.type)} · ${safe(o.name)}</option>`).join('')}</select></label><div class="graph-factor-options" hidden><label>Representar factor como<select name="mode" onchange="graphFactorModeChanged(this)"><option value="node">Nodo</option><option value="attribute">Característica de un nodo</option><option value="alert">Alerta sobre una relación</option></select></label><label class="factor-node-target" hidden>Nodo asociado<select name="target" disabled><option value="">Seleccionar nodo…</option>${ns.map((n,i)=>`<option value="${i}">${safe(n.name)}</option>`).join('')}</select></label><label class="factor-edge-target" hidden>Relación asociada<select name="target" disabled><option value="">Seleccionar relación…</option>${all.map((r,i)=>`<option value="${i}">${safe(ns[r.s]?.name||'')} → ${safe(ns[r.t]?.name||'')} · ${safe(edgeRelation(r))}</option>`).join('')}</select></label><label>Contexto (opcional)<input name="detail" placeholder="Dónde se presenta y en qué condiciones"></label></div><button class="secondary">Guardar vinculación</button></form></details>
  <details class="panel"><summary><b>+ Crear nodo</b></summary><form onsubmit="addNode(event)"><label>Nombre<input name="name" placeholder="Persona, equipo, tecnología, proceso…" required></label><label>Tipo<select name="type" onchange="graphNodeTypeChanged(this)">${graphTypeOptions('Equipo')}</select></label><p class="muted graph-link-hint">Puedes vincular audiencias existentes con el formulario superior.</p><button class="primary">Agregar nodo</button></form></details>
@@ -188,7 +188,6 @@ function renderAdoptionGraphPage(a,head,x){
  </details>
  <p class="muted">La dirección se define por Origen → Destino. La reciprocidad se detecta automáticamente cuando existe la misma relación en ambos sentidos.</p>
  </div></details>
- <section class="panel graph-analysis"><h2>📊 Análisis de red</h2><p class="muted">NetworkX · ${filter==='Todas'?'Red completa':'Capa: '+safe(filter)}</p><button class="primary" onclick="analyzeAdoptionNetwork()">Analizar red con NetworkX</button><div id="network-analysis-status" class="notice" style="margin-top:10px"></div><div id="network-analysis-results" style="margin-top:12px"></div><p class="muted" style="font-size:12px">Las métricas describen la estructura; no demuestran causalidad.</p></section>
  <section class="panel graph-map"><h2>🌐 Mapa de relaciones</h2><p class="muted" style="margin-top:-4px">Explora los actores, sus conexiones y las alertas de la red.</p>
  <label>Ver capa de relación<select onchange="setGraphRelationFilter(this.value)">${filterOptions}</select></label>
  <svg viewBox="0 0 600 420" role="img" aria-label="Grafo de nodos y conexiones"><defs>
@@ -199,7 +198,8 @@ function renderAdoptionGraphPage(a,head,x){
  <label style="display:flex;align-items:center;gap:9px;font-size:13px"><input type="checkbox" style="width:auto" ${x.graphShowAlerts===false?'':'checked'} onchange="graphToggleAlerts(this)"> Mostrar alertas y facilitadores en las conexiones</label><p class="muted">${ns.length} nodos · ${edges.length} aristas en ${filter==='Todas'?'la vista global':'la capa '+safe(filter)}</p>
  <p class="muted" style="font-size:11px;line-height:1.25;margin-top:4px;opacity:.72">→ dirigida · ↔ recíproca · ━ observada/registrada/estimada · ┄ declarada/hipotética</p>
  <p class="notice">Selecciona un nodo para editarlo. Filtra una capa para interpretar mejor las centralidades.</p>
- </section></div></div>`;
+ </section></div>
+ <section class="panel graph-analysis hacerlo-graph-analysis-bottom"><h2>📊 Análisis de red</h2><p class="muted">NetworkX · ${filter==='Todas'?'Red completa':'Capa: '+safe(filter)}</p><button class="primary" onclick="analyzeAdoptionNetwork()">Analizar red con NetworkX</button><div id="network-analysis-status" class="notice" style="margin-top:10px"></div><div id="network-analysis-results" style="margin-top:12px"></div><p class="muted" style="font-size:12px">Las métricas describen la estructura; no demuestran causalidad.</p></section></div>`;
  const previous=x.networkAnalysis;
  if(previous){const b=document.getElementById('network-analysis-results');if(b){if(previous.relationFilter===filter){renderNetworkAnalysis(previous,x,b);const status=document.getElementById('network-analysis-status');if(status)status.textContent='Último análisis guardado · actualiza para recalcular';}else b.innerHTML='<p class="muted">Cambió la capa de relación. Ejecuta el análisis para actualizar los resultados.</p>';}}
 
