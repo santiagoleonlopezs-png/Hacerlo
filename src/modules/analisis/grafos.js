@@ -46,9 +46,21 @@ function measureText(e){
  return `${e.measureValue}`;
 }
 function evidenceDash(e){return ['Declarada','Hipótesis','Hipotética'].includes(e.evidence)?'3 5':'none'}
+// V2.4: referencias compartidas; el nodo no copia el registro de origen.
+function graphCatalog(x){
+ const out=[];
+ (x.audiences||[]).forEach(a=>out.push({kind:'audiencia',id:String(a.id),type:a.kind==='Grupo'?'Equipo':'Persona',name:a.name||'Sin nombre'}));
+ (x.behaviors||[]).forEach((b,i)=>out.push({kind:'comportamiento',id:String(b.id||'legacy-'+i),type:'Comportamiento',name:b.name||'Sin nombre'}));
+ Object.entries(x.behaviorDiagnosis||{}).forEach(([id,f])=>{if(f)out.push({kind:'factor',id,type:f.role==='Barrera'?'Barrera':f.role==='Facilitador'?'Facilitador':'Factor conductual',name:f.factor||id})});
+ (x.diagnosisFindings||[]).forEach((f,i)=>out.push({kind:'hallazgo',id:String(f.id||'legacy-'+i),type:'Hallazgo',name:(f.text||'Hallazgo').slice(0,90)}));
+ return out.filter(o=>o.name);
+}
+function graphResolvedNode(x,n){if(!n?.sourceKind)return n;let found=graphCatalog(x).find(o=>o.kind===n.sourceKind&&o.id===String(n.sourceId));return found?{...n,name:found.name,type:found.type}:{...n,name:(n.name||'Elemento')+' (origen no disponible)',missingSource:true}}
+function graphImportExisting(e){e.preventDefault();let x=current(),fd=new FormData(e.target),key=fd.get('linked'),item=graphCatalog(x).find(o=>o.kind+'|'+o.id===key);if(!item)return alert('Selecciona un elemento disponible');x.nodes=x.nodes||[];if(x.nodes.some(n=>n.sourceKind===item.kind&&String(n.sourceId)===item.id))return alert('Este elemento ya está vinculado al grafo');x.nodes.push({name:item.name,type:item.type,sourceKind:item.kind,sourceId:item.id});x.networkAnalysis=null;save();render()}
+function graphNodeTypeChanged(sel){const f=sel.form,box=f.querySelector('.graph-link-hint');if(box)box.textContent=sel.value==='Persona'||sel.value==='Equipo'?'Puedes vincular audiencias existentes con el formulario superior.':sel.value==='Comportamiento'?'Puedes vincular comportamientos existentes con el formulario superior.':'Este tipo de nodo se puede crear manualmente.'}
 function renderAdoptionGraphPage(a,head,x){
  migrateLegacyGraphEdges(x);
- const ns=x.nodes||[],all=x.edges||[],types=[...new Set(all.map(edgeRelation).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+ const ns=(x.nodes||[]).map(n=>graphResolvedNode(x,n)),all=x.edges||[],types=[...new Set(all.map(edgeRelation).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
  const filter=x.networkRelationFilter||'Todas';
  const edges=all.filter(e=>filter==='Todas'||normalizeRelation(edgeRelation(e))===filter);
  const coords=ns.map((n,i)=>({x:240+175*Math.cos(i*2*Math.PI/Math.max(ns.length,1)),y:175+120*Math.sin(i*2*Math.PI/Math.max(ns.length,1))}));
@@ -59,8 +71,8 @@ function renderAdoptionGraphPage(a,head,x){
  const relationOptions=GRAPH_RELATIONS.map(r=>`<option value="${safe(r)}">${safe(r)}</option>`).join('');
  const filterOptions=['Todas',...types].map(r=>`<option value="${safe(r)}" ${r===filter?'selected':''}>${safe(r)}</option>`).join('');
  a.innerHTML=head+`<div class="grid"><section class="panel"><h2>Grafo editable</h2>
- <form onsubmit="addNode(event)"><input name="name" placeholder="Persona, equipo, barrera..." required><select name="type"><option>Equipo</option><option>Persona</option><option>Barrera</option><option>Facilitador</option><option>Intervención</option><option>Tecnología</option><option>Plataforma</option><option>Base de datos</option><option>Repositorio</option><option>Documento</option><option>Herramienta</option><option>Conocimiento</option><option>Proceso</option><option>Indicador</option></select><button class="primary">Agregar nodo</button></form>
- <div style="max-height:190px;overflow:auto;margin:10px 0">${ns.map((n,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #20435a;padding:8px 0"><span><b>${safe(n.name)}</b> <span class="muted">· ${safe(n.type||'Nodo')}</span></span><button type="button" class="secondary" style="width:auto;padding:6px 10px" onclick="deleteGraphNode(${i})">Eliminar nodo</button></div>`).join('')||'<p class="muted">Aún no hay nodos.</p>'}</div>
+ <details class="panel" open><summary><b>Vincular elementos de Resultados o Diseño</b></summary><p class="muted">Los registros se comparten por identificador. No se crean relaciones automáticamente.</p><form onsubmit="graphImportExisting(event)"><label>Elemento existente<select name="linked" required><option value="">Seleccionar elemento…</option>${graphCatalog(x).map(o=>`<option value="${safe(o.kind+'|'+o.id)}">${safe(o.type)} · ${safe(o.name)}</option>`).join('')}</select></label><button class="secondary">+ Vincular como nodo</button></form></details><form onsubmit="addNode(event)"><input name="name" placeholder="Persona, equipo, barrera..." required><select name="type" onchange="graphNodeTypeChanged(this)"><option>Equipo</option><option>Persona</option><option>Barrera</option><option>Facilitador</option><option>Intervención</option><option>Tecnología</option><option>Plataforma</option><option>Base de datos</option><option>Repositorio</option><option>Documento</option><option>Herramienta</option><option>Conocimiento</option><option>Proceso</option><option>Indicador</option><option>Comportamiento</option><option>Hallazgo</option><option>Factor conductual</option></select><p class="muted graph-link-hint">Puedes vincular audiencias existentes con el formulario superior.</p><button class="primary">Agregar nodo</button></form>
+ <div style="max-height:190px;overflow:auto;margin:10px 0">${ns.map((n,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #20435a;padding:8px 0"><span><b>${safe(n.name)}</b> <span class="muted">· ${safe(n.type||'Nodo')}</span>${n.sourceKind?'<small class="muted"> · Vinculado</small>':''}</span><button type="button" class="secondary" style="width:auto;padding:6px 10px" onclick="deleteGraphNode(${i})">Eliminar nodo</button></div>`).join('')||'<p class="muted">Aún no hay nodos.</p>'}</div>
  <form onsubmit="addEdge(event)">
   <label>Origen<select name="source" required>${ns.map((n,i)=>`<option value="${i}">${safe(n.name)}</option>`).join('')}</select></label>
   <label>Relación<select name="relation" required onchange="updateRelationMeasure(this)"><option value="" selected disabled>Selecciona una relación</option>${relationOptions}</select></label>
@@ -97,7 +109,7 @@ async function analyzeAdoptionNetwork(){
  if(!(x.nodes||[]).length){s.textContent='Agrega al menos un nodo antes de analizar la red.';b.innerHTML='';return}
  const filter=x.networkRelationFilter||'Todas';
  const selected=(x.edges||[]).filter(e=>filter==='Todas'||normalizeRelation(edgeRelation(e))===filter);
- const nodes=x.nodes.map((n,i)=>({id:String(i),label:n.name||('Nodo '+(i+1)),type:n.type||'Otro'}));
+ const nodes=x.nodes.map((n,i)=>{const v=graphResolvedNode(x,n);return {id:String(i),label:v.name||('Nodo '+(i+1)),type:v.type||'Otro'}});
  const edges=selected.filter(e=>e.s!=null&&e.t!=null).map(e=>({
    source:String(e.s),target:String(e.t),relation:edgeRelation(e)||'Otra',
    evidence:e.evidence||null,measure_type:e.measureType||null,
