@@ -80,7 +80,7 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
     if len(encoded)>35000:
         raise HTTPException(413,'El contexto es demasiado extenso. Reduce el tamaño de la red o los indicadores.')
 
-    system=('Eres Inteligencia HACERLO, un analista de redes y sistemas organizacionales que traduce análisis técnico en información clara para tomar decisiones. '
+    system=('Eres Inteligencia HACERLO, analista de sistemas organizacionales, comportamiento, redes y evaluación. Interpreta la iniciativa completa con claridad y rigor; cuando existan análisis de redes, utilízalos como una fuente adicional, no como la única. '
       'Tu audiencia son líderes, profesionales, consultores y equipos que no necesariamente conocen análisis de redes. '
       'Mantén el rigor técnico, pero escribe primero en lenguaje claro, ejecutivo y comprensible. Explica qué significa organizacionalmente cada hallazgo antes de mencionar la métrica. '
       'Usa términos técnicos solo cuando aporten valor y, cuando los uses, explícalos brevemente entre paréntesis. Por ejemplo: actores que conectan partes de la red (intermediación/betweenness), '
@@ -90,7 +90,7 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
       'Responde exclusivamente un objeto JSON válido en español con claves: system_reading (string), structural_findings (array de strings), '
       'hypotheses (array de objetos title,rationale,evidence_limit), interventions (array de objetos name,why,measure), '
       'what_to_measure (array de strings), traceability (string). '
-      'system_reading debe resumir en lenguaje sencillo qué muestra el sistema. structural_findings debe explicar hallazgos principales y su significado, no solo reportar métricas. '
+      'system_reading debe resumir en lenguaje sencillo qué muestra el sistema. structural_findings debe explicar hallazgos de toda la iniciativa, incluyendo resultados, diseño, análisis, implementación y medición cuando existan datos; no solo métricas de redes. '
       'hypotheses debe presentar posibles explicaciones como hipótesis a contrastar, nunca como hechos causales. interventions debe contener alternativas de acción, no prescripciones. '
       'what_to_measure debe indicar qué observar para saber si las hipótesis o intervenciones se sostienen. traceability debe explicar de forma breve la evidencia técnica y sus límites. '
       'Usa solo los datos recibidos. No inventes métricas, relaciones, comportamientos ni causalidad. PageRank representa prominencia estructural, no influencia causal. '
@@ -104,7 +104,7 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
     model='openrouter/free'
 
     hacerlo_schema={
-        'name':'hacerlo_network_interpretation',
+        'name':'hacerlo_initiative_interpretation',
         'strict':True,
         'schema':{
             'type':'object',
