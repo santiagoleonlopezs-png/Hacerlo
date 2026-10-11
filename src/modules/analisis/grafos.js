@@ -46,6 +46,25 @@ function measureText(e){
  return `${e.measureValue}`;
 }
 function evidenceDash(e){return ['Declarada','Hipótesis','Hipotética'].includes(e.evidence)?'3 5':'none'}
+// V2.5.3: catálogo compartido Persona/Equipo ↔ Audiencias, sin duplicar identidades.
+function graphAudienceKey(name){return String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toLocaleLowerCase('es')}
+function graphSyncAudiences(x){
+ x.nodes=x.nodes||[];x.audiences=x.audiences||[];
+ let changed=false;
+ const audienceByName=new Map();
+ for(const a of x.audiences){const k=graphAudienceKey(a.name);if(k&&!audienceByName.has(k))audienceByName.set(k,a)}
+ for(const n of x.nodes){
+  if(n.type!=='Persona'&&n.type!=='Equipo')continue;
+  if(n.sourceKind&&n.sourceKind!=='audiencia')continue;
+  let a=n.sourceKind==='audiencia'?x.audiences.find(v=>String(v.id)===String(n.sourceId)):null;
+  if(!a)a=audienceByName.get(graphAudienceKey(n.name));
+  if(!a){a={id:'aud-'+(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)),name:String(n.name||'').trim(),kind:n.type==='Equipo'?'Grupo':'Persona'};x.audiences.push(a);audienceByName.set(graphAudienceKey(a.name),a);changed=true}
+  if(n.sourceKind!=='audiencia'||String(n.sourceId)!==String(a.id)){n.sourceKind='audiencia';n.sourceId=String(a.id);changed=true}
+ }
+ // Una audiencia ya registrada se vincula a su nodo homónimo; no se crea otro.
+ // Las audiencias sin nodo permanecen disponibles en «Vincular elemento existente».
+ return changed;
+}
 // V2.4: referencias compartidas; el nodo no copia el registro de origen.
 function graphCatalog(x){
  const out=[];
@@ -90,7 +109,7 @@ function graphNodeTypeChanged(sel){const f=sel.form,box=f.querySelector('.graph-
 function graphOpenNodeEditor(i){let x=current();x.graphSelectedNode=Number(i);x.graphSelectedEdge=null;render()}
 function graphOpenEdgeEditor(i){let x=current();x.graphSelectedEdge=Number(i);x.graphSelectedNode=null;render()}
 function graphCloseEditor(){let x=current();x.graphSelectedNode=null;x.graphSelectedEdge=null;render()}
-function graphSaveNode(e){e.preventDefault();let x=current(),i=Number(new FormData(e.target).get('index')),n=x.nodes?.[i];if(!n)return;let f=new FormData(e.target);n.description=String(f.get('description')||'').trim();n.context=String(f.get('context')||'').trim();n.notes=String(f.get('notes')||'').trim();if(!n.sourceKind){n.name=String(f.get('name')||n.name).trim();n.type=String(f.get('type')||n.type)}x.networkAnalysis=null;save();render()}
+function graphSaveNode(e){e.preventDefault();let x=current(),i=Number(new FormData(e.target).get('index')),n=x.nodes?.[i];if(!n)return;let f=new FormData(e.target);n.description=String(f.get('description')||'').trim();n.context=String(f.get('context')||'').trim();n.notes=String(f.get('notes')||'').trim();if(!n.sourceKind){n.name=String(f.get('name')||n.name).trim();n.type=String(f.get('type')||n.type)}graphSyncAudiences(x);x.networkAnalysis=null;save();render()}
 function graphSaveEdge(e){e.preventDefault();let x=current(),f=new FormData(e.target),i=Number(f.get('index')),r=x.edges?.[i];if(!r)return;let rel=String(f.get('relation')||'').trim();if(!rel)return alert('Escribe una relación');r.relation=rel;r.relationKey=normalizeRelation(rel);r.evidence=String(f.get('evidence')||r.evidence);r.description=String(f.get('description')||'').trim();x.networkAnalysis=null;save();render()}
 function graphAttachFactor(e){e.preventDefault();let x=current(),f=new FormData(e.target),key=String(f.get('factor')||''),o=graphCatalog(x).find(q=>q.kind+'|'+q.id===key);if(!o)return alert('Selecciona un factor del diagnóstico');let mode=String(f.get('mode')||'node'),target=Number(f.get('target'));if(mode==='node'){if(x.nodes.some(n=>n.sourceKind===o.kind&&String(n.sourceId)===o.id))return alert('Este factor ya existe como nodo');x.nodes.push({name:o.name,type:o.type,sourceKind:o.kind,sourceId:o.id});}else if(mode==='attribute'){let n=x.nodes?.[target];if(!n)return alert('Selecciona un nodo');n.graphFactors=n.graphFactors||[];if(!n.graphFactors.some(v=>v.sourceId===o.id&&v.sourceKind===o.kind))n.graphFactors.push({sourceKind:o.kind,sourceId:o.id,name:o.name,role:o.type,description:String(f.get('detail')||'')});}else{let r=x.edges?.[target];if(!r)return alert('Selecciona una relación');r.graphFactors=r.graphFactors||[];if(!r.graphFactors.some(v=>v.sourceId===o.id&&v.sourceKind===o.kind))r.graphFactors.push({sourceKind:o.kind,sourceId:o.id,name:o.name,role:o.type,description:String(f.get('detail')||'')});}x.networkAnalysis=null;save();render()}
 function graphDetachFactor(kind,index,factorIndex){let x=current(),obj=kind==='edge'?x.edges?.[index]:x.nodes?.[index];if(!obj?.graphFactors)return;obj.graphFactors.splice(factorIndex,1);save();render()}
@@ -101,6 +120,7 @@ function graphEditorPanel(x,ns){let ni=x.graphSelectedNode,ei=x.graphSelectedEdg
 if(ei!=null&&x.edges?.[ei]){let r=x.edges[ei];return `<section class="panel" style="margin-top:14px"><button type="button" class="secondary" style="width:auto" onclick="graphCloseEditor()">← Cerrar ficha</button><h3>Editar relación</h3><p>${safe(ns[r.s]?.name||'Origen')} → ${safe(ns[r.t]?.name||'Destino')}</p><form onsubmit="graphSaveEdge(event)"><input type="hidden" name="index" value="${ei}"><label>Relación (libre, sin restricciones)<input name="relation" value="${safe(edgeRelation(r))}" required></label><label>Evidencia<select name="evidence">${ev.map(v=>`<option ${v===r.evidence?'selected':''}>${v}</option>`).join('')}</select></label><label>Descripción y contexto<textarea name="description">${safe(r.description||'')}</textarea></label><button class="primary">Guardar relación</button></form><h4>Alertas y facilitadores de esta conexión</h4>${graphFactorBadges(r.graphFactors,'edge',ei)||'<p class="muted">Sin alertas.</p>'}</section>`}return ''}
 
 function renderAdoptionGraphPage(a,head,x){
+ if(graphSyncAudiences(x))save();
  migrateLegacyGraphEdges(x);
  const ns=(x.nodes||[]).map(n=>graphResolvedNode(x,n)),all=x.edges||[],types=[...new Set(all.map(edgeRelation).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
  const filter=x.networkRelationFilter||'Todas';
