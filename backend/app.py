@@ -86,6 +86,8 @@ def ai_interpret(payload: AIRequest, request: FastRequest, authorization: Option
       'Usa términos técnicos solo cuando aporten valor y, cuando los uses, explícalos brevemente entre paréntesis. Por ejemplo: actores que conectan partes de la red (intermediación/betweenness), '
       'qué tan destacado aparece un actor por su posición en la red (prominencia estructural/PageRank), tipo de relación (capa) y red con varios tipos de relaciones (multiplex). '
       'Evita listas de números sin interpretación. No conviertas una métrica en una conclusión sobre una persona. '
+      'Cuando existan audiencias en diseño, integra sus roles, clasificaciones, puntuaciones, cuadrantes, impactos e historial con comportamientos, diagnóstico, evidencias, intervenciones y medición; no las trates como un apartado aislado. '
+      'Las puntuaciones y etiquetas de audiencias son reglas de segmentación, no evidencia objetiva sobre motivaciones ni intenciones. No atribuyas sabotaje, resistencia o causalidad individual sin pruebas; indica incertidumbre y sugiere cómo contrastarla. '
       'Organiza el sentido de la respuesta siguiendo esta lógica: qué vemos, qué podría significar, qué podríamos hacer y qué deberíamos medir. '
       'Responde exclusivamente un objeto JSON válido en español con claves: system_reading (string), structural_findings (array de strings), '
       'hypotheses (array de objetos title,rationale,evidence_limit), interventions (array de objetos name,why,measure), '

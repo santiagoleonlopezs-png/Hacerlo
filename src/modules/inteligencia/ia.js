@@ -14,11 +14,20 @@ function renderLocalAIResult(a){
 function initiativeAIPayload(x){
  const pick=(arr,max=60)=>Array.isArray(arr)?arr.slice(0,max):[];
  const compact=(value,max=1400)=>JSON.parse(JSON.stringify(value??null,(key,val)=>typeof val==='string'?val.slice(0,max):val));
+ // Datos estratégicos de audiencias: categorías, puntuaciones, cuadrante y trazabilidad.
+ // Se excluyen identificaciones, correos y otros datos personales innecesarios para el análisis.
+ const authorityScores={'Decisor':10,'Influenciador Directo':9,'Influenciador Indirecto':8,'Espectador':5};
+ const positionScores={'Promotor':10,'Pasivo':8,'Probable Resistente':6,'Saboteador Abierto':5,'Saboteador Oculto':4};
+ const audienceContext=pick(x.audiences,60).map(a=>{
+  const authority=authorityScores[a.authority]??null,interest=positionScores[a.position]??null;
+  const quadrant=authority===null||interest===null?null:authority>=7?(interest>=7?'Q1':'Q2'):(interest>=7?'Q4':'Q3');
+  return {id:a.id,name:a.kind==='Grupo'?a.name:'Persona / audiencia '+String(a.id||'').slice(-6),kind:a.kind||'Persona',population:a.population,changeRole:a.changeRole,team:a.team,segment:a.segment,authority:a.authority,authorityScore:authority,position:a.position,interestInfluenceScore:interest,quadrant,impact:a.impact,specificImpact:a.specificImpact,changeHistory:a.changeHistory,classificationEvidence:a.classificationEvidence,barriers:a.barriers};
+ });
  const initiative={name:x.name,description:x.description,scope:x.scope,population:x.population,
   objective:x.objective,expected:x.expected,phase:phases[x.phase||0]?.[1],
   results:{indicators:pick(x.indicators),dimensions:x.dimensions},
-  diagnosis:{conductual:compact(x.behaviorDiagnosis||{}),hallazgos:pick(x.diagnosisFindings||[],80),hypotheses:pick(x.diagnosisHypotheses||[],40)},
-  design:{behaviors:pick(x.behaviors),audiences:pick(x.audiences)},
+  diagnosis:pick(x.diagnosisRecords||x.diagnosis),
+  design:{behaviors:pick(x.behaviors),audiences:audienceContext},
   analysis:{network:{nodes:pick(x.nodes),edges:pick(x.edges,120),computed:x.networkAnalysis||null},system:{variables:pick(x.systemVariables),links:pick(x.systemLinks)},scenarios:pick(x.experiments),evidence:pick(x.evidenceRecords)},
   implementation:{actions:pick(x.actions)},
   measurement:{metrics:x.metrics,metricHistory:x.metricHistory,observations:pick(x.observations)}
@@ -27,11 +36,13 @@ function initiativeAIPayload(x){
  'Separar evidencia observada, declarada, estimada e hipótesis.',
  'No inventar métricas ni resultados de simulación; no afirmar causalidad.',
  'No asumir que ausencia de datos implica ausencia de fenómeno.',
- 'Usar lenguaje temporalmente neutro: no presuponer si el cambio comenzó, está en curso o terminó.',
- 'Interpretar hallazgos, micronarrativas y factores conductuales sin confundir inferencia con evidencia.',
- 'Contrastar hipótesis del usuario con la evidencia disponible; no confirmarlas automáticamente.',
+ 'Diferenciar diagnóstico exploratorio, presente y posibles riesgos futuros.',
  'Ofrecer alternativas y qué medir para contrastarlas.',
- 'La estructura de redes no demuestra influencia causal ni adopción.'
+ 'La estructura de redes no demuestra influencia causal ni adopción.',
+ 'Cruzar explícitamente audiencias, cuadrantes, posicionamiento, comportamientos, diagnóstico y hallazgos cuando existan datos; no analizar audiencias de forma aislada.',
+ 'Las puntuaciones de audiencias son reglas de clasificación configuradas, no medidas validadas ni juicios objetivos sobre personas.',
+ 'No inferir intención de sabotaje o resistencia individual a partir de una etiqueta; indicar incertidumbre y proponer contraste con evidencias.',
+ 'No revelar datos personales ni deducir atributos sensibles de individuos.'
  ]};
 }
 async function runIntegratedAI(){
@@ -45,4 +56,17 @@ async function runIntegratedAI(){
   x.integratedAIAnalysis={...await response.json(),generatedAt:new Date().toISOString()};save();render();
  }catch(e){console.error(e);const el=document.getElementById('integrated-ai-status');if(el)el.textContent='No se pudo interpretar: '+e.message}
 }
-function convertAIIntervention(index){prepareAIAction(index)}
+function convertAIIntervention(index){
+ const x=current(),a=x?.integratedAIAnalysis?.interventions?.[index];
+ if(!x||!a)return;
+ x.actions=x.actions||[];
+ x.actions.push({
+   name:a.name||'Intervención sugerida por Inteligencia HACERLO',
+   dimension:'Por definir',owner:'',start:'',end:'',
+   hypothesis:a.why||'',measurement:a.measure||'',status:'Pendiente',
+   source:'Inteligencia HACERLO · hipótesis generativa',createdAt:new Date().toISOString()
+ });
+ save();
+ alert('La opción se agregó a Intervenciones como borrador pendiente. Completa responsable, dimensión y fechas antes de ejecutarla.');
+ go('Intervenciones');
+}
