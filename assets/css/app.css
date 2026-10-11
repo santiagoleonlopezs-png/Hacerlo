@@ -18,3 +18,18 @@
 /* HACERLO V2.1 · Diagnóstico */
 .diag-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}.diag-tabs button{width:auto}.diag-tabs button.active{background:#117d91;border-color:#44d9d2}
 .diag-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:12px 0}.diag-card{border:1px solid #315c75;background:linear-gradient(145deg,#123a52,#092338);border-radius:13px;padding:14px;text-align:left;color:#eaf5ff;min-height:130px;transition:transform .15s,border-color .15s}.diag-card:hover{transform:translateY(-2px);border-color:#5ac8d6}.diag-card.selected{outline:2px solid var(--diag-accent,#4bcac9);background:#174459}.diag-card .diag-icon{font-size:25px;display:block;margin-bottom:9px}.diag-card b{display:block;font-size:13px}.diag-card small{display:block;color:#abc5d4;font-size:11px;line-height:1.35;margin-top:6px}.diag-pill{font-size:11px;padding:4px 8px;border-radius:20px;background:#17465b;display:inline-block;margin:3px}.diag-mini{font-size:12px;color:#9cbccc}.diag-list{display:grid;gap:9px}.diag-item{border:1px solid #2b5269;background:#0c2a40;border-radius:10px;padding:12px}.diag-item p{white-space:pre-wrap;overflow-wrap:anywhere}.diag-bars{display:grid;gap:10px}.diag-bar{height:10px;background:#143c50;border-radius:20px;overflow:hidden}.diag-bar span{display:block;height:100%;background:#20b6ae}.diag-triad{position:relative;width:min(350px,100%);margin:8px auto}.diag-triad svg{display:block}.diag-triad circle{cursor:crosshair}.diag-triad text{fill:#d7effa;font-size:13px}.diag-hint{font-size:11px;color:#9dbdcc}.diag-linklist{display:flex;flex-wrap:wrap;gap:6px}.diag-linklist label{display:flex;align-items:center;gap:5px;font-size:12px;border:1px solid #315b70;border-radius:8px;padding:5px 8px}.diag-linklist input{width:auto;margin:0}
+
+/* HACERLO V2.1 — Navegación por etapa y tarjetas conductuales originales */
+.nav-group{margin:9px 0 13px;padding-bottom:7px;border-bottom:1px solid #17364a}
+.nav-group-title{display:flex;align-items:center;justify-content:space-between;width:100%;padding:9px 12px 5px;color:#7facc1;text-transform:uppercase;letter-spacing:.085em;font-size:10px;font-weight:800}
+button.nav-group-title{border:0;background:transparent;text-align:left;cursor:pointer;border-radius:8px}
+button.nav-group-title:hover,button.nav-group-title.is-current{color:#d4f8ff;background:#103149}
+.nav-child{display:flex;align-items:center;gap:9px;padding:9px 12px;font-size:13px;line-height:1.3;margin:2px 0}
+.nav-symbol{width:17px;text-align:center;flex-shrink:0;color:#74b9ce}
+.nav-child.active{background:#115273;border-left:3px solid #2ad2db;padding-left:9px;font-weight:650}
+.diag-card{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-height:172px;border-top:3px solid var(--diag-accent,#4bcac9);padding:14px;line-height:1.3}
+.diag-card .diag-icon{font-size:26px;margin-bottom:2px}
+.diag-card b{font-size:12px;line-height:1.35;text-transform:uppercase;letter-spacing:.02em}
+.diag-card small{font-size:12px;line-height:1.45;margin-top:4px;color:#d3e3ec}
+.diag-card.selected{background:#19465c}
+@media(max-width:900px){.nav-group{display:inline-flex;flex-direction:column;vertical-align:top;margin:4px}.nav-group-title{font-size:10px}.nav-child{width:auto}}
