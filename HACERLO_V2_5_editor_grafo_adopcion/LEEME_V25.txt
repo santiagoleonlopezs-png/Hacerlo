@@ -1,0 +1,22 @@
+HACERLO V2.5 — Editor de grafo de adopción
+
+BASE: instalar sobre HACERLO V2.4 (rama hacerlo-v2-modular).
+REEMPLAZAR ÚNICAMENTE:
+  src/modules/analisis/grafos.js
+
+Incluye:
+- Mantiene el catálogo de elementos vinculables de Resultados y Diseño.
+- Vincular un elemento abre su ficha contextual editable.
+- Formularios plegables para crear nodos y relaciones, con selección libre de tipos.
+- Editar nodos desde listado o clic en el SVG; editar relaciones desde el listado.
+- Datos del origen vinculados (nombre/tipo) son de solo lectura, sin duplicarlos.
+- Factores del diagnóstico representables como nodo, atributo o alerta en relación.
+- Mantiene las cinco categorías de evidencia existentes para relaciones.
+- Conserva el análisis NetworkX y su esquema de conexiones.
+
+IMPORTANTE:
+- Los atributos/alertas se guardan como graphFactors en nodos/aristas de la iniciativa.
+- El análisis NetworkX recibe estos atributos como campos adicionales; que los interprete depende del backend desplegado.
+- La IA de Inteligencia integrada NO se ha modificado en este parche: no afirmar que consume ya graphFactors.
+- No se han realizado pruebas de integración en GitHub Pages/Supabase/Render.
+- Antes de desplegar, probar vinculación, edición, creación, alertas, persistencia y análisis de red en una iniciativa de prueba.
