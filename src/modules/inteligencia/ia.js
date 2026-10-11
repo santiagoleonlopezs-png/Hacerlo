@@ -43,17 +43,4 @@ async function runIntegratedAI(){
   x.integratedAIAnalysis={...await response.json(),generatedAt:new Date().toISOString()};save();render();
  }catch(e){console.error(e);const el=document.getElementById('integrated-ai-status');if(el)el.textContent='No se pudo interpretar: '+e.message}
 }
-function convertAIIntervention(index){
- const x=current(),a=x?.integratedAIAnalysis?.interventions?.[index];
- if(!x||!a)return;
- x.actions=x.actions||[];
- x.actions.push({
-   name:a.name||'Intervención sugerida por Inteligencia HACERLO',
-   dimension:'Por definir',owner:'',start:'',end:'',
-   hypothesis:a.why||'',measurement:a.measure||'',status:'Pendiente',
-   source:'Inteligencia HACERLO · hipótesis generativa',createdAt:new Date().toISOString()
- });
- save();
- alert('La opción se agregó a Intervenciones como borrador pendiente. Completa responsable, dimensión y fechas antes de ejecutarla.');
- go('Intervenciones');
-}
+function convertAIIntervention(index){prepareAIAction(index)}
