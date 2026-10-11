@@ -17,7 +17,7 @@ function initiativeAIPayload(x){
  const initiative={name:x.name,description:x.description,scope:x.scope,population:x.population,
   objective:x.objective,expected:x.expected,phase:phases[x.phase||0]?.[1],
   results:{indicators:pick(x.indicators),dimensions:x.dimensions},
-  diagnosis:pick(x.diagnosisRecords||x.diagnosis),
+  diagnosis:{conductual:compact(x.behaviorDiagnosis||{}),hallazgos:pick(x.diagnosisFindings||[],80),hypotheses:pick(x.diagnosisHypotheses||[],40)},
   design:{behaviors:pick(x.behaviors),audiences:pick(x.audiences)},
   analysis:{network:{nodes:pick(x.nodes),edges:pick(x.edges,120),computed:x.networkAnalysis||null},system:{variables:pick(x.systemVariables),links:pick(x.systemLinks)},scenarios:pick(x.experiments),evidence:pick(x.evidenceRecords)},
   implementation:{actions:pick(x.actions)},
@@ -27,7 +27,9 @@ function initiativeAIPayload(x){
  'Separar evidencia observada, declarada, estimada e hipótesis.',
  'No inventar métricas ni resultados de simulación; no afirmar causalidad.',
  'No asumir que ausencia de datos implica ausencia de fenómeno.',
- 'Diferenciar diagnóstico exploratorio, presente y posibles riesgos futuros.',
+ 'Usar lenguaje temporalmente neutro: no presuponer si el cambio comenzó, está en curso o terminó.',
+ 'Interpretar hallazgos, micronarrativas y factores conductuales sin confundir inferencia con evidencia.',
+ 'Contrastar hipótesis del usuario con la evidencia disponible; no confirmarlas automáticamente.',
  'Ofrecer alternativas y qué medir para contrastarlas.',
  'La estructura de redes no demuestra influencia causal ni adopción.'
  ]};
