@@ -1,0 +1,19 @@
+HACERLO V2.3.2 — Ajuste correctivo y visual
+
+BASE: V2.3 ya instalada. Esta actualización reemplaza SOLO:
+- index.html (recupera carga de Diagnóstico)
+- src/modules/analisis/sistemico.js (selector de comportamiento y mapa más compacto)
+- assets/css/app.css (mejoras visuales)
+
+NO reemplazar src/core/app.js ni IA ni backend. Mantiene datos guardados en systemV23.
+
+CAMBIOS:
+- Carga explícita del módulo Diagnóstico desde index.html.
+- Selector de comportamiento diseñado, sin usar objetivo general como sustituto.
+- Mejor jerarquía visual del mapa, bandas compactas, panel contextual con guía.
+- Candidatos adicionales de hallazgos cuando existen en diagnosisFindings.
+- Evita filtrar erróneamente condiciones por fechas no fiables al seleccionar Antes/Durante/Después.
+
+LIMITACIONES: El resultado es una mejora del módulo real existente, NO una reproducción exacta del mockup. La persistencia, integración real de hallazgos y funcionalidad de diagnóstico requieren prueba en el despliegue. No se han realizado pruebas end-to-end. La vista temporal sigue siendo exploratoria; comparar fechas usa eventos registrados.
+
+INSTALACIÓN: rama hacerlo-v2-modular; respaldar/exportar JSON; reemplazar los 3 archivos respetando rutas; publicar y probar Diagnóstico y Pensamiento Sistémico.
