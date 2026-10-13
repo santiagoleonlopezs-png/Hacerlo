@@ -28,7 +28,7 @@ function initiativeAIPayload(x){
   results:{indicators:pick(x.indicators),dimensions:x.dimensions},
   diagnosis:pick(x.diagnosisRecords||x.diagnosis),
   design:{behaviors:pick(x.behaviors),audiences:audienceContext},
-  analysis:{network:{nodes:pick(x.nodes),edges:pick(x.edges,120),computed:x.networkAnalysis||null},system:{variables:pick(x.systemVariables),links:pick(x.systemLinks)},scenarios:pick(x.experiments),evidence:pick(x.evidenceRecords)},
+  analysis:{network:{nodes:pick(x.nodes),edges:pick(x.edges,120),computed:x.networkAnalysis||null},system:{variables:pick(x.systemVariables),links:pick(x.systemLinks),conditions:pick(x.systemV23?.conditions,80),mechanisms:pick(x.systemV23?.mechanisms,80),hypotheses:pick(x.systemV23?.hypotheses,80),history:pick(x.systemV23?.events,120)},scenarios:pick(x.experiments),evidence:pick(x.evidenceRecords)},
   implementation:{actions:pick(x.actions)},
   measurement:{metrics:x.metrics,metricHistory:x.metricHistory,observations:pick(x.observations)}
  };

@@ -1,0 +1,24 @@
+HACERLO V2.3 · Pensamiento Sistémico
+
+Paquete INCREMENTAL sobre HACERLO V2.2 consolidado.
+
+Actualizar en rama hacerlo-v2-modular, respetando rutas:
+- index.html (incorpora carga del nuevo módulo)
+- src/core/app.js (sustituye vista causal anterior por nueva experiencia)
+- src/modules/analisis/sistemico.js (nuevo)
+- src/modules/inteligencia/ia.js (contexto de la IA existente)
+- assets/css/app.css (estilos del mapa sistémico)
+
+NO modifica backend, Supabase ni el grafo de adopción.
+
+Incluye: mapa por bandas, registro de condiciones y mecanismos, hipótesis vinculables a intervenciones, observaciones históricas y comparación de estados por fecha, incorporación selectiva de variables sistémicas previas y audiencias, y contexto de Pensamiento Sistémico para Inteligencia integrada.
+
+LIMITACIONES HONESTAS:
+- Comparación temporal basada en estados registrados; no calcula inferencias causales.
+- Las pestañas Antes/Durante/Después son vistas orientativas; para análisis temporal riguroso se requieren fechas de fase registradas y trazabilidad de evidencias.
+- La integración con diagnóstico especializado depende de la estructura real de sus datos y aún debe ampliarse.
+- No incluye edición o eliminación de registros ni sincronización de la interfaz con un despliegue real.
+- La persistencia usa el app_state de iniciativa existente en Supabase, si está configurado y accesible.
+- Se validó sintaxis JS, no pruebas funcionales completas ni despliegue.
+
+IMPORTANTE: realizar copia de seguridad/exportación JSON antes de actualizar.
