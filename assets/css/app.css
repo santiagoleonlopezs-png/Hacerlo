@@ -85,3 +85,13 @@ button.nav-group-title:hover,button.nav-group-title.is-current{color:#d4f8ff;bac
 .aud-v22-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.aud-v22-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #315c76}.aud-v22-list{max-height:440px;overflow:auto}
 @media(max-width:800px){.aud-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.aud-map-v23{height:360px;margin-left:26px;margin-right:4px}.aud-quadrant{padding:10px;font-size:12px}.aud-strategies-grid,.aud-v22-fields{grid-template-columns:1fr}.aud-map-name{font-size:10px}.aud-strategy-line{flex-wrap:wrap}}
 
+
+/* Selectores desplegables de asociaciones múltiples */
+.association-picker{border:1px solid #42677c;border-radius:8px;padding:10px 12px;margin:10px 0;background:#071e2d;}
+.association-picker>summary{cursor:pointer;line-height:1.5;}
+.association-options{max-height:240px;overflow:auto;margin-top:12px;}
+.association-options label{display:flex;align-items:flex-start;gap:10px;margin:0;padding:9px 4px;cursor:pointer;}
+.association-options input[type="checkbox"]{width:18px;min-width:18px;height:18px;flex:0 0 18px;margin:2px 0 0;}
+.association-options span{min-width:0;overflow-wrap:anywhere;}
+
+.behavior-audience-option{display:flex;gap:10px;align-items:flex-start;}.behavior-audience-option input[type="checkbox"]{width:18px;min-width:18px;height:18px;margin:2px 0 0;}.behavior-edit{margin:12px 0;}.behavior-edit>summary{cursor:pointer;}
