@@ -25,6 +25,7 @@ const EE = (() => {
    if(!q.label?.trim()||!['scale','nps','cnps','text','choice','knowledge'].includes(q.type))throw Error('Pregunta o tipo inválido.');
    if(['scale','nps','cnps'].includes(q.type)){if(!Number.isFinite(q.min)||!Number.isFinite(q.max)||q.min>=q.max)throw Error('Escala inválida.');if(['nps','cnps'].includes(q.type)&&(q.min!==0||q.max!==10))throw Error('NPS/CNPS requieren escala 0–10.');}
    if(['choice','knowledge'].includes(q.type)&&(!Array.isArray(q.options)||q.options.length<2||q.options.some(o=>typeof o!=='string'||!o.trim())||new Set(q.options).size!==q.options.length))throw Error('Define al menos dos opciones únicas.');
+   if(q.optionScoring?.enabled){if(!['text','choice'].includes(q.type))throw Error('Los valores por opción solo aplican a texto u opciones.');validateOptionScoring(q.optionScoring);}
    if(q.type==='knowledge'&&!q.options.includes(q.correct))throw Error('La respuesta correcta debe existir entre las opciones.');
   }return qs;
  }
@@ -51,7 +52,7 @@ const EE = (() => {
   const texts=responses.flatMap(r=>s.questions.filter(q=>q.type==='text'&&r.answers[q.id]).map(q=>({responseId:r.id,question:q.label,text:r.answers[q.id],date:r.date,wave:r.wave,audienceId:r.audienceId})));
   return {n:responses.length,metrics,texts};
  }
- function detailed(s,filter={}){
+ function detailedBase(s,filter={}){
   const rr=s.responses.filter(r=>(!filter.wave||r.wave===filter.wave)&&(!filter.audienceId||String(r.audienceId)===String(filter.audienceId)));
   const questions=s.questions.map(q=>{const vals=rr.flatMap(r=>{const v=r.answers[q.id];return v===undefined||v===null||v===''?[]:[v];}),n=vals.length,counts=new Map();vals.forEach(v=>counts.set(String(v),(counts.get(String(v))||0)+1));const numeric=['scale','nps','cnps'].includes(q.type),direction=q.dimension==='Desgaste'?'lower':'higher';
    const result={key:'question:'+q.id,questionId:q.id,label:q.label,dimension:q.dimension||'Sin dimensión',type:q.type,n,mean:numeric&&n?round(vals.reduce((a,v)=>a+Number(v),0)/n):null,distribution:[...counts].map(([answer,count])=>({answer,count,percent:round(100*count/n)})),value:null,unit:'',direction,min:0,max:100};
@@ -63,6 +64,25 @@ const EE = (() => {
   function aggregate(level){const groups=new Map();for(const q of s.questions){if(!['scale','knowledge','nps','cnps'].includes(q.type))continue;const direction=q.dimension==='Desgaste'?'lower':'higher',compat=[q.type,direction,q.type==='scale'?q.min:'',q.type==='scale'?q.max:''].join('|'),group=(level==='dimension'?(q.dimension||'Sin dimensión')+'|':'')+compat;if(!groups.has(group))groups.set(group,[]);groups.get(group).push(q);}
    return [...groups].map(([group,qs])=>{const people=rr.map(r=>{const answered=qs.filter(q=>r.answers[q.id]!==undefined&&r.answers[q.id]!==null&&r.answers[q.id]!=='');if(!answered.length)return null;return answered.reduce((sum,q)=>{const v=r.answers[q.id];return sum+(q.type==='knowledge'?(v===q.correct?100:0):q.type==='scale'?(q.reverse?100-100*(Number(v)-q.min)/(q.max-q.min):100*(Number(v)-q.min)/(q.max-q.min)):100*((v>=9?1:0)-(v<=6?1:0)));},0)/answered.length;}).filter(v=>v!==null),first=qs[0],direction=first.dimension==='Desgaste'?'lower':'higher',typeLabel=first.type==='scale'?'Escala '+first.min+'–'+first.max+(direction==='lower'?' · desgaste':''):first.type==='knowledge'?'Conocimiento':first.type.toUpperCase();return {key:level+':'+group,label:(level==='dimension'?(first.dimension||'Sin dimensión')+' · ':'General · ')+typeLabel,type:first.type,direction,n:people.length,questionCount:qs.length,value:people.length?round(people.reduce((a,b)=>a+b,0)/people.length):null,unit:['nps','cnps'].includes(first.type)?'puntos':'%',min:['nps','cnps'].includes(first.type)?-100:0,max:100};});}
   return {n:rr.length,questions,dimensions:aggregate('dimension'),overall:aggregate('overall'),method:'Por pregunta: respuestas válidas. Dimensiones y general: promedio de resultados individuales, con igual peso por participante y por pregunta respondida. Se separan tipos, escalas y sentidos; no se imputan faltantes. NPS/CNPS de varias preguntas son un balance promedio compuesto, no un NPS de recomendación único.'};
+ }
+ function optionScore(q,answer){
+  const c=q.optionScoring;if(!c?.enabled||answer===undefined||answer===null||String(answer).trim()==='')return null;
+  const entry=c.options.find(o=>o.option===String(answer).trim());return entry&&Number.isFinite(entry.value)?entry.value:null;
+ }
+ function validateOptionScoring(c){
+  if(!c?.enabled)return;
+  if(!Number.isFinite(c.min)||!Number.isFinite(c.max)||c.min>=c.max)throw Error('El mínimo debe ser menor que el máximo.');
+  if(!Array.isArray(c.options)||c.options.length<2)throw Error('Define al menos dos opciones con valor.');
+  const seen=new Set();for(const o of c.options){if(typeof o.option!=='string'||!o.option.trim()||o.option!==o.option.trim()||seen.has(o.option))throw Error('Las opciones deben ser distintas y tener texto.');seen.add(o.option);if(!Number.isFinite(o.value)||o.value<c.min||o.value>c.max)throw Error('Cada valor debe estar dentro de la escala.');}
+ }
+ function detailed(s,filter={}){
+  const result=detailedBase(s,filter),rr=s.responses.filter(r=>(!filter.wave||r.wave===filter.wave)&&(!filter.audienceId||String(r.audienceId)===String(filter.audienceId)));
+  for(const q of s.questions.filter(q=>['text','choice'].includes(q.type)&&q.optionScoring?.enabled)){
+   const c=q.optionScoring,values=rr.map(r=>optionScore(q,r.answers[q.id])).filter(v=>v!==null),metric=result.questions.find(v=>v.questionId===q.id),mean=values.length?round(values.reduce((a,b)=>a+b,0)/values.length):null;
+   Object.assign(metric,{scoredOptions:true,scoredN:values.length,unscoredN:metric.n-values.length,mean,value:mean,unit:'valor',scale:[c.min,c.max],min:c.min,max:c.max,direction:c.direction==='lower'?'lower':'higher'});
+   metric.distribution=metric.distribution.map(v=>({...v,score:optionScore(q,v.answer)}));
+   result.dimensions.push({key:'dimension:option-score:'+q.id,label:(q.dimension||'Sin dimensión')+' · '+q.label,type:'option-score',n:values.length,questionCount:1,value:mean,unit:'valor',min:c.min,max:c.max,direction:metric.direction});
+  }return result;
  }
  function composition(s,filter={},options=s.compositionConfig||{}){
   const rr=s.responses.filter(r=>(!filter.wave||r.wave===filter.wave)&&(!filter.audienceId||String(r.audienceId)===String(filter.audienceId))),mode=options.mode||'original',eligible=s.questions.filter(q=>['scale','nps','cnps'].includes(q.type)&&Number.isFinite(q.min)&&Number.isFinite(q.max)&&q.max>q.min&&(mode==='normalized'||(q.max===10&&[0,1].includes(q.min))));
@@ -95,5 +115,5 @@ const EE = (() => {
  }
  function records(rows){if(rows.length<2)throw Error('El archivo necesita encabezados y al menos una respuesta.');const headers=rows[0].map(v=>String(v??'').trim());if(headers.some(v=>!v)||new Set(headers).size!==headers.length)throw Error('Encabezados vacíos o duplicados.');return {headers,rows:rows.slice(1).map((r,i)=>{if(r.length>headers.length)throw Error('Fila '+(i+2)+': más celdas que encabezados.');return Object.fromEntries(headers.map((h,j)=>[h,String(r[j]??'')]));})};}
  function csv(rows){return '\uFEFF'+rows.map(r=>r.map(v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v)&&!/^[-+]?\d+(\.\d+)?$/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"';}).join(';')).join('\r\n');}
- return {evolution,composition,detailed,uid,now,init,create,template,validateQuestions,validateResponse,summarize,simulation,parseCSV,records,csv};
+ return {optionScore,validateOptionScoring,evolution,composition,detailed,uid,now,init,create,template,validateQuestions,validateResponse,summarize,simulation,parseCSV,records,csv};
 })();
