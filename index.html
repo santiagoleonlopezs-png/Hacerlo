@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HACERLO · Fábrica del Comportamiento</title><link rel="stylesheet" href="assets/css/app.css"><link rel="stylesheet" href="assets/css/encuestas.css?v=2.6.4">
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HACERLO · Fábrica del Comportamiento</title><link rel="stylesheet" href="assets/css/app.css"><link rel="stylesheet" href="assets/css/encuestas.css?v=2.6.5">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head><body><div id="auth-gate" style="position:fixed;inset:0;z-index:5000;background:#061827;display:flex;align-items:center;justify-content:center;padding:20px"><section class="panel" style="width:min(430px,100%);padding:28px"><div class="logo" style="padding:0">✣ HACERLO</div><div class="tag" style="padding:3px 0 22px">Fábrica del Comportamiento</div><h2>Iniciar sesión</h2><p class="muted">Accede a tu espacio de trabajo.</p><form id="login-form"><label>Correo<input id="login-email" type="email" required autocomplete="email"></label><label>Contraseña<input id="login-password" type="password" required autocomplete="current-password"></label><button class="primary" style="width:100%">Entrar</button><button type="button" class="secondary" style="width:100%;margin-top:10px" onclick="requestPasswordRecovery()">Olvidé mi contraseña</button><div id="login-msg" class="notice" style="margin-top:12px"></div></form><form id="recovery-form" class="hide"><h2>Crear nueva contraseña</h2><p class="muted">Define una nueva contraseña para tu cuenta.</p><label>Nueva contraseña<input id="new-password" type="password" required minlength="8" autocomplete="new-password"></label><label>Confirmar contraseña<input id="confirm-password" type="password" required minlength="8" autocomplete="new-password"></label><button class="primary" style="width:100%">Guardar nueva contraseña</button><div id="recovery-msg" class="notice" style="margin-top:12px"></div></form></section><div class="app-footer auth-footer">© 2026 Santiago León · HACERLO — Fábrica del Comportamiento · Todos los derechos reservados.</div></div><aside><div class="logo">✣ HACERLO</div><div class="tag">Fábrica del Comportamiento</div><div id="nav"></div></aside><main><div class="top"><div class="muted" id="cloud-status">Centro de Inteligencia · Conectando…</div><div class="flex"><button class="secondary" onclick="exportData()">↓ Exportar JSON</button><button class="secondary" onclick="logoutHacerlo()">Salir</button><label class="secondary" style="cursor:pointer">↑ Importar JSON<input type="file" accept=".json" onchange="importData(event)" hidden></label></div></div><div class="hero"><h1>HACERLO</h1><div style="color:#76d6e8;font-size:21px">Fábrica del Comportamiento</div><p>Creamos sistemas organizacionales inteligentes</p></div><div id="app"></div><footer class="app-footer">© 2026 Santiago León · HACERLO — Fábrica del Comportamiento · Todos los derechos reservados.</footer></main>
 
@@ -8,13 +8,13 @@
 <script src="src/modules/inteligencia/ia.js" defer></script>
 <script src="src/modules/medicion/paneles.js" defer></script>
 <script src="src/modules/diseno/audiencias.js" defer></script>
-<script src="src/modules/implementacion/operaciones.js?v=2.6.4" defer></script>
+<script src="src/modules/implementacion/operaciones.js?v=2.6.5" defer></script>
 <script src="src/modules/inteligencia/integrada.js" defer></script>
-<script src="src/modules/resultados/diagnostico.js" defer></script>
+<script src="src/modules/resultados/diagnostico.js?v=2.6.5" defer></script>
 <script src="src/modules/resultados/indicadores.js" defer></script>
-<script src="src/modules/encuestas/motor.js?v=2.6.4" defer></script>
-<script src="src/modules/encuestas/excel.js?v=2.6.4" defer></script>
-<script src="src/modules/encuestas/encuestas.js?v=2.6.4" defer></script>
-<script src="src/modules/encuestas/integracion.js?v=2.6.4" defer></script>
+<script src="src/modules/encuestas/motor.js?v=2.6.5" defer></script>
+<script src="src/modules/encuestas/excel.js?v=2.6.5" defer></script>
+<script src="src/modules/encuestas/encuestas.js?v=2.6.5" defer></script>
+<script src="src/modules/encuestas/integracion.js?v=2.6.5" defer></script>
 <script src="src/core/bootstrap.js" defer></script>
 </body></html>
