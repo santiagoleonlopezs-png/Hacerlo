@@ -13,8 +13,8 @@ function renderLocalAIResult(a){
  <h3>Qué medir</h3>${arr(a.what_to_measure).map(z=>`<p>• ${safe(z)}</p>`).join('')}
  <div class="notice">${safe(a.traceability||'Interpretación generativa; no demuestra causalidad.')} · Modelo: ${safe(a.model||'')}</div></div>`;
 }
+
 // Contexto v2: resúmenes deterministas sobre todos los registros + ejemplos acotados.
-// Nunca se modifica la iniciativa para hacerla caber en el servicio de IA.
 const AI_CONTEXT_LIMIT=30000;
 function aiArray(v){return Array.isArray(v)?v:[];}
 function aiText(v,max=400){if(v===undefined||v===null)return '';const s=String(v);return s.length>max?s.slice(0,max-1)+'…':s;}
@@ -92,13 +92,12 @@ function initiativeAIPayload(x){
 function aiSurveyContext(x){const surveys=aiArray(x.surveys),responses=surveys.reduce((n,s)=>n+aiArray(s.responses).length,0),moments=surveys.flatMap(s=>aiArray(s.responses).map(r=>({wave:r.wave||'Base'})));const errors=[],overview=[];
  const dataset=aiDataset(surveys,s=>{try{const aggregate=EE.summarize(s),evo=EE.evolution(s);overview.push({id:s.id,title:aiText(s.title,120),kind:s.kind,totalResponses:aiArray(s.responses).length,moments:evo.series.map(m=>({wave:m.wave,n:m.n,nps:m.nps?.balance??null,npsN:m.nps?.n||0,global:m.global?.balance??null,globalN:m.global?.n||0}))});return {...aiFields(s,['id','title','kind','version','wave']),sampleSize:aiArray(s.responses).length,questionCount:aiArray(s.questions).length,results:aiDataset(aggregate.metrics,m=>aiFields(m,['key','label','value','n','unit','direction','promoters','passives','detractors'])),evolution:{baseline:evo.baseline,latest:evo.latest,series:aiDataset(evo.series,m=>({wave:m.wave,n:m.n,nps:aiFields(m.nps,['balance','n','promoters','passives','detractors']),global:aiFields(m.global,['balance','n','promoters','passives','detractors']),dimensions:aiDataset(m.dimensions,v=>aiFields(v,['key','label','balance','n','promoters','passives','detractors']))})),comparisons:aiDataset(evo.comparisons,m=>aiFields(m,['key','label','unit','baselineValue','latestValue','baselineN','latestN','delta']))}};}catch(e){errors.push(aiText(s.id,70));return {...aiFields(s,['id','title','kind']),sampleSize:aiArray(s.responses).length,summaryError:'No se pudo calcular el resumen de este instrumento.'};}},['kind'],8);
  const core=aiDataset(overview,r=>r,[],40);core.priority='core';return {instruments:dataset,overview:core,responseCount:responses,moments:aiCounts(moments,'wave'),summaryErrors:errors};}
-// Python json.dumps usa espacios después de comas y dos puntos. Estimación conservadora.
+
 function aiContextSize(value){const encoded=JSON.stringify(value);let quote=false,escape=false,extra=0;for(const c of encoded){if(escape){escape=false;continue;}if(c==='\\'&&quote){escape=true;continue;}if(c==='"'){quote=!quote;continue;}if(!quote&&(c===','||c===':'))extra++;}return encoded.length+extra;}
 function aiWalk(value,visit,path='initiative'){if(!value||typeof value!=='object')return;visit(value,path);for(const [key,v] of Object.entries(value)){if(key==='context_coverage')continue;if(Array.isArray(v)){v.forEach((item,i)=>aiWalk(item,visit,path+'.'+key+'.'+i));}else if(v&&typeof v==='object')aiWalk(v,visit,path+'.'+key);}}
 function aiCoverage(payload){const rows=[];aiWalk(payload.initiative,(v,path)=>{if(Number.isInteger(v.sourceRecords)&&Array.isArray(v.examples)){v.detailRecords=v.examples.length;v.summaryOnly=Math.max(0,v.sourceRecords-v.detailRecords);if(!path.includes('.examples.'))rows.push({source:path,records:v.sourceRecords,detail:v.detailRecords,summaryOnly:v.summaryOnly});}});aiWalk(payload.network_analysis,(v,path)=>{if(Number.isInteger(v.sourceRecords)&&Array.isArray(v.examples)&&!path.includes('.examples.')){v.detailRecords=v.examples.length;v.summaryOnly=v.sourceRecords-v.detailRecords;rows.push({source:path,records:v.sourceRecords,detail:v.detailRecords,summaryOnly:v.summaryOnly});}},'network_analysis');return {schema:'hacerlo.ai-context/2',warnings:aiArray(payload.initiative.surveys?.summaryErrors).length?['No se pudo resumir '+payload.initiative.surveys.summaryErrors.length+' instrumento(s); revisar su configuración.']:[],policy:'Resúmenes sobre registros completos y ejemplos de detalle acotados; no es una lectura literal de todos los registros.',sources:rows,textMayBeShortened:true};}
 function aiFinalizeContext(payload){
  delete payload.initiative.context_coverage;let coverage=aiCoverage(payload);payload.initiative.context_coverage=coverage;
- // Reducir ejemplos, nunca los datos almacenados. Mantener conteos exactos.
  let count=0;while(aiContextSize(payload)>AI_CONTEXT_LIMIT&&count++<10000){let candidate=null;aiWalk(payload,(v)=>{if(Array.isArray(v.examples)&&v.examples.length&&(!candidate||(candidate.priority==='core'&&v.priority!=='core')||((candidate.priority==='core')===(v.priority==='core')&&JSON.stringify(v.examples).length>JSON.stringify(candidate.examples).length)))candidate=v;});if(!candidate)break;candidate.examples.splice(Math.floor(candidate.examples.length/2),1);coverage=aiCoverage(payload);payload.initiative.context_coverage=coverage;}
  if(aiContextSize(payload)>AI_CONTEXT_LIMIT){for(const max of [200,100,50]){aiWalk(payload,v=>{for(const [k,val] of Object.entries(v))if(typeof val==='string'&&k!=='source')v[k]=aiText(val,max);});if(aiContextSize(payload)<=AI_CONTEXT_LIMIT)break;}}
  if(aiContextSize(payload)>AI_CONTEXT_LIMIT)throw Error('No fue posible preparar un contexto dentro del límite. Los datos siguen guardados; revisa la cobertura del contexto.');
@@ -149,6 +148,7 @@ async function loadPptxGen(){
  });
 }
 
+// EXPORTADOR COMPLETO A POWERPOINT INCLUYENDO DX, ENCUESTAS, COMPORTAMIENTOS Y SISTEMA
 async function exportExecutivePPTX(){
  const x=current();
  if(!x)return alert('Selecciona primero una iniciativa.');
@@ -163,87 +163,106 @@ async function exportExecutivePPTX(){
   const ai=x.integratedAIAnalysis||{};
   const auds=x.audiences||[], people=x.audiencePeople||[], behs=x.behaviors||[], nodes=x.nodes||[], edges=x.edges||[];
   const sys=x.systemV23||{conditions:[],mechanisms:[],hypotheses:[]};
+  const findings=x.diagnosisFindings||[], indicators=x.indicators||[], surveys=x.surveys||[];
 
   // SLIDE 1: PORTADA
   let s1=pptx.addSlide();
   s1.background={color:BG};
   s1.addText('HACERLO · ARQUITECTURA DEL COMPORTAMIENTO',{x:0.8,y:1.2,w:11,h:0.4,fontSize:13,color:ACCENT,bold:true,charSpacing:2});
   s1.addText(x.name||'Iniciativa de Transformación',{x:0.8,y:1.8,w:11.5,h:1.2,fontSize:36,color:TEXT,bold:true});
-  s1.addText(x.objective||x.description||'Reporte Ejecutivo de Diagnóstico, Audiencias, Red de Adopción y Pensamiento Sistémico',{x:0.8,y:3.1,w:11,h:1.0,fontSize:16,color:MUTED});
+  s1.addText(x.objective||x.description||'Reporte Ejecutivo Integral: Diagnóstico, Comportamientos, Audiencias, Encuestas y Sistema',{x:0.8,y:3.1,w:11,h:1.0,fontSize:16,color:MUTED});
   s1.addText(`Fecha: ${new Date().toLocaleDateString('es-CO')}  |  Alcance: ${x.scope==='outside'?'Outside':'Inside'}  |  Audiencias: ${auds.length} (${people.length} personas)`,{x:0.8,y:6.2,w:11,h:0.4,fontSize:12,color:GOLD});
 
-  // SLIDE 2: LECTURA EJECUTIVA E INTELIGENCIA INTEGRADA
+  // SLIDE 2: LECTURA EJECUTIVA Y ESTRATÉGICA
   let s2=pptx.addSlide();
   s2.background={color:BG};
-  s2.addText('1. LECTURA EJECUTIVA DEL SISTEMA',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
+  s2.addText('1. LECTURA EJECUTIVA DEL SISTEMA Y TRANSFORMACIÓN',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
   s2.addShape(pptx.ShapeType.rect,{x:0.6,y:1.1,w:12.1,h:2.8,fill:{color:CARD},line:{color:ACCENT,width:1}});
-  s2.addText(ai.system_reading||'Ejecuta "Interpretar iniciativa con IA" en el módulo de Inteligencia Integrada para incluir la síntesis ejecutiva en esta diapositiva.',{x:0.8,y:1.2,w:11.7,h:2.6,fontSize:13,color:TEXT,valign:'top'});
+  s2.addText(ai.system_reading||'Ejecuta "Interpretar iniciativa con IA" para incluir la síntesis ejecutiva.',{x:0.8,y:1.2,w:11.7,h:2.6,fontSize:13,color:TEXT,valign:'top'});
   
   s2.addText('Lectura Estratégica de Audiencias y Adopción',{x:0.6,y:4.1,w:12,h:0.4,fontSize:16,color:GOLD,bold:true});
   s2.addShape(pptx.ShapeType.rect,{x:0.6,y:4.6,w:12.1,h:2.2,fill:{color:CARD}});
   s2.addText(ai.audience_reading||`Se registran ${auds.length} audiencias y ${people.length} personas asociadas a ${behs.length} comportamientos meta.`,{x:0.8,y:4.7,w:11.7,h:2.0,fontSize:12.5,color:MUTED,valign:'top'});
 
-  // SLIDE 3: MAPA DE AUDIENCIAS Y ADOPCIÓN DE COMPORTAMIENTOS
+  // SLIDE 3: COMPORTAMIENTOS META Y DIAGNÓSTICO (DX)
   let s3=pptx.addSlide();
   s3.background={color:BG};
-  s3.addText('2. GESTIÓN ESTRATÉGICA DE AUDIENCIAS Y ADOPCIÓN',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
+  s3.addText('2. COMPORTAMIENTOS META Y HALLAZGOS DE DIAGNÓSTICO',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
+  
+  const behTxt=behs.map(b=>`• [Comportamiento] ${b.name}: ${b.description||'Sin descripción'}`).slice(0,5).join('\n')||'Sin comportamientos registrados.';
+  const dxTxt=findings.map(f=>`• [${f.evidenceType||'Hallazgo'}] ${f.text} (${f.role||'Por explorar'})`).slice(0,6).join('\n')||'Sin hallazgos registrados en Diagnóstico.';
+
+  s3.addShape(pptx.ShapeType.rect,{x:0.6,y:1.1,w:5.9,h:5.7,fill:{color:CARD}});
+  s3.addText('Comportamientos Meta de Diseño',{x:0.8,y:1.2,w:5.5,h:0.4,fontSize:14,color:ACCENT,bold:true});
+  s3.addText(behTxt,{x:0.8,y:1.7,w:5.5,h:4.9,fontSize:11.5,color:TEXT,valign:'top'});
+
+  s3.addShape(pptx.ShapeType.rect,{x:6.8,y:1.1,w:5.9,h:5.7,fill:{color:CARD}});
+  s3.addText('Hallazgos Clave de Diagnóstico (DX)',{x:7.0,y:1.2,w:5.5,h:0.4,fontSize:14,color:GOLD,bold:true});
+  s3.addText(dxTxt,{x:7.0,y:1.7,w:5.5,h:4.9,fontSize:11,color:TEXT,valign:'top'});
+
+  // SLIDE 4: AUDIENCIAS Y ADOPCIÓN
+  let s4=pptx.addSlide();
+  s4.background={color:BG};
+  s4.addText('3. GESTIÓN ESTRATÉGICA DE AUDIENCIAS Y ADOPCIÓN',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
   const audRows=[[{text:'Audiencia',options:{bold:true,fill:ACCENT,color:BG}},{text:'Población',options:{bold:true,fill:ACCENT,color:BG}},{text:'Autoridad',options:{bold:true,fill:ACCENT,color:BG}},{text:'Posición',options:{bold:true,fill:ACCENT,color:BG}},{text:'Cuadrante',options:{bold:true,fill:ACCENT,color:BG}},{text:'Impacto / Barreras',options:{bold:true,fill:ACCENT,color:BG}}]];
   auds.slice(0,10).forEach(a=>{
    const q=typeof audQuadrant==='function'?(audQuadrant(a)||'—'):'—';
    audRows.push([a.name||'—',String(a.population||1),a.authority||'—',a.position||'—',q,String(a.barriers||a.impact||'—').slice(0,70)]);
   });
-  s3.addTable(audRows,{x:0.6,y:1.1,w:12.1,fontSize:11,color:TEXT,fill:CARD,border:{pt:0.5,color:'28465A'}});
+  s4.addTable(audRows,{x:0.6,y:1.1,w:12.1,fontSize:11,color:TEXT,fill:CARD,border:{pt:0.5,color:'28465A'}});
 
-  // SLIDE 4: PENSAMIENTO SISTÉMICO Y DIAGNÓSTICO CONDUCTUAL
-  let s4=pptx.addSlide();
-  s4.background={color:BG};
-  s4.addText('3. FUNCIONAMIENTO SISTÉMICO Y CONDICIONES DEL CAMBIO',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
-  const fav=sys.conditions.filter(c=>c.orientation==='Favorece').map(c=>`• ${c.name} (${c.type})`).slice(0,7).join('\n')||'Sin condiciones favorables registradas.';
-  const dif=sys.conditions.filter(c=>c.orientation==='Dificulta').map(c=>`• ${c.name} (${c.type})`).slice(0,7).join('\n')||'Sin barreras sistémicas registradas.';
-  const mechs=sys.mechanisms.map(m=>`• [${m.type}] ${m.name} (${m.certainty})`).slice(0,6).join('\n')||'Sin mecanismos registrados.';
-  
-  s4.addShape(pptx.ShapeType.rect,{x:0.6,y:1.1,w:5.9,h:2.8,fill:{color:CARD}});
-  s4.addText('↓ Condiciones que Dificultan (Frenos / Barreras)',{x:0.8,y:1.2,w:5.5,h:0.4,fontSize:14,color:'ED837F',bold:true});
-  s4.addText(dif,{x:0.8,y:1.7,w:5.5,h:2.1,fontSize:11,color:TEXT,valign:'top'});
-
-  s4.addShape(pptx.ShapeType.rect,{x:6.8,y:1.1,w:5.9,h:2.8,fill:{color:CARD}});
-  s4.addText('↑ Condiciones que Favorecen (Facilitadores)',{x:7.0,y:1.2,w:5.5,h:0.4,fontSize:14,color:'6EE3A7',bold:true});
-  s4.addText(fav,{x:7.0,y:1.7,w:5.5,h:2.1,fontSize:11,color:TEXT,valign:'top'});
-
-  s4.addShape(pptx.ShapeType.rect,{x:0.6,y:4.2,w:12.1,h:2.6,fill:{color:CARD}});
-  s4.addText('⟳ Mecanismos Sistémicos y Bucles Identificados',{x:0.8,y:4.3,w:11.5,h:0.4,fontSize:14,color:GOLD,bold:true});
-  s4.addText(mechs,{x:0.8,y:4.8,w:11.5,h:1.8,fontSize:11.5,color:MUTED,valign:'top'});
-
-  // SLIDE 5: RED DE ADOPCIÓN Y ENLACES CRÍTICOS
+  // SLIDE 5: RESULTADOS DE ENCUESTAS E INDICADORES
   let s5=pptx.addSlide();
   s5.background={color:BG};
-  s5.addText('4. TOPOLOGÍA DE LA RED Y ENLACES CON ALERTA',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
-  const edgeAlerts=edges.filter(e=>(e.graphFactors||[]).length||['Declarada','Hipotética','Hipótesis'].includes(e.evidence)).map(e=>{
-   const sN=nodes[e.s]?.name||'Origen',tN=nodes[e.t]?.name||'Destino',rel=e.relation||e.label||'Relación';
-   const fTxt=(e.graphFactors||[]).map(f=>`${f.role}: ${f.name}`).join(', ');
-   return `• ${sN} → ${tN} [${rel}] · Evidencia: ${e.evidence||'—'}${fTxt?' · ⚠️ '+fTxt:''}`;
-  }).slice(0,10).join('\n')||'Sin enlaces marcados con alerta.';
-  s5.addShape(pptx.ShapeType.rect,{x:0.6,y:1.1,w:12.1,h:5.6,fill:{color:CARD}});
-  s5.addText(`Resumen de Red: ${nodes.length} Nodos registrados  |  ${edges.length} Relaciones mapeadas`,{x:0.8,y:1.3,w:11.5,h:0.4,fontSize:15,color:GOLD,bold:true});
-  s5.addText('Canales críticos, vínculos débiles y alertas relacionales a intervenir:\n\n'+edgeAlerts,{x:0.8,y:1.9,w:11.5,h:4.5,fontSize:12,color:TEXT,valign:'top'});
+  s5.addText('4. RESULTADOS DE ENCUESTAS E INDICADORES CLAVE',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
+  
+  const survTxt=surveys.map(s=>`• Encuesta: ${s.title} (${(s.responses||[]).length} respuestas registradas)`).slice(0,6).join('\n')||'Sin instrumentos de encuesta aplicados.';
+  const indTxt=indicators.map(i=>`• ${i.name} [${i.type}]: Actual ${i.value||'—'} (Meta: ${i.target||'—'})`).slice(0,6).join('\n')||'Sin indicadores configurados.';
 
-  // SLIDE 6: HALLAZGOS E INTERVENCIONES RECOMENDADAS POR IA
+  s5.addShape(pptx.ShapeType.rect,{x:0.6,y:1.1,w:5.9,h:5.7,fill:{color:CARD}});
+  s5.addText('Instrumentos y Encuestas',{x:0.8,y:1.2,w:5.5,h:0.4,fontSize:14,color:GOLD,bold:true});
+  s5.addText(survTxt,{x:0.8,y:1.7,w:5.5,h:4.9,fontSize:11.5,color:TEXT,valign:'top'});
+
+  s5.addShape(pptx.ShapeType.rect,{x:6.8,y:1.1,w:5.9,h:5.7,fill:{color:CARD}});
+  s5.addText('Tablero de Indicadores',{x:7.0,y:1.2,w:5.5,h:0.4,fontSize:14,color:ACCENT,bold:true});
+  s5.addText(indTxt,{x:7.0,y:1.7,w:5.5,h:4.9,fontSize:11.5,color:TEXT,valign:'top'});
+
+  // SLIDE 6: PENSAMIENTO SISTÉMICO Y RED (INCLUYENDO INVITADO -> MIEMBRO DE EQUIPO)
   let s6=pptx.addSlide();
   s6.background={color:BG};
-  s6.addText('5. HOJA DE RUTA: INTERVENCIONES Y MEDICIÓN',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
-  const findingsTxt=(ai.structural_findings||[]).map(f=>`• ${f}`).join('\n')||'Sin hallazgos generados.';
-  const interTxt=(ai.interventions||[]).map(i=>`▸ ${i.name}: ${i.why} (Medir: ${i.measure})`).join('\n\n')||'Sin intervenciones sugeridas.';
+  s6.addText('5. SISTEMA, RED Y ENLACES CRÍTICOS (INVITADO → MIEMBRO DE EQUIPO)',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
   
-  s6.addShape(pptx.ShapeType.rect,{x:0.6,y:1.1,w:5.9,h:5.7,fill:{color:CARD}});
-  s6.addText('Hallazgos Estructurales Clave',{x:0.8,y:1.2,w:5.5,h:0.4,fontSize:14,color:GOLD,bold:true});
-  s6.addText(findingsTxt,{x:0.8,y:1.7,w:5.5,h:4.9,fontSize:11,color:TEXT,valign:'top'});
+  const fav=sys.conditions.filter(c=>c.orientation==='Favorece').map(c=>`• ${c.name}`).slice(0,5).join('\n')||'Sin condiciones favorables.';
+  const dif=sys.conditions.filter(c=>c.orientation==='Dificulta').map(c=>`• ${c.name}`).slice(0,5).join('\n')||'Sin barreras sistémicas.';
+  const edgeAlerts=edges.filter(e=>(e.graphFactors||[]).length||['Declarada','Hipotética','Hipótesis'].includes(e.evidence)).map(e=>{
+   const sN=nodes[e.s]?.name||'Origen',tN=nodes[e.t]?.name||'Destino',rel=e.relation||e.label||'Relación';
+   return `• ${sN} → ${tN} [${rel}] (Canal crítico / Alerta activa)`;
+  }).slice(0,5).join('\n')||'Red sin alertas críticas explícitas.';
 
-  s6.addShape(pptx.ShapeType.rect,{x:6.8,y:1.1,w:5.9,h:5.7,fill:{color:CARD}});
-  s6.addText('Intervenciones Recomendadas y KPIs',{x:7.0,y:1.2,w:5.5,h:0.4,fontSize:14,color:ACCENT,bold:true});
-  s6.addText(interTxt,{x:7.0,y:1.7,w:5.5,h:4.9,fontSize:11,color:TEXT,valign:'top'});
+  s6.addShape(pptx.ShapeType.rect,{x:0.6,y:1.1,w:3.8,h:5.7,fill:{color:CARD}});
+  s6.addText('Favorecedores',{x:0.8,y:1.2,w:3.4,h:0.4,fontSize:13,color:'6EE3A7',bold:true});
+  s6.addText(fav,{x:0.8,y:1.7,w:3.4,h:4.9,fontSize:10.5,color:TEXT,valign:'top'});
+
+  s6.addShape(pptx.ShapeType.rect,{x:4.7,y:1.1,w:3.8,h:5.7,fill:{color:CARD}});
+  s6.addText('Frenos Sistémicos',{x:4.9,y:1.2,w:3.4,h:0.4,fontSize:13,color:'ED837F',bold:true});
+  s6.addText(dif,{x:4.9,y:1.7,w:3.4,h:4.9,fontSize:10.5,color:TEXT,valign:'top'});
+
+  s6.addShape(pptx.ShapeType.rect,{x:8.8,y:1.1,w:3.9,h:5.7,fill:{color:CARD}});
+  s6.addText('Red y Enlaces Críticos',{x:9.0,y:1.2,w:3.5,h:0.4,fontSize:13,color:GOLD,bold:true});
+  s6.addText(edgeAlerts,{x:9.0,y:1.7,w:3.5,h:4.9,fontSize:10.5,color:TEXT,valign:'top'});
+
+  // SLIDE 7: INTERVENCIONES Y PLAN DE ACCIÓN
+  let s7=pptx.addSlide();
+  s7.background={color:BG};
+  s7.addText('6. HOJA DE RUTA: INTERVENCIONES RECOMENDADAS',{x:0.6,y:0.4,w:12,h:0.5,fontSize:22,color:ACCENT,bold:true});
+  const interTxtFull=(ai.interventions||[]).map(i=>`▸ ${i.name}: ${i.why} (KPI sugerido: ${i.measure})`).join('\n\n')||'Sin intervenciones generadas por IA.';
+  
+  s7.addShape(pptx.ShapeType.rect,{x:0.6,y:1.1,w:12.1,h:5.7,fill:{color:CARD}});
+  s7.addText('Intervenciones Directivas de Cambio',{x:0.8,y:1.3,w:11.5,h:0.4,fontSize:15,color:GOLD,bold:true});
+  s7.addText(interTxtFull,{x:0.8,y:1.9,w:11.5,h:4.5,fontSize:12,color:TEXT,valign:'top'});
 
   const safeName=String(x.name||'Iniciativa').replace(/[^a-zA-Z0-9_-]/g,'_');
-  await pptx.writeFile({fileName:`HACERLO_Ejecutivo_${safeName}.pptx`});
+  await pptx.writeFile({fileName:`HACERLO_Ejecutivo_Completo_${safeName}.pptx`});
  }catch(err){
   alert('Error generando PPTX: '+err.message);
  }
