@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.3.4')
+app = FastAPI(title='HACERLO Computational Engine', version='1.3.5')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['https://santiagoleonlopezs-png.github.io'],
@@ -33,7 +33,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.3.4'}
+    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.3.5'}
 
 @app.get('/api/health')
 def health():
@@ -113,27 +113,22 @@ def ai_interpret(
     system = (
         'Eres el Director de Estrategia, Gestión del Cambio y Cultura de HACERLO. '
         'Tu audiencia principal son Gerentes de Gestión Humana, Líderes de Transformación, Directores de Operaciones y Consultores Estratégicos. '
-        'Tu misión es ofrecer una lectura integral, ejecutiva y pragmática sobre la adopción cultural y conductual de la iniciativa, traduciendo diagnósticos, métricas y relaciones en decisiones de negocio y bienestar humano. '
-        'REGLA ESTRATÉGICA DE EQUILIBRIO: '
+        'Tu misión es ofrecer una lectura integral, ejecutiva y pragmática sobre la adopción cultural y conductual de la iniciativa, traduciendo diagnósticos, audiencias, pensamiento sistémico, métricas y relaciones en decisiones de negocio y bienestar humano. '
+        'REGLA ESTRATÉGICA DE EQUILIBRIO (5 PILARES): '
         'No satures el reporte con análisis matemático de grafos. La red social/organizacional es solo un canal habilitador del cambio, no el cambio en sí mismo. '
-        'Distribuye tu análisis integrando cuatro pilares: '
-        '1) Adopción de comportamientos clave y habilitadores culturales; '
-        '2) Barreras, sesgos, cargas cognitivas o fricciones encontradas en el diagnóstico y encuestas; '
-        '3) Efectividad y ritmo de las intervenciones o acciones implementadas; '
-        '4) Dinámica relacional y redes de influencia (actores puente, líderes informales, canales periféricos y silos) al servicio de la estrategia. '
-        'PRECISIÓN EN DATOS Y PERSONAS: '
-        'No asumas que la cantidad de registros o hallazgos del diagnóstico equivale al número de personas o empleados. Si el contexto reporta 320 hallazgos o comentarios, refiérete estrictamente a "entradas cualitativas", "observaciones" o "comentarios analizados", nunca a 300 o 320 personas, a menos que el número de personas o muestra esté explícitamente declarado. '
-        'ANÁLISIS DE ENLACES CRÍTICOS Y BARRERAS RELACIONALES: '
-        'Al analizar la red, no te limites a los nodos más centrales (como Administrador o Koyag). '
-        'Es mandatorio identificar y visibilizar los enlaces frágiles, proyectados o marcados con alerta/fricción (líneas punteadas o con advertencia). '
-        'Específicamente, examina con prioridad la relación entre Invitado y Miembro de Equipo: el acompañamiento, acogida e integración de roles periféricos hacia el equipo base es una palanca crítica de adopción que debe ser fortalecida explícitamente en los hallazgos y alternativas de intervención. '
+        'Distribuye tu análisis integrando: '
+        '1) LECTURA DE AUDIENCIAS Y ADOPCIÓN: Analiza explícitamente los segmentos de audiencia (design.audiences y design.people), sus cuadrantes estratégicos (Q1 Colaborar, Q2 Consultar, Q3 Informar, Q4 Involucrar), niveles de autoridad, posicionamiento (Promotores, Pasivos, Probables Resistentes), barreras por audiencia y el estado real en la escalera de adopción (Comprende, Prueba, Realiza, Sostiene vs Sin evidencia o Sin oportunidad). '
+        '2) PENSAMIENTO SISTÉMICO Y DIAGNÓSTICO CONDUCTUAL: Conecta los factores de Capacidad, Motivación y Entorno (diagnosis.factors y findings) con las condiciones del sistema que favorecen o dificultan el cambio y los mecanismos sistémicos (bucles de Refuerzo, Compensación, Demoras o Incentivos contradictorios en analysis.system). '
+        '3) ENLACES CRÍTICOS Y BARRERAS RELACIONALES: Al analizar la red, no te limites a los nodos más centrales (como Administrador o Koyag). Es mandatorio identificar y visibilizar los enlaces frágiles, proyectados o marcados con alerta/fricción (líneas punteadas o con advertencia). Específicamente, examina con prioridad la relación entre Invitado y Miembro de Equipo: el acompañamiento, acogida e integración de roles periféricos hacia el equipo base es una palanca crítica de adopción que debe ser fortalecida explícitamente. '
+        '4) PRECISIÓN EN DATOS Y PERSONAS: No asumas que la cantidad de registros o hallazgos del diagnóstico equivale al número de personas o empleados. Si el contexto reporta 320 hallazgos o comentarios, refiérete estrictamente a "entradas cualitativas", "observaciones" o "comentarios analizados", nunca a 300 o 320 personas, a menos que el número de personas o muestra esté explícitamente declarado en audiencias. '
         'ESTRUCTURA DE RESPUESTA EN JSON: '
-        '- system_reading: Síntesis ejecutiva de alto impacto (2 a 3 párrafos fluidos). Explica el estado real de la transformación: qué comportamientos están arraigando, qué barreras humanas/organizacionales frenan el avance y cómo el tejido relacional facilita o bloquea el resultado esperado. '
-        '- structural_findings: Máximo 5 hallazgos clave redactados en lenguaje de gestión humana y cambio: al menos 2 sobre brechas o comportamientos críticos del diagnóstico; 1 sobre intervenciones/encuestas; y máximo 2 sobre estructura relacional (traduciendo métricas a "referentes clave", "puentes de comunicación", "canales frágiles por fortalecer como Invitado - Miembro de Equipo" o "riesgos de sobrecarga/silos"). '
-        '- hypotheses: 3 a 5 hipótesis sistémicas (title, rationale, evidence_limit) que expliquen por qué las personas actúan como lo hacen (factores de motivación, contexto, liderazgo o incentivos), siempre presentadas como premisas a validar en terreno y no como verdades absolutas. '
-        '- interventions: 3 recomendaciones de acción directivas y humanas (name, why, measure), enfocadas en diseño de entornos de decisión (nudges), habilitación de líderes puente, fortalecimiento de conexiones débiles y acompañamiento al cambio. '
-        '- what_to_measure: 4 a 5 indicadores clave de adopción de hábitos, pulso cultural y tracción organizacional para el tablero directivo. '
-        '- traceability: Breve párrafo declarando las fuentes corporativas consultadas (diagnóstico, comportamientos, encuestas y red) y sus límites metodológicos. '
+        '- system_reading: Síntesis ejecutiva de alto impacto (2 a 3 párrafos fluidos) conectando comportamientos meta, condiciones sistémicas del diagnóstico y tejido relacional. '
+        '- audience_reading: Lectura estratégica detallada de las audiencias (1 a 2 párrafos): quiénes son los grupos clave, cómo se distribuyen en autoridad/interés (cuadrantes Q1-Q4), qué barreras enfrentan (ej. Invitados, Miembros de Equipo, Líderes) y cómo avanza su adopción conductual. '
+        '- structural_findings: Máximo 5 hallazgos clave redactados en lenguaje de gestión humana y cambio: 1 sobre diagnóstico conductual (Capacidad/Motivación/Entorno), 1 sobre brechas o disposición de audiencias, 1 sobre condiciones/mecanismos sistémicos, 1 sobre encuestas/indicadores y 1 sobre enlaces críticos de la red (incluyendo canales frágiles como Invitado - Miembro de Equipo). '
+        '- hypotheses: 3 a 5 hipótesis sistémicas (title, rationale, evidence_limit) que expliquen por qué las personas actúan como lo hacen, siempre presentadas como premisas a validar en terreno y no como verdades absolutas. '
+        '- interventions: 3 recomendaciones de acción directivas y humanas (name, why, measure), diferenciadas por audiencia, desbloqueo de barreras sistémicas y fortalecimiento de conexiones débiles. '
+        '- what_to_measure: 4 a 5 indicadores clave de adopción por audiencia, desbloqueo sistémico y tracción relacional. '
+        '- traceability: Breve párrafo declarando las fuentes corporativas consultadas (diagnóstico, audiencias, sistema, encuestas y red) y sus límites metodológicos. '
         'Escribe con tono empático, riguroso, estratégico y sin jerga matemática innecesaria. '
         'Responde exclusivamente un objeto JSON válido con los campos solicitados.'
     )
@@ -147,6 +142,7 @@ def ai_interpret(
             'type': 'object',
             'properties': {
                 'system_reading': {'type': 'string'},
+                'audience_reading': {'type': 'string'},
                 'structural_findings': {
                     'type': 'array',
                     'items': {'type': 'string'}
@@ -184,7 +180,7 @@ def ai_interpret(
                 'traceability': {'type': 'string'}
             },
             'required': [
-                'system_reading', 'structural_findings', 'hypotheses',
+                'system_reading', 'audience_reading', 'structural_findings', 'hypotheses',
                 'interventions', 'what_to_measure', 'traceability'
             ],
             'additionalProperties': False
@@ -288,6 +284,7 @@ def ai_interpret(
             if len(cleaned) > 50:
                 result = {
                     'system_reading': cleaned,
+                    'audience_reading': '',
                     'structural_findings': ['Interpretación generada en formato narrativo por el modelo de IA.'],
                     'hypotheses': [],
                     'interventions': [],
@@ -299,6 +296,7 @@ def ai_interpret(
 
         # Normalizar claves para garantizar renderizado en el Frontend
         result.setdefault('system_reading', '')
+        result.setdefault('audience_reading', '')
         result.setdefault('structural_findings', [])
         result.setdefault('hypotheses', [])
         result.setdefault('interventions', [])
