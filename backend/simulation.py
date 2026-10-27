@@ -241,6 +241,7 @@ def simulate_adoption(data: dict[str, Any]) -> dict[str, Any]:
         "scenario": scenario, "periods": periods, "runs": runs, "seed": seed,
         "mode": data.get("mode", "synthetic"), "agent_count": len(agents), "edge_count": len(edges),
         "parameters": parameters,
+        "parameter_origin": "provided_unvalidated" if data.get("parameters") else "hypothetical_defaults",
         "series": series,
         "final": {
             "baseline": series[-1]["baseline"],
