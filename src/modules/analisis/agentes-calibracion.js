@@ -100,14 +100,14 @@ function getABMResearchInputs() {
   };
   if(payload.mode==='observed'){
     const persons=(x.nodes||[]).map((n,i)=>({...n,idx:i})).filter(n=>n.type==='Persona');
-    const missing=persons.filter(n=>!String((x.abmAudienceMap||{})[n.idx]||n.audienceId||''));
+    const missing=persons.filter(n=>!abmV2AudienceId(x,n,n.idx));
     if(missing.length)throw Error('Asigna audiencias a todos los nodos de tipo Persona en el panel del Grafo.');
     const allowed=new Set(audienceSet.map(a=>String(a.id)));
-    const included=persons.filter(n=>allowed.has(String((x.abmAudienceMap||{})[n.idx]||n.audienceId)));
+    const included=persons.filter(n=>allowed.has(abmV2AudienceId(x,n,n.idx)));
     if(included.length<2)throw Error('Se necesitan al menos dos personas pertenecientes a las audiencias aplicables.');
     const includedIds=new Set(included.map(n=>String(n.idx)));
     payload.agents=included.map(n=>({id:String(n.idx),
-      audience_id:String((x.abmAudienceMap||{})[n.idx]||n.audienceId)}));
+      audience_id:abmV2AudienceId(x,n,n.idx)}));
     payload.edges=(x.edges||[]).filter(edge=>
       String(edge.relation||edge.label||'').trim().toLowerCase()==='influye en' &&
       includedIds.has(String(edge.s))&&includedIds.has(String(edge.t)))
