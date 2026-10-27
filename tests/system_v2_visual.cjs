@@ -38,7 +38,7 @@ assert.equal(sum.hypotheses.length,1);
 assert.equal(sum.events.length,3);
 assert.equal(sum.unassignedEvents,1);
 let html=context.renderSystemVisualPage(x,x.systemV23);
-for(const part of ['¿Qué está sosteniendo','Lo que favorece','Lo que dificulta','Lo que mantiene el patrón','Lo que debemos contrastar','Evolución','Permisos insuficientes']){
+for(const part of ['¿Qué está sosteniendo','Lo que favorece','Lo que dificulta','Lo que mantiene el patrón','Lo que debemos contrastar','EVOLUCIÓN','Permisos insuficientes']){
  assert.ok(html.includes(part),part);
 }
 assert.doesNotMatch(html,/Otro comportamiento/);
