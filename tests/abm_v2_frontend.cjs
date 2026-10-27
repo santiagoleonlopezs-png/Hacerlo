@@ -87,4 +87,38 @@ const noOthers=context.renderABMScenarioComparison(project,{...secondRun,
   modelFingerprint:'otra-red'});
 assert.match(noOthers,/Elige otra tarjeta/);
 
+
+const testNodes=new Map();
+const node=id=>{
+ if(!testNodes.has(id))testNodes.set(id,{innerHTML:'',textContent:'',value:'',dataset:{},
+   style:{setProperty(){}},querySelector:()=>null});
+ return testNodes.get(id);
+};
+const buttons=['training','friction','incentives','ambassadors'].map(id=>{
+ const marker={textContent:'○'};
+ return {dataset:{abmScenario:id},state:{},marker,
+   setAttribute(k,v){this.state[k]=v},classList:{toggle(){}},
+   querySelector:()=>marker};
+});
+const form={
+ elements:{scenario:{value:'friction'},initialPct:{value:'10',dataset:{}}},
+ querySelectorAll:()=>buttons
+};
+const output=node('abm-output');
+output.querySelector=sel=>sel==='.abm-outcome-ready'?{}:null;
+output.innerHTML='<div class="abm-outcome-ready"></div>';
+context.document={getElementById:id=>id==='abm-form'?form:node(id)};
+context.abmScenarioSelect('training');
+assert.equal(form.elements.scenario.value,'training');
+assert.equal(buttons[0].state['aria-pressed'],'true');
+assert.equal(buttons[1].state['aria-pressed'],'false');
+assert.equal(buttons[0].marker.textContent,'✓');
+assert.match(output.innerHTML,/Cambi[ea]ste una decisión|Cambi[ea]ste una/);
+context.abmSyncAdoptionPreview(35);
+assert.equal(form.elements.initialPct.value,'35');
+assert.equal(form.elements.initialPct.dataset.source,'manual_hypothesis');
+assert.equal(node('abm-initial-value').textContent,'35%');
+context.abmScenarioSelect('unrecognized');
+assert.equal(form.elements.scenario.value,'training');
+
 console.log('ABM browser contract smoke checks: OK');
