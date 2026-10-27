@@ -39,8 +39,7 @@ function eePage(x){
    '</section>';
  const active=s?'<section class="panel ee-active-toolbar">'+
    '<div class="ee-active-row"><div class="ee-current-instrument">'+
-     '<span class="ee-current-label">Trabajando en</span><strong>'+safe(s.title)+'</strong>'+
-     '<small>'+safe(s.kind)+' · '+s.responses.length+' respuestas</small></div>'+
+     '<span class="ee-current-label">Gestiona el diseño y los resultados del instrumento seleccionado</span></div>'+
      '<details class="ee-instrument-options"><summary>Opciones del instrumento</summary>'+
        '<div class="ee-options-content"><div class="ee-options-actions">'+
          '<button class="secondary" type="button" onclick="eeClone()">Duplicar / nueva versión</button>'+
