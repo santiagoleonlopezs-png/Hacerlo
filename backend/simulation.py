@@ -17,6 +17,29 @@ import networkx as nx
 MAX_AGENTS = 500
 MAX_EDGES = 5000
 
+DEFAULT_PARAMETERS = {"threshold_mean": 0.62, "peer_weight": 0.25, "adoption_rate": 0.28}
+PARAMETER_BOUNDS = {"threshold_mean": (0.35, 0.85), "peer_weight": (0.0, 0.6), "adoption_rate": (0.05, 0.5)}
+
+
+def validated_parameters(values=None):
+    """Solo permite parámetros explícitamente modelados y con límites auditables."""
+    if values is None:
+        values = {}
+    if not isinstance(values, dict) or any(k not in DEFAULT_PARAMETERS for k in values):
+        raise ValueError("Parámetros no reconocidos por el modelo ABM.")
+    result = DEFAULT_PARAMETERS.copy()
+    for key, value in values.items():
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Parámetro inválido: {key}.") from exc
+        low, high = PARAMETER_BOUNDS[key]
+        if not math.isfinite(number) or not low <= number <= high:
+            raise ValueError(f"{key} debe estar entre {low} y {high}.")
+        result[key] = number
+    return result
+
+
 
 def clamp(value, low=0.0, high=1.0):
     return min(high, max(low, float(value)))
@@ -105,16 +128,17 @@ def build_population(data: dict[str, Any], seed: int):
     return agents, edges
 
 
-def single_run(agents, incoming, scenario, initial_adoption, periods, rng_seed):
+def single_run(agents, incoming, scenario, initial_adoption, periods, rng_seed, parameters=None):
     """Actualización síncrona: todos deciden con estados del periodo anterior.
 
     Los uniformes se comparten entre control e intervención (common random numbers).
     Adopción absorbente durante el horizonte v1; retención se modelará aparte.
     """
     rng = random.Random(rng_seed)
+    params = validated_parameters(parameters)
     ids = [a["id"] for a in agents]
     draws = {name: rng.random() for name in ids}
-    thresholds = {name: clamp(rng.gauss(0.62, 0.13), 0.25, 0.9) for name in ids}
+    thresholds = {name: clamp(rng.gauss(params["threshold_mean"], 0.13), 0.25, 0.9) for name in ids}
     adopted = {name: draws[name] < initial_adoption for name in ids}
     effects = {"capability": 0.18, "opportunity": 0.18, "motivation": 0.18}
     if scenario == "ambassadors":
@@ -148,9 +172,9 @@ def single_run(agents, incoming, scenario, initial_adoption, periods, rng_seed):
             neighbors = incoming.get(identity, [])
             weight_sum = sum(w for _, w in neighbors)
             peer = sum(w for s, w in neighbors if adopted[s]) / weight_sum if weight_sum else 0.0
-            drive = 0.35 * c + 0.35 * o + 0.30 * m + 0.25 * peer
+            drive = 0.35 * c + 0.35 * o + 0.30 * m + params["peer_weight"] * peer
             # Forma funcional y coeficientes son supuestos falsables; no parámetros estimados.
-            p = 0.28 / (1 + math.exp(-8 * (drive - thresholds[identity])))
+            p = params["adoption_rate"] / (1 + math.exp(-8 * (drive - thresholds[identity])))
             if draw < p:
                 following[identity] = True
         adopted = following
@@ -171,6 +195,7 @@ def simulate_adoption(data: dict[str, Any]) -> dict[str, Any]:
     scenario = data.get("scenario", "training")
     if scenario not in {"training", "friction", "incentives", "ambassadors"}:
         raise ValueError("Escenario desconocido.")
+    parameters = validated_parameters(data.get("parameters"))
     agents, edges = build_population(data, seed)
     incoming = defaultdict(list)
     for source, target, weight in edges:
@@ -182,8 +207,8 @@ def simulate_adoption(data: dict[str, Any]) -> dict[str, Any]:
     by_group_treat = defaultdict(list)
     for rep in range(runs):
         run_seed = seed + 7919 * (rep + 1)
-        b, b_groups = single_run(agents, incoming, "baseline", initial_adoption, periods, run_seed)
-        t, t_groups = single_run(agents, incoming, scenario, initial_adoption, periods, run_seed)
+        b, b_groups = single_run(agents, incoming, "baseline", initial_adoption, periods, run_seed, parameters)
+        t, t_groups = single_run(agents, incoming, scenario, initial_adoption, periods, run_seed, parameters)
         baseline.append(b)
         treatment.append(t)
         for aid in b_groups:
@@ -215,6 +240,7 @@ def simulate_adoption(data: dict[str, Any]) -> dict[str, Any]:
         "behavior": str(data.get("behavior", "Comportamiento objetivo"))[:160],
         "scenario": scenario, "periods": periods, "runs": runs, "seed": seed,
         "mode": data.get("mode", "synthetic"), "agent_count": len(agents), "edge_count": len(edges),
+        "parameters": parameters,
         "series": series,
         "final": {
             "baseline": series[-1]["baseline"],
