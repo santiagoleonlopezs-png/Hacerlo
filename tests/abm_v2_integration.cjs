@@ -2,6 +2,7 @@
    No toca cuentas reales, datos privados ni desplegados en Render. */
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const app=fs.readFileSync('src/core/app.js','utf8');
+const evidence=fs.readFileSync('src/modules/analisis/agentes-evidencia-v2.js','utf8');
 const sim=fs.readFileSync('src/modules/analisis/agentes-abm.js','utf8');
 const lab=fs.readFileSync('src/modules/analisis/agentes-calibracion.js','utf8');
 const memory={initiatives:[],graph_nodes:[],graph_edges:[],memberships:[
@@ -103,7 +104,7 @@ const ctx={console,FormData:MockFormData,
   }
 };
 vm.createContext(ctx);
-vm.runInContext(app+'\n'+sim+'\n'+lab,ctx);
+vm.runInContext(app+'\n'+evidence+'\n'+sim+'\n'+lab,ctx);
 async function main(){
   // Login y carga de pertenencia organizacional antes de empezar el piloto.
   vm.runInContext("cloudOrgId='org-test';cloudReady=true",ctx);
