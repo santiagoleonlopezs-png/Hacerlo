@@ -146,3 +146,16 @@
 
 /* La hero global de la aplicación es redundante en el laboratorio guiado. */
 main:has(.abm-ux)>.hero{display:none}
+
+/* Selector visual de audiencias pertenecientes al comportamiento de Diseño. */
+.abm-ux .abm-audience-picker{background:#092436;border:1px solid #305668;border-radius:12px;padding:15px;margin-top:13px}
+.abm-ux .abm-audience-heading{display:flex;justify-content:space-between;align-items:center;gap:13px;flex-wrap:wrap}
+.abm-ux .abm-audience-heading strong{font-size:13px}
+.abm-ux .abm-audience-heading button{width:auto;font-size:11px;padding:6px 11px}
+.abm-ux .abm-audience-picker>.muted{font-size:11px;margin:8px 0 12px}
+.abm-ux .abm-audience-options{display:flex;flex-wrap:wrap;gap:8px}
+.abm-ux .abm-audience-option{display:inline-flex;align-items:center;gap:8px;border:1px solid #305e6d;padding:9px 12px;background:#103043;border-radius:11px;font-size:12px;color:#c7e0e8;cursor:pointer;min-width:0}
+.abm-ux .abm-audience-option:has(input:checked){background:#124d4b;color:#e6fbf3;border-color:#51ddba}
+.abm-ux .abm-audience-option:focus-within{outline:2px solid #89e8d8;outline-offset:2px}
+.abm-ux .abm-audience-option input{appearance:auto;width:15px;height:15px;accent-color:#4cdbbc;margin:0;flex:0 0 auto}
+.abm-ux .abm-audience-summary{margin:11px 0 0;color:#83dbc9;font-size:11px}
