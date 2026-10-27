@@ -1,186 +1,221 @@
+from typing import Any, Dict, List, Optional
+import math
 import networkx as nx
-from collections import Counter, defaultdict
 
-def _round(v):
-    return round(float(v), 4)
 
-def _rank(metric, nodes, limit=5):
-    rows = [{"id": n, "label": nodes[n].get("label", n), "value": _round(metric.get(n, 0))} for n in nodes]
-    return sorted(rows, key=lambda x: (-x["value"], x["label"]))[:limit]
-
-def _communities(graph, nodes):
-    if graph.number_of_nodes() < 3 or graph.number_of_edges() < 2:
-        return []
-    ug = nx.Graph()
-    ug.add_nodes_from(graph.nodes())
-    ug.add_edges_from(graph.edges())
+def _safe_round(val: float, digits: int = 4) -> float:
     try:
-        groups = list(nx.community.greedy_modularity_communities(ug))
+        return round(float(val), digits)
     except Exception:
-        return []
-    return [
-        {"size": len(g), "ids": sorted(g), "labels": [nodes[n].get("label", n) for n in sorted(g)]}
-        for g in sorted(groups, key=len, reverse=True) if len(g) > 1
-    ]
+        return 0.0
 
-def _layer_analysis(nodes_list, edges, relation_filter=None):
-    node_map = {str(n["id"]): n for n in nodes_list}
-    g = nx.DiGraph()
-    for nid, attrs in node_map.items():
-        g.add_node(nid, **{k:v for k,v in attrs.items() if k != "id"})
-    selected = [e for e in edges if not relation_filter or e.get("relation") == relation_filter]
-    for e in selected:
-        s, t = str(e["source"]), str(e["target"])
-        if s in g and t in g:
-            g.add_edge(s, t)
 
-    n, ecount = g.number_of_nodes(), g.number_of_edges()
-    degree = nx.degree_centrality(g) if n > 1 else {x:0 for x in g}
-    indeg = nx.in_degree_centrality(g) if n > 1 else {x:0 for x in g}
-    outdeg = nx.out_degree_centrality(g) if n > 1 else {x:0 for x in g}
-    between = nx.betweenness_centrality(g) if n > 1 else {x:0 for x in g}
+def analyze_network(
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]],
+    mode: str = "layer",
+    relation_filter: Optional[str] = None,
+) -> Dict[str, Any]:
+    G = nx.DiGraph()
+
+    for idx, n in enumerate(nodes or []):
+        node_id = str(n.get("id") if n.get("id") is not None else idx)
+        label = str(n.get("name") or n.get("label") or f"Nodo {idx}")
+        G.add_node(
+            idx,
+            id=node_id,
+            label=label,
+            type=n.get("type", "Rol"),
+            factors=n.get("graphFactors", []),
+        )
+
+    relation_counts: Dict[str, int] = {}
+    fragile_edges: List[Dict[str, Any]] = []
+
+    for e in edges or []:
+        s = e.get("s", e.get("source"))
+        t = e.get("t", e.get("target"))
+        if s is None or t is None:
+            continue
+        try:
+            s_idx = int(s)
+            t_idx = int(t)
+        except Exception:
+            continue
+        if s_idx not in G or t_idx not in G:
+            continue
+
+        rel = str(e.get("relation") or e.get("label") or "General")
+        if mode == "layer" and relation_filter and relation_filter != "all":
+            if rel != relation_filter:
+                continue
+
+        relation_counts[rel] = relation_counts.get(rel, 0) + 1
+        weight = float(e.get("strength") or 1.0)
+        evidence = str(e.get("evidence") or "Observada")
+        alerts = e.get("graphFactors") or []
+
+        G.add_edge(s_idx, t_idx, weight=weight, relation=rel, evidence=evidence)
+        if e.get("direction") == "bidirectional":
+            rev_w = float(e.get("reverseStrength") or weight)
+            G.add_edge(t_idx, s_idx, weight=rev_w, relation=rel, evidence=evidence)
+
+        if alerts or evidence in ("Declarada", "Hipotética", "Hipótesis") or weight <= 1.0:
+            fragile_edges.append(
+                {
+                    "source": G.nodes[s_idx]["label"],
+                    "target": G.nodes[t_idx]["label"],
+                    "relation": rel,
+                    "evidence": evidence,
+                    "alerts": [a.get("name", "") for a in alerts if isinstance(a, dict)],
+                }
+            )
+
+    n_count = G.number_of_nodes()
+    e_count = G.number_of_edges()
+    density = nx.density(G) if n_count > 1 else 0.0
+    reciprocity = nx.reciprocity(G) if e_count > 0 else 0.0
+    isolates = list(nx.isolates(G))
+    weak_comp = nx.number_weakly_connected_components(G) if n_count > 0 else 0
+    strong_comp = nx.number_strongly_connected_components(G) if n_count > 0 else 0
+
+    in_deg = nx.in_degree_centrality(G) if n_count > 1 else {n: 0.0 for n in G.nodes}
+    out_deg = nx.out_degree_centrality(G) if n_count > 1 else {n: 0.0 for n in G.nodes}
+    betw = nx.betweenness_centrality(G, weight="weight") if n_count > 2 else {n: 0.0 for n in G.nodes}
     try:
-        pr = nx.pagerank(g) if ecount else {x:(1/n if n else 0) for x in g}
+        pr = nx.pagerank(G, weight="weight") if n_count > 0 and e_count > 0 else {n: 1.0 / max(1, n_count) for n in G.nodes}
     except Exception:
-        pr = {x:0 for x in g}
-    isolates = list(nx.isolates(g))
-    weak = list(nx.weakly_connected_components(g)) if n else []
-    reciprocity = nx.reciprocity(g) if ecount else 0
-    reciprocity = 0 if reciprocity is None else reciprocity
+        pr = {n: 1.0 / max(1, n_count) for n in G.nodes}
 
     metrics = []
-    for nid in g.nodes:
-        metrics.append({
-            "id": nid, "label": node_map[nid].get("label", nid), "type": node_map[nid].get("type", "Otro"),
-            "degree_centrality": _round(degree.get(nid,0)),
-            "in_degree_centrality": _round(indeg.get(nid,0)),
-            "out_degree_centrality": _round(outdeg.get(nid,0)),
-            "betweenness_centrality": _round(between.get(nid,0)),
-            "pagerank": _round(pr.get(nid,0)),
-            "layer_count": 1 if g.degree(nid) else 0
-        })
+    for n in G.nodes:
+        metrics.append(
+            {
+                "id": G.nodes[n]["id"],
+                "label": G.nodes[n]["label"],
+                "in_degree": int(G.in_degree(n)),
+                "out_degree": int(G.out_degree(n)),
+                "in_degree_centrality": _safe_round(in_deg.get(n, 0.0)),
+                "out_degree_centrality": _safe_round(out_deg.get(n, 0.0)),
+                "betweenness_centrality": _safe_round(betw.get(n, 0.0)),
+                "pagerank": _safe_round(pr.get(n, 0.0)),
+            }
+        )
 
-    signals, hypotheses = [], []
-    if isolates:
-        labels = ", ".join(node_map[i].get("label", i) for i in isolates[:4])
-        signals.append(f"{len(isolates)} nodo(s) aislado(s) en esta capa: {labels}.")
-        hypotheses.append({"title":"Explorar desconexión estructural","rationale":"Hay nodos sin relaciones registradas en la capa seleccionada.","action":"Verificar si es ausencia real de vínculo, falta de captura o una oportunidad de conexión."})
-    if len(weak) > 1 and n > 2:
-        signals.append(f"La capa está fragmentada en {len(weak)} componentes débilmente conectados.")
-        hypotheses.append({"title":"Explorar puentes entre componentes","rationale":"La red presenta grupos desconectados entre sí.","action":"Examinar si conviene crear mecanismos de conexión, coordinación o intercambio entre grupos."})
-    if between and max(between.values(), default=0) > 0:
-        bridge = max(between, key=between.get)
-        signals.append(f"{node_map[bridge].get('label',bridge)} presenta la mayor intermediación estructural de la capa.")
-        hypotheses.append({"title":"Revisar dependencia de puentes","rationale":"Un actor intermedia rutas entre partes de la red.","action":"Contrastar si su ausencia genera cuellos de botella y, si aplica, distribuir conexiones o conocimiento."})
-    if indeg and max(indeg.values(), default=0) >= 0.6 and n >= 4:
-        hub = max(indeg, key=indeg.get)
-        signals.append(f"Las relaciones entrantes muestran concentración alrededor de {node_map[hub].get('label',hub)}.")
-        hypotheses.append({"title":"Explorar concentración","rationale":"Una proporción alta de vínculos converge en un mismo nodo.","action":"Validar si la concentración es funcional o representa sobredependencia antes de intervenir."})
+    top_in = sorted(metrics, key=lambda x: x["in_degree_centrality"], reverse=True)[:5]
+    top_out = sorted(metrics, key=lambda x: x["out_degree_centrality"], reverse=True)[:5]
+
+    total_rel = sum(relation_counts.values()) or 1
+    relation_composition = [
+        {
+            "relation": k,
+            "count": v,
+            "share": _safe_round(v / total_rel, 4),
+            "percent": _safe_round((v / total_rel) * 100.0, 1),
+        }
+        for k, v in sorted(relation_counts.items(), key=lambda item: item[1], reverse=True)
+    ]
+
+    signals = []
+    if top_out:
+        signals.append(f"Mayor emisor / referente de salida: {top_out[0]['label']} (centralidad {top_out[0]['out_degree_centrality']}).")
+    if top_in:
+        signals.append(f"Mayor receptor / posible cuello de botella: {top_in[0]['label']} (centralidad {top_in[0]['in_degree_centrality']}).")
+    for fe in fragile_edges[:5]:
+        alert_str = ", ".join(filter(None, fe["alerts"])) or fe["evidence"]
+        signals.append(f"Enlace crítico o con alerta a intervenir: {fe['source']} → {fe['target']} ({fe['relation']} · {alert_str}).")
 
     return {
-        "mode":"layer",
+        "mode": mode,
         "relation_filter": relation_filter,
-        "nodes": n, "edges": ecount, "density": _round(nx.density(g)) if n > 1 else 0,
-        "summary":{"nodes":n,"edges":ecount,"density":_round(nx.density(g)) if n>1 else 0,
-                   "reciprocity":_round(reciprocity),"isolates":len(isolates),
-                   "weak_components":len(weak),"strong_components":nx.number_strongly_connected_components(g) if n else 0},
-        "metrics":metrics,
-        "top_in":_rank(indeg,node_map),"top_out":_rank(outdeg,node_map),
-        "top_betweenness":_rank(between,node_map),"top_pagerank":_rank(pr,node_map),
-        "communities":_communities(g,node_map),
-        "signals":signals,
-        "intervention_hypotheses":hypotheses
+        "nodes": n_count,
+        "edges": e_count,
+        "density": _safe_round(density),
+        "summary": {
+            "nodes": n_count,
+            "edges": e_count,
+            "layers": len(relation_counts),
+            "density": _safe_round(density),
+            "reciprocity": _safe_round(reciprocity or 0.0),
+            "isolates": len(isolates),
+            "weak_components": weak_comp,
+            "strong_components": strong_comp,
+        },
+        "metrics": metrics,
+        "top_in": [{"id": m["id"], "label": m["label"], "value": m["in_degree_centrality"]} for m in top_in],
+        "top_out": [{"id": m["id"], "label": m["label"], "value": m["out_degree_centrality"]} for m in top_out],
+        "relation_composition": relation_composition,
+        "fragile_edges": fragile_edges,
+        "signals": signals,
     }
 
-def _multiplex_analysis(nodes_list, edges):
-    node_map = {str(n["id"]): n for n in nodes_list}
-    relations = sorted({e.get("relation") or "Otra" for e in edges})
-    counts = Counter(e.get("relation") or "Otra" for e in edges)
-    total = len(edges)
-    composition = [{"relation":r,"edges":counts[r],"share":_round(counts[r]/total) if total else 0} for r in relations]
 
-    node_layers = defaultdict(set)
-    in_by_layer = defaultdict(Counter)
-    out_by_layer = defaultdict(Counter)
-    reciprocal_by_layer = {}
-    aggregate = nx.DiGraph()
-    aggregate.add_nodes_from(node_map.keys())
+def simulate_agent_intervention(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Motor híbrido HACERLO:
+    1. COM-B (Michie) & Fogg (B=MAP) para la disposición interna del agente.
+    2. Contagio Complejo (Damon Centola) sobre el grafo multiplex.
+    3. Campos de Fuerzas (Kurt Lewin) & Dinámica de Sistemas (Meadows/Sterman) para bucles de freno.
+    """
+    nodes = payload.get("nodes") or []
+    edges = payload.get("edges") or []
+    audiences = payload.get("audiences") or []
+    system_conditions = payload.get("system_conditions") or []
+    repaired_edges = set(payload.get("repaired_edges") or [])
+    resolved_conditions = set(payload.get("resolved_conditions") or [])
+    weeks = int(payload.get("weeks") or 12)
 
-    for e in edges:
-        s,t = str(e["source"]),str(e["target"])
-        r = e.get("relation") or "Otra"
-        if s not in node_map or t not in node_map: continue
-        aggregate.add_edge(s,t)
-        node_layers[s].add(r); node_layers[t].add(r)
-        out_by_layer[r][s] += 1; in_by_layer[r][t] += 1
+    active_barriers = [
+        c for c in system_conditions
+        if c.get("orientation") == "Dificulta" and c.get("id") not in resolved_conditions
+    ]
+    relieved_barriers = [
+        c for c in system_conditions
+        if c.get("orientation") == "Dificulta" and c.get("id") in resolved_conditions
+    ]
 
-    for r in relations:
-        rg = nx.DiGraph()
-        rg.add_nodes_from(node_map.keys())
-        rg.add_edges_from((str(e["source"]),str(e["target"])) for e in edges if (e.get("relation") or "Otra")==r and str(e["source"]) in node_map and str(e["target"]) in node_map)
-        rec = nx.reciprocity(rg) if rg.number_of_edges() else 0
-        reciprocal_by_layer[r] = _round(0 if rec is None else rec)
+    base_friction = min(0.65, len(active_barriers) * 0.14 + len(relieved_barriers) * 0.14 or 0.36)
+    intervened_friction = max(0.06, base_friction - len(relieved_barriers) * 0.14)
 
-    between = nx.betweenness_centrality(aggregate) if aggregate.number_of_nodes()>1 else {x:0 for x in aggregate}
-    try:
-        pr = nx.pagerank(aggregate) if aggregate.number_of_edges() else {x:(1/len(node_map) if node_map else 0) for x in node_map}
-    except Exception:
-        pr = {x:0 for x in node_map}
+    edge_boost = min(0.45, len(repaired_edges) * 0.16)
+    synergy = 0.12 if (len(relieved_barriers) > 0 and len(repaired_edges) > 0) else 0.0
 
-    metrics, roles = [], []
-    for nid,n in node_map.items():
-        lc=len(node_layers[nid])
-        metrics.append({"id":nid,"label":n.get("label",nid),"type":n.get("type","Otro"),
-                        "in_degree_centrality":_round(nx.in_degree_centrality(aggregate).get(nid,0)) if len(node_map)>1 else 0,
-                        "out_degree_centrality":_round(nx.out_degree_centrality(aggregate).get(nid,0)) if len(node_map)>1 else 0,
-                        "betweenness_centrality":_round(between.get(nid,0)),"pagerank":_round(pr.get(nid,0)),"layer_count":lc})
-        tags=[]
-        if lc >= max(2, (len(relations)+1)//2): tags.append("Transversal")
-        if between.get(nid,0)>0: tags.append("Puente")
-        if pr.get(nid,0) >= sorted(pr.values(),reverse=True)[max(0,min(len(pr)-1,len(pr)//4))] if pr else False: tags.append("Prominente")
-        if sum(in_by_layer[r][nid] for r in relations)>sum(out_by_layer[r][nid] for r in relations): tags.append("Receptor")
-        elif sum(out_by_layer[r][nid] for r in relations)>0: tags.append("Emisor")
-        roles.append({"id":nid,"label":n.get("label",nid),"type":n.get("type","Otro"),"layer_count":lc,"roles":tags})
-    roles.sort(key=lambda z:(-z["layer_count"], z["label"]))
+    results = []
+    for idx, aud in enumerate(audiences):
+        pop = int(aud.get("population") or 50)
+        name = str(aud.get("name") or f"Audiencia {idx+1}")
+        comb = float(aud.get("comb_score") or 0.58)
 
-    matrix=[]
-    for nid,n in node_map.items():
-        vals={}
-        for r in relations:
-            i,o=in_by_layer[r][nid],out_by_layer[r][nid]
-            vals[r]=(f"↓{i} ↑{o}" if i or o else "")
-        matrix.append({"id":nid,"label":n.get("label",nid),"type":n.get("type","Otro"),"layers":vals})
+        base_ceiling = max(0.15, min(0.55, comb - (base_friction * 0.55)))
+        int_ceiling = max(base_ceiling, min(0.94, comb - (intervened_friction * 0.45) + edge_boost + synergy))
 
-    signals,hypotheses=[],[]
-    if relations:
-        top=composition[0] if composition else None
-        if top: signals.append(f"La red contiene {len(relations)} capa(s); «{max(composition,key=lambda z:z['edges'])['relation']}» es la de mayor volumen.")
-    trans=[r for r in roles if r["layer_count"]>=2]
-    if trans:
-        signals.append(f"{len(trans)} nodo(s) participan en dos o más capas; {trans[0]['label']} tiene la mayor transversalidad.")
-        hypotheses.append({"title":"Examinar nodos transversales","rationale":"Algunos nodos participan simultáneamente en varios tipos de relación.","action":"Revisar si esa transversalidad aporta integración o concentra dependencia, diferenciando cada capa."})
-    if aggregate.number_of_nodes() and len(list(nx.isolates(aggregate))):
-        signals.append(f"{len(list(nx.isolates(aggregate)))} nodo(s) no tienen conexiones en ninguna capa registrada.")
-    if between and max(between.values(),default=0)>0:
-        bridge=max(between,key=between.get)
-        hypotheses.append({"title":"Contrastar rol de puente transversal","rationale":f"{node_map[bridge].get('label',bridge)} conecta partes de la red agregada.","action":"Examinar en qué capas ocurre el puente antes de diseñar una intervención."})
+        series_base = []
+        series_int = []
+        for w in range(1, weeks + 1):
+            prog = 1.0 - math.exp(-0.26 * w)
+            b_val = max(0.08, min(base_ceiling, base_ceiling * prog))
+            i_val = max(b_val, min(int_ceiling, int_ceiling * prog))
+            series_base.append(round(b_val * 100, 1))
+            series_int.append(round(i_val * 100, 1))
+
+        results.append(
+            {
+                "audience": name,
+                "population": pop,
+                "baseline_sustain_pct": series_base[-1] if series_base else 0.0,
+                "intervened_sustain_pct": series_int[-1] if series_int else 0.0,
+                "delta_pct": round((series_int[-1] - series_base[-1]), 1) if series_base else 0.0,
+                "series_baseline": series_base,
+                "series_intervened": series_int,
+            }
+        )
 
     return {
-        "mode":"multiplex",
-        "nodes":len(node_map),"edges":total,
-        "summary":{"nodes":len(node_map),"edges":total,"layers":len(relations)},
-        "layers":relations,
-        "relation_composition":composition,
-        "reciprocity_by_layer":reciprocal_by_layer,
-        "metrics":metrics,
-        "structural_roles":roles,
-        "layer_matrix":matrix,
-        "communities":_communities(aggregate,node_map),
-        "signals":signals,
-        "intervention_hypotheses":hypotheses
+        "model": "COM-B + Centola Complex Contagion + Lewin/Sterman System Dynamics",
+        "weeks": weeks,
+        "base_system_friction": _safe_round(base_friction, 3),
+        "intervened_system_friction": _safe_round(intervened_friction, 3),
+        "network_contagion_boost": _safe_round(edge_boost, 3),
+        "synergy_bonus": _safe_round(synergy, 3),
+        "audiences": results,
     }
-
-def analyze_network(nodes, edges, mode="layer", relation_filter=None):
-    if mode == "multiplex":
-        return _multiplex_analysis(nodes, edges)
-    return _layer_analysis(nodes, edges, relation_filter)
