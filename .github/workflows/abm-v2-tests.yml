@@ -6,6 +6,7 @@ on:
       - feature/v2-laboratorio-visual
       - feature/v2-audiencias-sistema-visual
       - feature/v2-ux-coherencia-limpieza
+      - fix/v2-editar-intervenciones
   pull_request:
     branches:
       - hacerlo-v2-modular
@@ -27,6 +28,7 @@ jobs:
         run: |
           python -m compileall -q backend
           node --check src/core/app.js
+          node --check src/modules/implementacion/operaciones.js
           node --check src/modules/analisis/agentes-evidencia-v2.js
           node --check src/modules/analisis/agentes-abm.js
           node --check src/modules/analisis/agentes-calibracion.js
@@ -43,6 +45,8 @@ jobs:
         run: PYTHONPATH=backend python -m unittest discover -s backend/tests -v
       - name: Prueba de render ABM V2
         run: node tests/abm_v2_frontend.cjs
+      - name: Editar acciones de Implementación sin duplicarlas
+        run: node tests/implementation_v2_edit.cjs
       - name: Consistencia de interfaz y preservación de formularios
         run: node tests/ux_v2_consistency.cjs
       - name: Audiencias seleccionadas en simulación V2
