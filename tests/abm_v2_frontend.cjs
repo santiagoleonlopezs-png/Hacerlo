@@ -61,4 +61,30 @@ assert.match(shown,/22.0%/);
 assert.match(shown,/33.0%/);
 assert.match(shown,/No predicción|no predicción|no es un pronóstico/);
 assert.match(shown,/Cómo podría evolucionar/);
+
+const compareBase={
+  behavior:'Registrar interacciones',mode:'synthetic',initial_adoption:.1,
+  periods:5,runs:8,sample_size:50,seed:2026,
+  audiences:[{id:'aud-1',name:'Asesores',population:80,capability:.5,opportunity:.5,motivation:.5}],
+  agents:[],edges:[]
+};
+const a=context.abmScenarioFingerprint({...compareBase,scenario:'training'});
+const b=context.abmScenarioFingerprint({...compareBase,scenario:'friction'});
+const c=context.abmScenarioFingerprint({...compareBase,initial_adoption:.9,scenario:'friction'});
+assert.equal(a,b,'La palanca no altera los supuestos de comparación');
+assert.notEqual(a,c,'Cambiar el punto de partida invalida la comparación');
+const baseRun={engine:'abm-v1',modelFingerprint:a,behaviorId:'b-test',scenario:'training',
+  result:{...sample,scenario:'training'}};
+const secondRun={...baseRun,scenario:'friction',result:{...sample,scenario:'friction'}};
+project.modelRuns=[baseRun,secondRun,{...secondRun,modelFingerprint:c}];
+const comparison=context.renderABMScenarioComparison(project,secondRun);
+assert.match(comparison,/Comparación de tus decisiones/);
+assert.match(comparison,/Ayudar a aprender/);
+assert.match(comparison,/Quitar obstáculos/);
+assert.equal((comparison.match(/class="abm-past-scenario/g)||[]).length,2,
+  'No comparar corridas con supuestos distintos');
+const noOthers=context.renderABMScenarioComparison(project,{...secondRun,
+  modelFingerprint:'otra-red'});
+assert.match(noOthers,/Elige otra tarjeta/);
+
 console.log('ABM browser contract smoke checks: OK');
