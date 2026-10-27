@@ -81,8 +81,8 @@ class SimulatedInitiativeAPITests(unittest.TestCase):
 
         # Comprobación de regresión para el motor existente NetworkX.
         network = self.client.post("/api/network/analyze", json={
-            "nodes": [{"id":"a", "label":"Agente A"}, {"id":"b","label":"Agente B"}],
-            "edges": [{"source":"a","target":"b","relation":"Influye en"}],
+            "nodes": [{"id":0, "label":"Agente A"}, {"id":1,"label":"Agente B"}],
+            "edges": [{"s":0,"t":1,"relation":"Influye en"}],
             "mode":"layer",
         })
         self.assertEqual(network.status_code, 200, network.text)
