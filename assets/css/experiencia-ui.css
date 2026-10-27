@@ -116,3 +116,10 @@ main>.hero:after{content:"";pointer-events:none;position:absolute;right:38px;top
 main>.hero h1{font-size:clamp(30px,3.2vw,43px);line-height:1.15;letter-spacing:-.7px}
 main>.hero p{color:#bfdae7;max-width:750px;line-height:1.6}
 @media(max-width:650px){main>.hero{padding:22px 18px}main>.hero:after{display:none}}
+
+/* Resultados · comportamiento objetivo arriba, indicadores abajo, a todo el ancho. */
+.results-stage-stack{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.results-stage-stack>.panel{min-width:0;margin:0}
+.results-stage-stack textarea{resize:vertical;min-height:130px}
+.results-stage-stack>.panel:last-child table{width:100%}
+.results-stage-stack>.panel:last-child{overflow-x:auto}
