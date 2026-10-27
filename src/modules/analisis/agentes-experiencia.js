@@ -9,6 +9,12 @@ const ABM_SCENARIO_CARDS=[
   {id:'ambassadors',icon:'network',symbol:'◇',step:'Influencia',title:'Activar referentes',intro:'¿Y si otras personas ayudaran a difundir el cambio?',detail:'Explora influencia entre pares.',color:'violet'}
 ];
 
+function abmMarkPreviewStale(){
+  const output=document.getElementById('abm-output');
+  if(output&&typeof output.querySelector==='function'&&output.querySelector('.abm-outcome-ready')){
+    output.innerHTML='<div class="abm-result-placeholder"><h3>Tu próximo escenario está por descubrirse</h3><p>Cambiaste una decisión o un supuesto. Ejecuta otra simulación para comparar de nuevo.</p></div>';
+  }
+}
 function abmScenarioSelect(value){
   const form=document.getElementById('abm-form');
   if(!form||!ABM_SCENARIO_CARDS.some(s=>s.id===value))return;
@@ -17,9 +23,12 @@ function abmScenarioSelect(value){
     const active=btn.dataset.abmScenario===value;
     btn.setAttribute('aria-pressed',String(active));
     btn.classList.toggle('is-active',active);
+    const marker=btn.querySelector('.abm-scenario-check');
+    if(marker)marker.textContent=active?'✓':'○';
   });
   const subtitle=document.getElementById('abm-choice-hint');
   if(subtitle)subtitle.textContent=ABM_SCENARIO_CARDS.find(s=>s.id===value).detail+' Se compara con no aplicar esa palanca.';
+  abmMarkPreviewStale();
 }
 
 function abmSyncAdoptionPreview(value){
@@ -34,6 +43,7 @@ function abmSyncAdoptionPreview(value){
   if(output)output.textContent=Math.round(num)+'%';
   const track=document.getElementById('abm-initial-track');
   if(track)track.style.setProperty('--abm-pct',num+'%');
+  abmMarkPreviewStale();
 }
 function abmUpdateObservedPreview(value){
   const output=document.getElementById('abm-initial-value');
@@ -149,7 +159,7 @@ function renderABMExperiencePage(x){
        (target.length===0?'<p class="notice">Asigna este comportamiento a una audiencia antes de simular.</p>':'')+
        '<div class="abm-run-row"><button class="abm-run" id="abm-start" type="submit"'+(!target.length?' disabled':'')+'><span>▶</span> Simular esta decisión</button><p id="abm-status" role="status" aria-live="polite">Explora escenarios con supuestos ajustables.</p></div></section>'+
        '<details class="abm-tech-settings"><summary><span>⚙</span><span><strong>Ajustar el modelo</strong><small>Red, tiempo, población y supuestos · opcional</small></span><span class="abm-chevron">⌄</span></summary>'+
-       '<div class="abm-advanced-inner"><p class="abm-caveat">Puedes simular sin tocar nada aquí. Los valores iniciales son hipótesis, no datos estimados del diagnóstico.</p>'+
+       '<div class="abm-advanced-inner" oninput="abmMarkPreviewStale()" onchange="abmMarkPreviewStale()"><p class="abm-caveat">Puedes simular sin tocar nada aquí. Los valores iniciales son hipótesis, no datos estimados del diagnóstico.</p>'+
        '<div class="abm-input-grid"><label>Origen de las conexiones<select name="mode" onchange="switchABMMode(this.value)"><option value="synthetic"'+(settings.mode!=='observed'?' selected':'')+'>Red ilustrativa (recomendada al empezar)</option><option value="observed"'+(settings.mode==='observed'?' selected':'')+'>Usar vínculos registrados en el Grafo</option></select></label>'+
        '<label>Periodos de simulación<input name="periods" type="number" min="1" max="24" value="'+safe(value(settings.periods,12))+'"></label>'+
        '<label>Repeticiones del modelo<input name="runs" type="number" min="5" max="80" value="'+safe(value(settings.runs,40))+'"></label>'+
