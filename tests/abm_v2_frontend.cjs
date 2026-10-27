@@ -3,12 +3,13 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
 
+const evidence=fs.readFileSync('src/modules/analisis/agentes-evidencia-v2.js','utf8');
 const sim=fs.readFileSync('src/modules/analisis/agentes-abm.js','utf8');
 const research=fs.readFileSync('src/modules/analisis/agentes-calibracion.js','utf8');
 const context={safe:(v)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;'),
   console};
 vm.createContext(context);
-vm.runInContext(sim+'\n'+research,context);
+vm.runInContext(evidence+'\n'+sim+'\n'+research,context);
 const project={
   behaviors:[{name:'Registrar interacciones',scope:'specific',audienceIds:['aud-1']}],
   audiences:[
