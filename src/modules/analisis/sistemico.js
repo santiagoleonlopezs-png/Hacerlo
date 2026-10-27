@@ -9,7 +9,7 @@ function sysBehaviorList(x){return (x.behaviors||[]).map((b,i)=>({id:String(b.id
 function sysStore(x){if(!x.systemV23)x.systemV23={conditions:[],mechanisms:[],hypotheses:[],events:[]};return x.systemV23}
 function sysId(){return 'sys-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7)}
 function sysOptions(values,selected=''){return values.map(v=>`<option ${v===selected?'selected':''}>${safe(v)}</option>`).join('')}
-function sysEvent(store,kind,id,detail,extra={}){store.events.push({id:sysId(),date:new Date().toISOString(),kind,target:id,detail,...extra})}
+function sysEvent(store,kind,id,detail,extra={}){store.events.push({id:sysId(),date:new Date().toISOString(),kind,target:id,detail,moment:['Antes','Durante','Después'].includes(sysMoment)?sysMoment:null,...extra})}
 
 function sysCondFromExisting(x){
  const s=sysStore(x);
@@ -145,10 +145,10 @@ function sysUpdateHypothesis(e,id){
  sysEvent(s,'Hipótesis',id,'Revisión: '+h.status,{status:h.status});save();render();
 }
 
-function sysTabGo(v){sysTab=v;render()}
-function sysChoose(v){sysSelected=v;render()}
+function sysTabGo(v){sysTab=v;sysVisualEditorOpen=true;render()}
+function sysChoose(v){sysSelected=v;sysVisualEditorOpen=true;render()}
 function sysMomentGo(v){sysMoment=v;render()}
-function sysCompareGo(){sysCompare=!sysCompare;render()}
+function sysCompareGo(){sysCompare=!sysCompare;sysVisualEditorOpen=true;render()}
 function sysSnapshot(s,date){const states={};for(const e of s.events.filter(e=>e.kind==='Condición'&&e.state&&e.date.slice(0,10)<=date).sort((a,b)=>a.date.localeCompare(b.date)))states[e.target]=e.state;return states}
 
 function sysRender(a,head,x){
@@ -168,6 +168,11 @@ function sysRender(a,head,x){
  const dates=[...new Set(s.events.map(e=>e.date.slice(0,10)))].sort();
  let compare='';if(sysCompare){compare=`<div class="sys-compare"><label>Momento A<select id="sys-date-a">${dates.map(d=>`<option>${d}</option>`).join('')}</select></label><label>Momento B<select id="sys-date-b">${dates.map(d=>`<option ${d===dates.at(-1)?'selected':''}>${d}</option>`).join('')}</select></label><button class="secondary" onclick="sysDoCompare()">Comparar</button><div id="sys-compare-result" class="muted">Selecciona dos fechas para contrastar las condiciones registradas.</div></div>`}
  a.innerHTML=`<section class="sys-shell"><header class="sys-heading"><div><p class="muted">Análisis / Pensamiento sistémico</p><h2>Mapa de funcionamiento sistémico</h2><p class="muted">Comprende qué sostiene los comportamientos, qué condiciones puedes transformar y qué está cambiando.</p></div><div class="sys-controls"><span>Momento de análisis:</span>${['Antes','Durante','Después','Todos'].map(v=>`<button class="secondary ${sysMoment===v?'sys-active':''}" onclick="sysMomentGo('${v}')">${v}</button>`).join('')}<button class="secondary" onclick="sysCompareGo()">⇄ Comparar momentos</button></div></header><div class="sys-behavior-picker"><label>Comportamiento que queremos comprender <select onchange="sysBehaviorGo(this.value)">${behaviors.length?behaviors.map(b=>`<option value="${safe(b.id)}" ${b.id===s.selectedBehavior?'selected':''}>${safe(b.name)}</option>`).join(''):'<option value="">No hay comportamientos registrados en Diseño</option>'}</select></label><span class="muted">${behaviors.length?'Analiza un comportamiento a la vez.':'Crea primero un comportamiento observable en Diseño.'}</span></div><div class="sys-metrics">${[['Condiciones',s.conditions.length],['Mecanismos',s.mechanisms.length],['Hipótesis',s.hypotheses.length],['Observaciones históricas',s.events.length]].map(([label,num])=>`<div class="sys-metric"><b>${num}</b><span>${label}</span></div>`).join('')}</div><div class="sys-tabs">${tabs.map(([id,label])=>`<button class="secondary ${sysTab===id?'sys-active':''}" onclick="sysTabGo('${id}')">${label}</button>`).join('')}</div>${content}<section class="sys-timeline"><h3>◷ Evolución del sistema</h3>${dates.length?`<div class="sys-events">${s.events.slice(-14).map(e=>`<div><small>${safe(e.date.slice(0,10))}</small><strong>${safe(e.kind)}</strong><span>${safe(e.detail)}</span></div>`).join('')}</div>`:'<p class="muted">Registra condiciones e hipótesis para comenzar la memoria histórica.</p>'}${compare}</section><p class="muted" style="font-size:12px">Las condiciones y mecanismos representan observaciones o hipótesis; no se interpretan automáticamente como relaciones causales demostradas. La IA permanece exclusivamente en Análisis → Inteligencia integrada.</p></section>`;
+  const existingEditor=a.innerHTML;
+  a.innerHTML=renderSystemVisualPage(x,s)+
+    '<details id="sys-advanced-editor" class="sv-editor" '+(sysVisualEditorOpen?'open ':'')+'>'+
+    '<summary><span>⚙</span><span><strong>Explorar y editar el modelo completo</strong><small>Mapa detallado, condiciones, mecanismos, hipótesis e histórico; toda la lógica original se conserva.</small></span><span>⌄</span></summary>'+
+    '<div class="sv-editor-content">'+existingEditor+'</div></details>';
 }
 
 function sysDoCompare(){const s=sysStore(current()),a=document.getElementById('sys-date-a')?.value,b=document.getElementById('sys-date-b')?.value,el=document.getElementById('sys-compare-result');if(!a||!b||!el)return;const left=sysSnapshot(s,a),right=sysSnapshot(s,b);el.innerHTML=`<div class="sys-compare-grid">${s.conditions.map(c=>`<p><strong>${safe(c.name)}</strong><br>${safe(left[c.id]||'Sin información')} → ${safe(right[c.id]||'Sin información')}</p>`).join('')}</div>`}
