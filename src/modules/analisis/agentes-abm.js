@@ -79,7 +79,7 @@ async function runAgentSimulation(e) {
   const settings={behaviorIndex:bi,scenario:f.elements.scenario.value,mode:f.elements.mode.value,
     initialPct:Number(f.elements.initialPct.value),periods:Number(f.elements.periods.value),
     runs:Number(f.elements.runs.value),sampleSize:Number(f.elements.sampleSize.value),
-    seed:Number(f.elements.seed.value),dimensions:dims,useCalibrated:!!f.elements.useCalibrated?.checked,
+    seed:Number(f.elements.seed.value),dimensions:dims,selectedAudienceIds:selected.map(a=>String(a.id)),useCalibrated:!!f.elements.useCalibrated?.checked,
     initialSource:f.elements.initialPct.dataset?.source||'manual_hypothesis'};
   const audiences=selected.map(a=>({
     id:String(a.id),name:String(a.name),population:Number(a.population)||0,...dims[String(a.id)]
