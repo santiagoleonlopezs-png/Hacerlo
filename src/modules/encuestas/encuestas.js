@@ -1,5 +1,5 @@
 /* HACERLO V2.4 · Encuestas y experiencias · scripts clásicos compatibles. */
-let eeQuickState=null,eePickerOpen=true;
+let eeQuickState=null,eePickerOpen=false;
 let eeSelected=null,eeTab='diseño',eeFilter={wave:'',audienceId:''},eeImport=null;
 function eeSurvey(){return EE.init(current()).find(s=>s.id===eeSelected);}
 function eeMsg(message,error=false){const el=$('ee-message');if(el){el.textContent=message;el.setAttribute('role',error?'alert':'status');}else alert(message);}
@@ -10,8 +10,64 @@ function eeCreate(e){e.preventDefault();const f=new FormData(e.target),s=EE.crea
 function eeOptions(values,selected){return values.map(v=>`<option value="${safe(v)}" ${v===selected?'selected':''}>${safe(v)}</option>`).join('');}
 function eeAudienceOptions(x,selected=''){return '<option value="">Todas / sin segmentar</option>'+(x.audiences||[]).map(a=>`<option value="${safe(a.id)}" ${String(a.id)===String(selected)?'selected':''}>${safe(a.name)}</option>`).join('');}
 function eePage(x){
- const surveys=EE.init(x);if(!surveys.some(s=>s.id===eeSelected))eeSelected=surveys[0]?.id||null;const s=eeSurvey();
- return `<section class="panel ee-hero ${eePickerOpen?'':'ee-hero-compact'}"><div class="flex" style="justify-content:space-between"><div><span class="pill">RDAIM · MEDICIÓN · ${safe(x.name)}</span><h2>Encuestas y experiencias</h2><p class="muted">Escucha, comprende y conecta la evidencia con tus decisiones.</p></div><span class="ee-orbit" aria-hidden="true">◎</span></div><p id="ee-message" role="status"></p></section><div class="ee-layout ${eePickerOpen?'':'ee-focused'}"><section class="panel ee-sidebar" ${eePickerOpen?'':'hidden'}><h3>Instrumentos de la iniciativa</h3>${surveys.map(z=>`<button class="ee-survey ${z.id===s?.id?'selected':''}" onclick="eeOpen('${z.id}')"><b>${safe(z.title)}</b><small>${safe(z.kind)} · v${z.version} · ${safe(z.status)} · ${z.responses.length} respuestas</small></button>`).join('')||'<p class="muted">Crea tu primer instrumento.</p>'}${eeTrashPanel(x)}<h3>Cargar desde Excel</h3><p class="muted">Importa preguntas y respuestas de un archivo.</p><input type="file" accept=".xlsx,.csv" onchange="eeQuickRead(this)"><h3>Nuevo instrumento manual</h3><form onsubmit="eeCreate(event)"><label>Plantilla<select name="kind">${eeOptions(['SENTIR','NPS','CNPS','Conocimiento','Libre'],'SENTIR')}</select></label><label>Nombre<input name="title" required maxlength="160" placeholder="Ej. Pulso de adopción · octubre"></label><button class="primary">+ Crear</button></form></section><div>${eeQuickState?eeQuickPanel():''}${s?`<section class="panel"><div class="flex" style="justify-content:space-between"><div><button class="secondary" onclick="eeTogglePicker()">${eePickerOpen?'Ocultar selector':'Cambiar encuesta'}</button><h2>${safe(s.title)}</h2><p class="muted">${safe(s.kind)} · Versión ${s.version} · ${safe(s.status)}</p></div><div class="flex"><button class="secondary" onclick="eeClone()">Duplicar / nueva versión</button><button class="secondary" onclick="eeDeleteSurvey()">Eliminar encuesta</button></div></div>${eeMomentEditor(s)}${eeImportHistory(s)}<details><summary>Cambiar nombre de la encuesta</summary><form onsubmit="eeRenameSurvey(event)"><label>Nombre<input name="title" value="${safe(s.title)}" required maxlength="160"></label><button class="primary">Guardar nombre</button></form></details><div class="flex ee-tabs">${['diseño','responder','importar','resultados','compartir'].map(t=>`<button class="secondary ${eeTab===t?'active':''}" onclick="eeSetTab('${t}')">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div></section>${eeTab==='diseño'?eeDesigner(x,s)+eeSurveyKindPanel(s)+eeHomeSourcesPanel(x)+eeQuestionTypePanel(s)+eeDirectionPanel(s)+eeOptionScoringPanel(s):eeTab==='responder'?eeResponsePanel(x,s):eeTab==='importar'?eeImportPanel(s):eeTab==='resultados'?eeResults(x,s):eeSharePanel(s)}`:'<section class="panel empty"><h2>De la experiencia a la evidencia</h2><p>Selecciona SENTIR, NPS, CNPS, Conocimiento o crea una encuesta libre.</p><p>Cada instrumento conserva su iniciativa, versión, audiencia y ola de medición.</p></section>'}</div></div>`;
+ const surveys=EE.init(x);
+ if(!surveys.some(s=>s.id===eeSelected))eeSelected=surveys[0]?.id||null;
+ const s=eeSurvey();
+ const managerOpen=eePickerOpen||!s;
+ const options=surveys.map(z=>'<option value="'+safe(z.id)+'"'+(z.id===s?.id?' selected':'')+'>'+
+   safe(z.title)+' · v'+z.version+'</option>').join('');
+ const selector='<section class="panel ee-instrument-toolbar">'+
+   '<div class="ee-toolbar-row">'+
+     '<label class="ee-toolbar-picker" for="ee-instrument-select"><span>Instrumento seleccionado</span>'+
+       '<select id="ee-instrument-select" onchange="eeOpen(this.value)" '+(!surveys.length?'disabled ':'')+'>'+
+       (surveys.length?options:'<option value="">Sin instrumentos todavía</option>')+'</select></label>'+
+     (s?'<div class="ee-toolbar-status"><small>'+safe(s.kind)+' · Versión '+s.version+' · '+safe(s.status)+'</small>'+
+          '<strong>'+s.responses.length+' respuestas</strong></div>':'')+
+     '<button class="secondary ee-manage-button" type="button" aria-controls="ee-instrument-manager" aria-expanded="'+managerOpen+'" onclick="eeTogglePicker()">'+
+       (managerOpen?'Ocultar creación':'＋ Crear o importar')+'</button>'+
+   '</div>'+
+   (managerOpen?'<div id="ee-instrument-manager" class="ee-manager-grid">'+
+      '<div class="ee-manager-option"><h3>Cargar desde Excel</h3><p class="muted">Crea un instrumento desde un archivo de preguntas y respuestas.</p>'+
+        '<label>Selecciona un archivo XLSX o CSV<input type="file" accept=".xlsx,.csv" onchange="eeQuickRead(this)"></label></div>'+
+      '<div class="ee-manager-option"><h3>Nuevo instrumento manual</h3>'+
+        '<form onsubmit="eeCreate(event)"><div class="ee-manager-inputs"><label>Tipo<select name="kind">'+
+          eeOptions(['SENTIR','NPS','CNPS','Conocimiento','Libre'],'SENTIR')+'</select></label>'+
+          '<label>Nombre<input name="title" required maxlength="160" placeholder="Ej. Experiencia inicial"></label></div>'+
+          '<button class="primary" type="submit">Crear instrumento</button></form></div>'+
+      (x.surveyTrash?.length?'<div class="ee-manager-trash">'+eeTrashPanel(x)+'</div>':'')+
+     '</div>':'')+
+   '</section>';
+ const active=s?'<section class="panel ee-active-toolbar">'+
+   '<div class="ee-active-row"><div class="ee-current-instrument">'+
+     '<span class="ee-current-label">Trabajando en</span><strong>'+safe(s.title)+'</strong>'+
+     '<small>'+safe(s.kind)+' · '+s.responses.length+' respuestas</small></div>'+
+     '<details class="ee-instrument-options"><summary>Opciones del instrumento</summary>'+
+       '<div class="ee-options-content"><div class="ee-options-actions">'+
+         '<button class="secondary" type="button" onclick="eeClone()">Duplicar / nueva versión</button>'+
+         '<button class="secondary" type="button" onclick="eeDeleteSurvey()">Eliminar encuesta</button>'+
+       '</div>'+eeMomentEditor(s)+eeImportHistory(s)+
+       '<details><summary>Cambiar nombre</summary><form onsubmit="eeRenameSurvey(event)">'+
+         '<label>Nombre<input name="title" value="'+safe(s.title)+'" required maxlength="160"></label>'+
+         '<button class="primary" type="submit">Guardar nombre</button></form></details>'+
+       '</div></details></div>'+
+   '<div class="flex ee-tabs" role="group" aria-label="Secciones del instrumento">'+
+      ['diseño','responder','importar','resultados','compartir'].map(t=>
+       '<button class="secondary '+(eeTab===t?'active':'')+'" type="button" onclick="eeSetTab(&quot;'+t+'&quot;)">'+
+       t[0].toUpperCase()+t.slice(1)+'</button>').join('')+
+   '</div></section>'+
+   (eeTab==='diseño'?eeDesigner(x,s)+eeSurveyKindPanel(s)+eeHomeSourcesPanel(x)+eeQuestionTypePanel(s)+eeDirectionPanel(s)+eeOptionScoringPanel(s):
+    eeTab==='responder'?eeResponsePanel(x,s):
+    eeTab==='importar'?eeImportPanel(s):
+    eeTab==='resultados'?eeResults(x,s):eeSharePanel(s)):
+    '<section class="panel empty"><h2>Empieza con un instrumento</h2>'+
+      '<p>Carga un archivo Excel o crea una encuesta SENTIR, NPS, CNPS, Conocimiento o Libre.</p></section>';
+ return '<section class="panel ee-hero"><div class="flex" style="justify-content:space-between">'+
+   '<div><span class="pill">RDAIM · MEDICIÓN · '+safe(x.name)+'</span>'+
+   '<h2>Encuestas y experiencias</h2>'+
+   '<p class="muted">Escucha, comprende y conecta la evidencia con tus decisiones.</p></div>'+
+   '<span class="ee-orbit" aria-hidden="true">◎</span></div>'+
+   '<p id="ee-message" role="status"></p></section>'+
+   '<div class="ee-single-column">'+selector+(eeQuickState?eeQuickPanel():'')+active+'</div>';
 }
 function eeDesigner(x,s){const locked=s.status!=='draft'||s.responses.length>0;if(locked)return eeLockedDesigner(s);return `<section class="panel"><p class="notice">${safe(s.instrumentNote)} SENTIR: 1 = totalmente en desacuerdo, 5 = totalmente de acuerdo. Desgaste alto representa mayor desgaste. NPS y CNPS son medidas diferentes.</p><form onsubmit="eeSaveDesign(event)"><fieldset ${locked?'disabled':''}><label>Nombre<input name="title" value="${safe(s.title)}" required maxlength="160"></label><label>Descripción<textarea name="description">${safe(s.description)}</textarea></label><div class="triple"><label>Audiencia<select name="audienceId">${eeAudienceOptions(x,s.audienceId)}</select></label><label>Ola<input name="wave" value="${safe(s.wave)}" required maxlength="80"></label><label>Período<input name="period" value="${safe(s.period)}" placeholder="Ej. 2026-10"></label></div><h3>Preguntas</h3><p class="muted">Edita preguntas y opciones. Ajusta los detalles cuando los necesites.</p><div id="ee-questions">${s.questions.map((q,i)=>eeQuestionEditor(q,i)).join('')}</div><button type="button" class="secondary" onclick="eeAddQuestion()">+ Añadir pregunta</button><details><summary>Editor JSON avanzado</summary><p class="muted">Para usar este editor, marca la casilla. Conserva IDs únicos.</p><label><input type="checkbox" name="advanced"> Usar JSON en lugar de las tarjetas</label><textarea name="questionsJSON" rows="14">${safe(JSON.stringify(s.questions,null,2))}</textarea></details><button class="primary">Guardar diseño</button></fieldset></form><div class="flex" style="margin-top:18px">${s.status==='draft'?'<button class="primary" onclick="eeStatus(\'active\')">Activar encuesta</button>':s.status==='active'?'<button class="secondary" onclick="eeStatus(\'closed\')">Cerrar captura</button>':'<button class="secondary" onclick="eeStatus(\'active\')">Reabrir captura</button>'}${locked?'<span class="muted">El diseño está congelado. Duplica para cambiar preguntas.</span>':''}</div></section>`;}
 function eeQuestionEditor(q,i){return `<fieldset class="ee-question" data-ee-question><div class="flex" style="justify-content:space-between"><strong>Pregunta ${i+1}</strong><button class="secondary" type="button" onclick="this.closest('[data-ee-question]').remove()">Quitar</button></div><label>Texto<input data-k="label" value="${safe(q.label)}" required></label><div class="grid"><label>Tipo<select data-k="type">${eeOptions(['scale','nps','cnps','text','choice','knowledge'],q.type)}</select></label><label>Dimensión<input data-k="dimension" value="${safe(q.dimension||'')}"></label></div><details class="hcx-more"><summary>Identificador y límites de escala · opcional</summary><div class="triple"><label>ID<input data-k="id" value="${safe(q.id)}" required></label><label>Mínimo<input data-k="min" type="number" step="any" value="${q.min??0}"></label><label>Máximo<input data-k="max" type="number" step="any" value="${q.max??10}"></label></div></details><label>Opciones (una por línea, para choice / knowledge)<textarea data-k="options">${safe((q.options||[]).join('\n'))}</textarea></label><label>Respuesta correcta (knowledge)<input data-k="correct" value="${safe(q.correct||'')}"></label><div class="flex"><label><input data-k="required" type="checkbox" ${q.required?'checked':''}> Obligatoria</label><label><input data-k="reverse" type="checkbox" ${q.reverse?'checked':''}> Invertir escala</label></div></fieldset>`;}
