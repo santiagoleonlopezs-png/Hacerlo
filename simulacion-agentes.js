@@ -84,17 +84,18 @@ async function runAgentSimulation(e) {
   if(settings.mode==='observed') {
     const people=(x.nodes||[]).map((n,i)=>({...n,index:i})).filter(n=>n.type==='Persona');
     const selectedIds=new Set(selected.map(a=>String(a.id)));
-    const missing=people.filter(n=>!selectedIds.has(String((x.abmAudienceMap||{})[n.index]||n.audienceId||'')));
-    if(missing.length) {status.textContent='Asigna una audiencia aplicable a las '+missing.length+' personas del Grafo (abre el panel de asignación).';return}
-    const personIds=new Set(people.map(n=>String(n.index)));
-    payload.agents=people.map(n=>({id:String(n.index),
+    const missing=people.filter(n=>!String((x.abmAudienceMap||{})[n.index]||n.audienceId||''));
+    if(missing.length) {status.textContent='Asigna una audiencia a las '+missing.length+' personas del Grafo (abre el panel de asignación).';return}
+    const relevant=people.filter(n=>selectedIds.has(String((x.abmAudienceMap||{})[n.index]||n.audienceId)));
+    const personIds=new Set(relevant.map(n=>String(n.index)));
+    payload.agents=relevant.map(n=>({id:String(n.index),
       audience_id:String((x.abmAudienceMap||{})[n.index]||n.audienceId)}));
     payload.edges=(x.edges||[]).filter(edge=>
       String(edge.relation||edge.label||'').toLowerCase().trim()==='influye en' &&
       personIds.has(String(edge.s))&&personIds.has(String(edge.t))
     ).map(edge=>({source:String(edge.s),target:String(edge.t),
       weight: edge.measureType==='scale' && Number(edge.measureValue)>0 ? Math.min(1,Number(edge.measureValue)/5) : 1}));
-    if(people.length<2){status.textContent='Registra al menos 2 personas en Grafo o usa el modo sintético.';return}
+    if(relevant.length<2){status.textContent='Registra al menos 2 personas en Grafo o usa el modo sintético.';return}
     if(!payload.edges.length){status.textContent='No hay conexiones «Influye en» entre personas. Regístralas o utiliza el modo sintético.';return}
   }
   submit.disabled=true;status.textContent='Simulando comparaciones apareadas…';
