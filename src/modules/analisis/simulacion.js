@@ -1,4 +1,4 @@
-/* HACERLO V2.7.3 · Motor Científico de Simulación de Agentes (COM-B + Centola + Lewin/Sterman) */
+/* HACERLO V2.7.3 · Módulo Operativo de Simulación de Agentes (COM-B + Centola + Lewin/Sterman) */
 let simSelectedBehavior = null;
 let simWeeks = 12;
 let simActiveSystem = {};
@@ -55,7 +55,6 @@ function simActivateAllRecommended(x) {
 }
 
 function simExtractLevers(x) {
-  // 1. Barreras del Sistema (Pensamiento Sistémico + Diagnóstico COM-B)
   const sysConds = (x.systemV23?.conditions || []).filter(c => c.orientation === 'Dificulta' && c.state !== 'Resuelta');
   const diagBarriers = Object.entries(x.behaviorDiagnosis || {})
     .filter(([, f]) => f && f.role === 'Barrera')
@@ -78,7 +77,6 @@ function simExtractLevers(x) {
     ...diagBarriers
   ].slice(0, 14);
 
-  // 2. Enlaces Frágiles o con Alerta en el Grafo de Adopción (Centola)
   const nodes = x.nodes || [];
   const edges = x.edges || [];
   const fragileEdges = [];
@@ -101,7 +99,6 @@ function simExtractLevers(x) {
     }
   });
 
-  // 3. Intervenciones por Audiencia / Diseño
   const actions = (x.actions || []).map((a, idx) => ({
     index: idx,
     name: a.title || a.name || `Intervención ${idx + 1}`,
@@ -117,13 +114,10 @@ function simComputeEngine(x) {
   const auds = x.audiences || [];
   const people = x.audiencePeople || [];
   const behs = x.behaviors || [];
-  const nodes = x.nodes || [];
-  const edges = x.edges || [];
   const levers = simExtractLevers(x);
 
   const totalDeclared = Number(x.population) || auds.reduce((acc, a) => acc + (Number(a.population) || 0), 0) || people.length || 310;
 
-  // Cálculo de factores COM-B base desde Diagnóstico
   const diagValues = Object.values(x.behaviorDiagnosis || {}).filter(Boolean);
   const calcDimScore = (dim) => {
     const items = diagValues.filter(d => d.dimension === dim);
@@ -137,23 +131,18 @@ function simComputeEngine(x) {
   const baseM = calcDimScore('Motivación');
   const baseO = calcDimScore('Entorno');
 
-  // Frenos homeostáticos de Lewin/Sterman
   const totalSystemFriction = Math.min(0.65, levers.systemBarriers.reduce((acc, b) => acc + b.weight, 0) || 0.38);
   const relievedFriction = levers.systemBarriers
     .filter(b => simActiveSystem[b.id])
     .reduce((acc, b) => acc + b.weight, 0);
 
-  // Refuerzo relacional de Centola (Grafo)
-  const totalEdgeAlertPenalty = Math.min(0.55, levers.fragileEdges.reduce((acc, e) => acc + e.boost, 0) || 0.30);
   const repairedEdgeBoost = levers.fragileEdges
     .filter(e => simActiveEdges[e.index])
     .reduce((acc, e) => acc + e.boost, 0);
 
-  // Impulso de acciones
   const activeActionsCount = levers.actions.filter(a => simActiveActions[a.index]).length;
   const actionBoost = Math.min(0.25, activeActionsCount * 0.07);
 
-  // Simulación por Audiencia
   const audienceResults = (auds.length ? auds : [
     { id: 'aud-admin', name: 'Administrador', population: Math.round(totalDeclared * 0.1), position: 'Promotor', authority: 'Alta' },
     { id: 'aud-team', name: 'Miembro de Equipo', population: Math.round(totalDeclared * 0.6), position: 'Pasivo', authority: 'Media' },
@@ -163,7 +152,6 @@ function simComputeEngine(x) {
     const pop = Number(a.population) || Math.max(1, Math.round(totalDeclared / Math.max(1, auds.length)));
     const posFactor = a.position === 'Promotor' ? 1.15 : (['Probable Resistente', 'Saboteador Abierto', 'Saboteador Oculto'].includes(a.position) ? 0.72 : 0.92);
 
-    // Vínculo con aristas de la red
     const touchesFragile = levers.fragileEdges.some(e =>
       e.sourceName.toLowerCase().includes(aName.toLowerCase()) ||
       e.targetName.toLowerCase().includes(aName.toLowerCase())
@@ -175,36 +163,28 @@ function simComputeEngine(x) {
       )
     );
 
-    // Disposición COM-B
     const combBase = Math.pow(baseC * baseM * baseO, 1 / 3) * posFactor;
     const combIntervened = Math.min(0.96, combBase + (relievedFriction * 0.35) + actionBoost);
 
-    // Umbral de Contagio Complejo (Centola)
     const netBase = touchesFragile ? 0.32 : 0.54;
     const netIntervened = Math.min(0.95, netBase + repairedEdgeBoost + (touchesRepaired ? 0.18 : 0.06));
 
-    // Techo Homeostático del Sistema (Lewin / Sterman)
-    // Si solo se repara la red pero NO se quitan frenos del sistema, el techo homeostático limita la sostenibilidad
     const remainingFriction = Math.max(0.06, totalSystemFriction - relievedFriction);
     const baselineCeiling = Math.max(0.18, Math.min(0.55, 0.72 - totalSystemFriction - (touchesFragile ? 0.15 : 0.05)));
 
-    // Penalización por intervención incompleta (ej. tocar solo red sin sistema o viceversa)
     const synergyBonus = (relievedFriction > 0 && repairedEdgeBoost > 0) ? 0.14 : 0;
     const intervenedCeiling = Math.max(
       baselineCeiling,
       Math.min(0.94, 0.78 - remainingFriction + (repairedEdgeBoost * 0.45) + actionBoost + synergyBonus)
     );
 
-    // Curvas semanales (t = 1..simWeeks)
     const baseSeries = [];
     const intSeries = [];
     for (let w = 1; w <= simWeeks; w++) {
       const progress = 1 - Math.exp(-0.26 * w);
-      // Efecto rebote si hay alta fricción sistémica en el escenario base
       const reboundPenalty = (w > 5 && totalSystemFriction > 0.25) ? (w - 5) * 0.012 : 0;
       const bVal = Math.max(0.08, Math.min(baselineCeiling, (combBase * 0.55 + netBase * 0.45) * progress - reboundPenalty));
 
-      // Si activó red pero dejó intactas todas las barreras del sistema, hay rebote parcial después de la semana 6
       const partialRebound = (repairedEdgeBoost > 0 && relievedFriction === 0 && w > 6) ? (w - 6) * 0.018 : 0;
       const iVal = Math.max(bVal, Math.min(intervenedCeiling, (combIntervened * 0.52 + netIntervened * 0.48) * progress - partialRebound));
 
@@ -215,7 +195,6 @@ function simComputeEngine(x) {
     const finalBasePct = baseSeries.at(-1) || 20;
     const finalIntPct = intSeries.at(-1) || finalBasePct;
 
-    // Distribución en Escalera de Adopción (Comprende -> Prueba -> Realiza -> Sostiene)
     const buildStages = (sustainPct) => {
       const sustains = Math.round((sustainPct / 100) * pop);
       const rem1 = Math.max(0, pop - sustains);
@@ -310,7 +289,6 @@ function renderSimulacionAgentes(a, head, x) {
   const activeEdgeCount = sim.levers.fragileEdges.filter(e => simActiveEdges[e.index]).length;
   const activeActCount = sim.levers.actions.filter(ac => simActiveActions[ac.index]).length;
 
-  // Diagnóstico dinámico de la combinación de palancas
   let regimeNotice = '';
   if (activeSysCount === 0 && activeEdgeCount === 0 && activeActCount === 0) {
     regimeNotice = `<div class="notice" style="border-left:4px solid #efb957">
@@ -363,7 +341,6 @@ function renderSimulacionAgentes(a, head, x) {
     </div>
   </section>
 
-  <!-- KPIs Globales del Motor -->
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:16px">
     <div class="dash-card" style="border-left:3px solid #20c5aa">
       <small class="muted">ADOPCIÓN SOSTENIDA (BASE → SIMULADA)</small>
@@ -402,9 +379,7 @@ function renderSimulacionAgentes(a, head, x) {
 
   ${regimeNotice}
 
-  <!-- Panel Interactivo de Palancas: Sistema + Red + Acciones -->
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin:16px 0">
-    <!-- Columna 1: Sistema -->
     <section class="panel" style="border-top:3px solid #ed837f">
       <h3 style="margin-top:0">1. Palancas del Sistema (Lewin / Sterman)</h3>
       <p class="muted" style="font-size:12.5px">Desactiva barreras del Diagnóstico y bucles de compensación de Pensamiento Sistémico que frenan el hábito:</p>
@@ -421,7 +396,6 @@ function renderSimulacionAgentes(a, head, x) {
       </div>
     </section>
 
-    <!-- Columna 2: Red -->
     <section class="panel" style="border-top:3px solid #efb957">
       <h3 style="margin-top:0">2. Palancas de la Red (Contagio de Centola)</h3>
       <p class="muted" style="font-size:12.5px">Fortalece los enlaces con alerta (⚠️) o débiles del Grafo de Adopción para superar el umbral de validación social:</p>
@@ -438,7 +412,6 @@ function renderSimulacionAgentes(a, head, x) {
       </div>
     </section>
 
-    <!-- Columna 3: Implementación / Diseño -->
     <section class="panel" style="border-top:3px solid #20c5aa">
       <h3 style="margin-top:0">3. Intervenciones Activas (COM-B)</h3>
       <p class="muted" style="font-size:12.5px">Simula el efecto directo de ejecutar las acciones e intervenciones diseñadas para las audiencias:</p>
@@ -456,7 +429,6 @@ function renderSimulacionAgentes(a, head, x) {
     </section>
   </div>
 
-  <!-- Resultados por Audiencia + Escalera de Adopción + Comportamientos -->
   <div class="grid" style="grid-template-columns:1.15fr 1fr;gap:14px;margin-top:16px">
     <section class="panel">
       <h3 style="margin-top:0">Mapa de audiencias y propagación simulada</h3>
@@ -478,7 +450,6 @@ function renderSimulacionAgentes(a, head, x) {
               </div>
             </div>
 
-            <!-- Barra comparativa Base vs Simulada -->
             <div style="margin:10px 0">
               <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px" class="muted">
                 <span>Tracción Base (${aud.baseSustainPct}%)</span>
@@ -490,7 +461,6 @@ function renderSimulacionAgentes(a, head, x) {
               </div>
             </div>
 
-            <!-- Escalera de adopción en personas -->
             <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;text-align:center;font-size:11.5px">
               <div style="background:rgba(255,255,255,0.04);padding:6px;border-radius:6px">
                 <div class="muted">Comprende</div>
@@ -523,7 +493,7 @@ function renderSimulacionAgentes(a, head, x) {
         ${sim.audiences.map(aud => `
           <div class="dash-card" style="padding:14px">
             <strong style="font-size:15px">${safe(aud.name)}</strong>
-            <p class="muted" style="font-size:12px;margin:4px 0 10px">${aud.population} personas · Impacto: ${safe(aud.impact)}</p>
+            <p class="muted" style="font-size:12.5px;margin:4px 0 10px">${aud.population} personas · Impacto: ${safe(aud.impact)}</p>
             ${aud.behaviors.length ? aud.behaviors.map(b => `
               <div style="margin-bottom:8px;font-size:13px;line-height:1.4">
                 ◈ ${safe(b.name || b.behavior || 'Comportamiento')}
