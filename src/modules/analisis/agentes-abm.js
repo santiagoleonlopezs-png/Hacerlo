@@ -144,7 +144,7 @@ function renderABMResult(r) {
     const lower=r.series.map((v,i)=>xy(i,(v[k]||{}).p10)).reverse();
     return upper.concat(lower).join(' ');
   };
-  return '<p class="notice">' + (r.parameter_origin==='retrospective_fit_unvalidated'?'AJUSTE RETROSPECTIVO, NO VALIDACIÓN PROSPECTIVA':'MODELO EXPERIMENTAL SIN CALIBRACIÓN') + ' · ' + (r.mode==='synthetic'?'Red sintética hipotética':'Grafo registrado, efectos aún hipotéticos') + '</p>' +
+  return '<p class="notice">' + (r.parameter_origin==='provided_unvalidated'?'PARÁMETROS PROPORCIONADOS O AJUSTADOS, AÚN NO VALIDADOS':'MODELO EXPERIMENTAL SIN CALIBRACIÓN') + ' · ' + (r.mode==='synthetic'?'Red sintética hipotética':'Grafo registrado, efectos aún hipotéticos') + '</p>' +
     '<div class="triple"><div class="panel"><small>Sin intervención</small><div class="metric">'+pct(b.mean)+'</div><small>p10–p90: '+pct(b.p10)+'–'+pct(b.p90)+'</small></div>' +
     '<div class="panel"><small>Con intervención</small><div class="metric">'+pct(t.mean)+'</div><small>p10–p90: '+pct(t.p10)+'–'+pct(t.p90)+'</small></div>' +
     '<div class="panel"><small>Diferencia media (puntos porcentuales)</small><div class="metric">'+(100*Number(d.mean||0)).toFixed(1)+'</div><small>p10–p90: '+(100*Number(d.p10||0)).toFixed(1)+' a '+(100*Number(d.p90||0)).toFixed(1)+' pp</small></div></div>' +
