@@ -72,3 +72,62 @@ No se crea otra IA: **Inteligencia integrada** sigue siendo la única IA transve
 6. **Evolución científica:** modelar intención, adopción, uso sostenido y abandono como estados distintos; versionar modelo, fuentes y errores predictivos.
 
 La versión 1 constituye un **laboratorio de hipótesis**, no un gemelo digital validado de una población.
+
+
+## Versión 1.1 — Calibración retrospectiva y sensibilidad (26 de octubre de 2026)
+
+La pantalla **Análisis → Simulación de agentes** añade dos subapartados a los escenarios exploratorios. No se genera una IA aparte: los cálculos son métodos transparentes y reproducibles.
+
+### A. Medición y calibración
+
+CSV esperado (los números de este ejemplo son exclusivamente ficticios):
+
+~~~csv
+periodo,adoptados,poblacion_elegible,fuente
+0,5,50,Medición base de prueba
+1,7,50,Medición agregada 1
+2,9,50,Medición agregada 2
+3,11,50,Medición agregada 3
+4,13,50,Medición agregada 4
+5,16,50,Medición agregada 5
+~~~
+
+**Definiciones:**
+- adoptados = personas de la misma cohorte que ya ejecutaron el comportamiento observable por primera vez hasta el periodo indicado;
+- poblacion_elegible = denominador fijo del conjunto de personas elegibles;
+- fuente = instrumento o registro verificable, sin nombres ni otros identificadores sensibles;
+- periodo = número entero consecutivo desde 0, con una misma duración entre periodos.
+
+Usa como mínimo 6 y máximo 16 mediciones, coherentes con una definición única de adopción acumulada, obtenidas **antes de introducir las intervenciones que se desean comparar**. Si cambia el denominador, alguien puede abandonar o cambia la definición operacional, el modelo v1.1 NO es adecuado; no modifiques los datos para forzar un ajuste.
+
+La calibración:
+1. Conserva la primera observación como porcentaje inicial.
+2. Reserva los **últimos dos periodos** como holdout temporal sin usarlos para elegir parámetros.
+3. Evalúa una grilla fija de 16 candidatos: umbral medio 0,48/0,58/0,68/0,78 × peso social 0,05/0,20/0,35/0,50. El resto de parámetros permanece fijo.
+4. Calcula error absoluto medio de adopción en el periodo de ajuste; selecciona el candidato con menor error.
+5. Evalúa nuevamente con **nuevas semillas aleatorias** y reporta MAE en periodo de ajuste y de holdout.
+6. Compara holdout con la persistencia ingenua de la última tasa de adopción conocida y con los parámetros originales.
+7. Reporta cantidad de soluciones casi tan buenas como la mejor (indicador limitado de no identificabilidad).
+
+Si se obtiene menor error en holdout que la persistencia, ello **no valida causalidad, eficacia de la intervención ni predicción futura**. Es un control interno de plausibilidad, con apenas dos periodos reservados. Requiere validación prospectiva adicional con múltiples cohortes.
+
+### B. Robustez y sensibilidad
+
+Se ensayan 9 combinaciones: umbral medio ±0,08 y peso social ±0,12 alrededor de los valores elegidos (o defaults si no hay calibración), recortados a límites válidos. Cada combinación ejecuta escenario base e intervención con semillas apareadas. Se informa la diferencia en puntos porcentuales y cuántas combinaciones superan un umbral de decisión aportado por la persona analista.
+
+**Nueve combinaciones no forman una distribución probabilística.** Que 7/9 cumplan una meta NO significa un 77,8 % de probabilidad de éxito. No modela cambios estructurales de red, costos, sesgos de selección, abandono ni conflictos de implementación.
+
+### C. API, versiones y auditoría
+
+Rutas adicionales:
+- POST /api/simulation/calibrate: mismas audiencias, nodos y relaciones que el motor base, más observations (conteos agregados y fuente);
+- POST /api/simulation/sensitivity: mismas entradas del simulador y target_effect_pp; parameters opcional en ambos modelos de simulación.
+
+Se requiere sesión autenticada. Cuota experimental compartida: 20 peticiones por hora y usuario en cada proceso. El código de visualización guarda en la iniciativa parámetros, serie ingresada, fecha y resultados agregados. **No se deben registrar datos personales en las fuentes textuales o archivos CSV**. La producción debe reforzar autorización por organización, cuotas distribuidas y protección de información comercial.
+
+Cada corrida tiene semilla y versión de modelo. Para trazabilidad externa, conserva también identificador del instrumento, cohorte, definición operacional, periodicidad, registro de las intervenciones vigentes y un conjunto de validación prospectivo.
+
+### D. Decisión metodológica pendiente
+
+Esta fase es **calibración agregada** y evaluación retrospectiva, no calibración individual ni aprendizaje automático. Un patrón temporal por sí solo no separa inequívocamente los efectos de umbrales, influencia social, condiciones de entorno y otros cambios externos. El siguiente paso científico requiere campañas de medición comparables, varias cohortes y experimentación ética para comprobar generalización.
+
