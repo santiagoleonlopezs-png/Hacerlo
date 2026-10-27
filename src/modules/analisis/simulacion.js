@@ -60,48 +60,8 @@ function simExtractLevers(x) {
     .filter(([, f]) => f && f.role === 'Barrera')
     .map(([k, f]) => ({
       id: 'diag-' + k,
-      name: `[${f.dimension}] ${f.factor}`,
-      type: f.dimension || 'Diagnóstico',
-      source: 'Diagnóstico COM-B',
-      weight: f.dimension === 'Entorno' ? 0.22 : (f.dimension === 'Capacidad' ? 0.20 : 0.16)
-    }));
-
-  const systemBarriers = [
-    ...sysConds.map(c => ({
-      id: c.id,
-      name: c.name,
-      type: c.type || 'Condición sistémica',
-      source: c.source || 'Pensamiento sistémico',
-      weight: 0.20
-    })),
-    ...diagBarriers
-  ].slice(0, 14);
-
-  const nodes = x.nodes || [];
-  const edges = x.edges || [];
-  const fragileEdges = [];
-  edges.forEach((e, idx) => {
-    const sName = nodes[e.s]?.name || `Nodo ${e.s}`;
-    const tName = nodes[e.t]?.name || `Nodo ${e.t}`;
-    const alerts = (e.graphFactors || []).filter(f => f.role === 'Barrera');
-    const isWeak = ['Declarada', 'Hipotética', 'Hipótesis'].includes(e.evidence) || Number(e.strength || 2) <= 1;
-    const isInvitadoEdge = /invitado/i.test(sName) || /invitado/i.test(tName);
-    if (alerts.length || isWeak || isInvitadoEdge) {
-      fragileEdges.push({
-        index: idx,
-        sourceName: sName,
-        targetName: tName,
-        relation: e.relation || e.label || 'Interacción',
-        evidence: e.evidence || 'Observada',
-        alerts: alerts.map(a => a.name).join(', ') || (isInvitadoEdge ? 'Canal crítico de acogida e integración' : 'Enlace débil / proyectado'),
-        boost: isInvitadoEdge ? 0.28 : (alerts.length ? 0.22 : 0.15)
-      });
-    }
-  });
-
-  const actions = (x.actions || []).map((a, idx) => ({
-    index: idx,
-    name: a.title || a.name || `Intervención ${idx + 1}`,
+      name: `[${f.dimension}] ${f.factor}`, type: f.dimension \vert{}\vert{} 'Diagnóstico', source: 'Diagnóstico COM-B', weight: f.dimension === 'Entorno' ? 0.22 : (f.dimension === 'Capacidad' ? 0.20 : 0.16) }));  const systemBarriers = [ ...sysConds.map(c => ({ id: c.id, name: c.name, type: c.type \vert{}\vert{} 'Condición sistémica', source: c.source \vert{}\vert{} 'Pensamiento sistémico', weight: 0.20 })), ...diagBarriers ].slice(0, 14);  const nodes = x.nodes \vert{}\vert{} []; const edges = x.edges \vert{}\vert{} []; const fragileEdges = []; edges.forEach((e, idx) => { const sName = nodes[e.s]?.name \vert{}\vert{} `Nodo ${e.s}`;
+    const tName = nodes[e.t]?.name || `Nodo ${e.t}`; const alerts = (e.graphFactors \vert{}\vert{} []).filter(f => f.role === 'Barrera'); const isWeak = ['Declarada', 'Hipotética', 'Hipótesis'].includes(e.evidence) \vert{}\vert{} Number(e.strength \vert{}\vert{} 2) <= 1; const isInvitadoEdge = /invitado/i.test(sName) \vert{}\vert{} /invitado/i.test(tName); if (alerts.length \vert{}\vert{} isWeak \vert{}\vert{} isInvitadoEdge) { fragileEdges.push({ index: idx, sourceName: sName, targetName: tName, relation: e.relation \vert{}\vert{} e.label \vert{}\vert{} 'Interacción', evidence: e.evidence \vert{}\vert{} 'Observada', alerts: alerts.map(a => a.name).join(', ') \vert{}\vert{} (isInvitadoEdge ? 'Canal crítico de acogida e integración' : 'Enlace débil / proyectado'), boost: isInvitadoEdge ? 0.28 : (alerts.length ? 0.22 : 0.15) }); } });  const actions = (x.actions \vert{}\vert{} []).map((a, idx) => ({ index: idx, name: a.title \vert{}\vert{} a.name \vert{}\vert{} `Intervención ${idx + 1}`,
     dimension: a.dimension || 'General',
     audienceId: a.audienceId || '',
     status: a.status || 'Pendiente'
@@ -148,67 +108,7 @@ function simComputeEngine(x) {
     { id: 'aud-team', name: 'Miembro de Equipo', population: Math.round(totalDeclared * 0.6), position: 'Pasivo', authority: 'Media' },
     { id: 'aud-guest', name: 'Invitado', population: Math.round(totalDeclared * 0.3), position: 'Pasivo', authority: 'Baja' }
   ]).map((a, idx) => {
-    const aName = a.name || a.nombre || `Audiencia ${idx + 1}`;
-    const pop = Number(a.population) || Math.max(1, Math.round(totalDeclared / Math.max(1, auds.length)));
-    const posFactor = a.position === 'Promotor' ? 1.15 : (['Probable Resistente', 'Saboteador Abierto', 'Saboteador Oculto'].includes(a.position) ? 0.72 : 0.92);
-
-    const touchesFragile = levers.fragileEdges.some(e =>
-      e.sourceName.toLowerCase().includes(aName.toLowerCase()) ||
-      e.targetName.toLowerCase().includes(aName.toLowerCase())
-    );
-    const touchesRepaired = levers.fragileEdges.some(e =>
-      simActiveEdges[e.index] && (
-        e.sourceName.toLowerCase().includes(aName.toLowerCase()) ||
-        e.targetName.toLowerCase().includes(aName.toLowerCase())
-      )
-    );
-
-    const combBase = Math.pow(baseC * baseM * baseO, 1 / 3) * posFactor;
-    const combIntervened = Math.min(0.96, combBase + (relievedFriction * 0.35) + actionBoost);
-
-    const netBase = touchesFragile ? 0.32 : 0.54;
-    const netIntervened = Math.min(0.95, netBase + repairedEdgeBoost + (touchesRepaired ? 0.18 : 0.06));
-
-    const remainingFriction = Math.max(0.06, totalSystemFriction - relievedFriction);
-    const baselineCeiling = Math.max(0.18, Math.min(0.55, 0.72 - totalSystemFriction - (touchesFragile ? 0.15 : 0.05)));
-
-    const synergyBonus = (relievedFriction > 0 && repairedEdgeBoost > 0) ? 0.14 : 0;
-    const intervenedCeiling = Math.max(
-      baselineCeiling,
-      Math.min(0.94, 0.78 - remainingFriction + (repairedEdgeBoost * 0.45) + actionBoost + synergyBonus)
-    );
-
-    const baseSeries = [];
-    const intSeries = [];
-    for (let w = 1; w <= simWeeks; w++) {
-      const progress = 1 - Math.exp(-0.26 * w);
-      const reboundPenalty = (w > 5 && totalSystemFriction > 0.25) ? (w - 5) * 0.012 : 0;
-      const bVal = Math.max(0.08, Math.min(baselineCeiling, (combBase * 0.55 + netBase * 0.45) * progress - reboundPenalty));
-
-      const partialRebound = (repairedEdgeBoost > 0 && relievedFriction === 0 && w > 6) ? (w - 6) * 0.018 : 0;
-      const iVal = Math.max(bVal, Math.min(intervenedCeiling, (combIntervened * 0.52 + netIntervened * 0.48) * progress - partialRebound));
-
-      baseSeries.push(Math.round(bVal * 100));
-      intSeries.push(Math.round(iVal * 100));
-    }
-
-    const finalBasePct = baseSeries.at(-1) || 20;
-    const finalIntPct = intSeries.at(-1) || finalBasePct;
-
-    const buildStages = (sustainPct) => {
-      const sustains = Math.round((sustainPct / 100) * pop);
-      const rem1 = Math.max(0, pop - sustains);
-      const performs = Math.round(rem1 * Math.min(0.55, (sustainPct / 100) * 0.75 + 0.12));
-      const rem2 = Math.max(0, rem1 - performs);
-      const tries = Math.round(rem2 * 0.48);
-      const understands = Math.max(0, rem2 - tries);
-      return { understands, tries, performs, sustains };
-    };
-
-    const behList = behs.filter(b => b.scope !== 'specific' || (b.audienceIds || []).includes(a.id));
-
-    return {
-      id: a.id || `aud-${idx}`,
+    const aName = a.name || a.nombre || `Audiencia ${idx + 1}`; const pop = Number(a.population) \vert{}\vert{} Math.max(1, Math.round(totalDeclared / Math.max(1, auds.length))); const posFactor = a.position === 'Promotor' ? 1.15 : (['Probable Resistente', 'Saboteador Abierto', 'Saboteador Oculto'].includes(a.position) ? 0.72 : 0.92);  const touchesFragile = levers.fragileEdges.some(e => e.sourceName.toLowerCase().includes(aName.toLowerCase()) \vert{}\vert{} e.targetName.toLowerCase().includes(aName.toLowerCase()) ); const touchesRepaired = levers.fragileEdges.some(e => simActiveEdges[e.index] && ( e.sourceName.toLowerCase().includes(aName.toLowerCase()) \vert{}\vert{} e.targetName.toLowerCase().includes(aName.toLowerCase()) ) );  const combBase = Math.pow(baseC * baseM * baseO, 1 / 3) * posFactor; const combIntervened = Math.min(0.96, combBase + (relievedFriction * 0.35) + actionBoost);  const netBase = touchesFragile ? 0.32 : 0.54; const netIntervened = Math.min(0.95, netBase + repairedEdgeBoost + (touchesRepaired ? 0.18 : 0.06));  const remainingFriction = Math.max(0.06, totalSystemFriction - relievedFriction); const baselineCeiling = Math.max(0.18, Math.min(0.55, 0.72 - totalSystemFriction - (touchesFragile ? 0.15 : 0.05)));  const synergyBonus = (relievedFriction > 0 && repairedEdgeBoost > 0) ? 0.14 : 0; const intervenedCeiling = Math.max( baselineCeiling, Math.min(0.94, 0.78 - remainingFriction + (repairedEdgeBoost * 0.45) + actionBoost + synergyBonus) );  const baseSeries = []; const intSeries = []; for (let w = 1; w <= simWeeks; w++) { const progress = 1 - Math.exp(-0.26 * w); const reboundPenalty = (w > 5 && totalSystemFriction > 0.25) ? (w - 5) * 0.012 : 0; const bVal = Math.max(0.08, Math.min(baselineCeiling, (combBase * 0.55 + netBase * 0.45) * progress - reboundPenalty));  const partialRebound = (repairedEdgeBoost > 0 && relievedFriction === 0 && w > 6) ? (w - 6) * 0.018 : 0; const iVal = Math.max(bVal, Math.min(intervenedCeiling, (combIntervened * 0.52 + netIntervened * 0.48) * progress - partialRebound));  baseSeries.push(Math.round(bVal * 100)); intSeries.push(Math.round(iVal * 100)); }  const finalBasePct = baseSeries.at(-1) \vert{}\vert{} 20; const finalIntPct = intSeries.at(-1) \vert{}\vert{} finalBasePct;  const buildStages = (sustainPct) => { const sustains = Math.round((sustainPct / 100) * pop); const rem1 = Math.max(0, pop - sustains); const performs = Math.round(rem1 * Math.min(0.55, (sustainPct / 100) * 0.75 + 0.12)); const rem2 = Math.max(0, rem1 - performs); const tries = Math.round(rem2 * 0.48); const understands = Math.max(0, rem2 - tries); return { understands, tries, performs, sustains }; };  const behList = behs.filter(b => b.scope !== 'specific' \vert{}\vert{} (b.audienceIds \vert{}\vert{} []).includes(a.id));  return { id: a.id \vert{}\vert{} `aud-${idx}`,
       name: aName,
       population: pop,
       impact: a.impact || 'Sin evaluar',
@@ -255,7 +155,7 @@ function simSaveScenarioToActions() {
   if (!x) return;
   const sim = simComputeEngine(x);
   const activeSys = sim.levers.systemBarriers.filter(b => simActiveSystem[b.id]).map(b => b.name);
-  const activeEdg = sim.levers.fragileEdges.filter(e => simActiveEdges[e.index]).map(e => `${e.sourceName} → ${e.targetName}`);
+  const activeEdg = sim.levers.fragileEdges.filter(e => simActiveEdges[e.index]).map(e => `${e.sourceName} →${e.targetName}`);
 
   if (!activeSys.length && !activeEdg.length) {
     return alert('Activa al menos una palanca del Sistema o de la Red antes de guardar el escenario.');
@@ -265,7 +165,7 @@ function simSaveScenarioToActions() {
   x.experiments.push({
     id: 'sim-' + Date.now().toString(36),
     name: `Escenario Simulado (+${sim.deltaGlobal} pts de adopción sostenida)`,
-    audience: sim.audiences.map(a => `${a.name}: ${a.baseSustainPct}% → ${a.intSustainPct}%`).join(' | '),
+    audience: sim.audiences.map(a => `${a.name}: ${a.baseSustainPct}\% →${a.intSustainPct}%`).join(' | '),
     intervention: [
       activeSys.length ? `Desbloqueo Sistémico: ${activeSys.join('; ')}` : '',
       activeEdg.length ? `Activación Relacional: ${activeEdg.join('; ')}` : ''
@@ -304,7 +204,7 @@ function renderSimulacionAgentes(a, head, x) {
     </div>`;
   } else {
     regimeNotice = `<div class="notice" style="border-left:4px solid #20c5aa">
-      <b>✦ Sinergia Sistémico-Relacional Activada:</b> Al destrabar las barreras del sistema (${activeSysCount}) y reparar los canales críticos de la red (${activeEdgeCount}), se rompe el umbral de resistencia y la adopción sostenida sube de <b>${sim.weightedBase}% a ${sim.weightedInt}% (+${sim.deltaGlobal} pts)</b> en ${simWeeks} semanas.
+      <b>✦ Sinergia Sistémico-Relacional Activada:</b> Al destrabar las barreras del sistema (${activeSysCount}) y reparar los canales críticos de la red (${activeEdgeCount}), se rompe el umbral de resistencia y la adopción sostenida sube de <b>${sim.weightedBase}\% a${sim.weightedInt}% (+${sim.deltaGlobal} pts)</b> en${simWeeks} semanas.
     </div>`;
   }
 
@@ -314,7 +214,7 @@ function renderSimulacionAgentes(a, head, x) {
       <div>
         <span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:1px">Análisis · Simulación Computacional de Agentes</span>
         <h2 style="margin:4px 0">${safe(x.name || 'Iniciativa')}</h2>
-        <p class="muted" style="max-width:860px;margin:4px 0">${safe(x.objective || x.description || '')} · <b>${sim.totalPopulation} personas</b></p>
+        <p class="muted" style="max-width:860px;margin:4px 0">${safe(x.objective \vert{}\vert{} x.description \vert{}\vert{} '')} · <b>${sim.totalPopulation} personas</b></p>
       </div>
       <div class="flex" style="gap:8px;flex-wrap:wrap">
         <button class="primary" type="button" onclick="simActivateAllRecommended(current())">⚡ Simular Intervención Integral (Sistema + Red)</button>
@@ -326,8 +226,7 @@ function renderSimulacionAgentes(a, head, x) {
     <div class="flex" style="gap:16px;margin-top:14px;flex-wrap:wrap;align-items:center">
       <label style="min-width:280px;margin:0">Comportamiento foco a simular
         <select onchange="simSelectBehavior(this.value)">
-          <option value="all" ${simSelectedBehavior === 'all' ? 'selected' : ''}>Todos los comportamientos de la iniciativa (${behs.length})</option>
-          ${behs.map((b, i) => `<option value="${safe(String(b.id ?? i))}" ${String(b.id ?? i) === String(simSelectedBehavior) ? 'selected' : ''}>${safe(b.name || 'Comportamiento')}</option>`).join('')}
+          <option value="all" ${simSelectedBehavior === 'all' ? 'selected' : ''}>Todos los comportamientos de la iniciativa (${behs.length})</option>${behs.map((b, i) => `<option value="${safe(String(b.id ?? i))}" ${String(b.id ?? i) === String(simSelectedBehavior) ? 'selected' : ''}>${safe(b.name || 'Comportamiento')}</option>`).join('')}
         </select>
       </label>
       <label style="min-width:190px;margin:0">Horizonte de simulación
@@ -355,7 +254,7 @@ function renderSimulacionAgentes(a, head, x) {
     <div class="dash-card" style="border-left:3px solid #59b9ff">
       <small class="muted">ÍNDICE COM-B DEL AGENTE (DIAGNÓSTICO)</small>
       <div style="font-size:18px;font-weight:700;margin:8px 0">
-        C: ${sim.baseC}% · M: ${sim.baseM}% · O: ${sim.baseO}%
+        C: ${sim.baseC}% · M: ${sim.baseM}\% · O: ${sim.baseO}%
       </div>
       <small class="muted">Capacidad, Motivación y Oportunidad/Entorno base</small>
     </div>
@@ -363,7 +262,7 @@ function renderSimulacionAgentes(a, head, x) {
     <div class="dash-card" style="border-left:3px solid #ed837f">
       <small class="muted">FRENOS SISTÉMICOS DESBLOQUEADOS</small>
       <div style="font-size:24px;font-weight:700;margin:6px 0">
-        ${activeSysCount} / ${sim.levers.systemBarriers.length}
+        ${activeSysCount} /${sim.levers.systemBarriers.length}
       </div>
       <small class="muted">Reducción de fricción homeostática: -${sim.relievedFriction}%</small>
     </div>
@@ -371,7 +270,7 @@ function renderSimulacionAgentes(a, head, x) {
     <div class="dash-card" style="border-left:3px solid #efb957">
       <small class="muted">PUENTES DE RED REPARADOS (CENTOLA)</small>
       <div style="font-size:24px;font-weight:700;margin:6px 0">
-        ${activeEdgeCount} / ${sim.levers.fragileEdges.length}
+        ${activeEdgeCount} /${sim.levers.fragileEdges.length}
       </div>
       <small class="muted">Impulso de contagio relacional: +${sim.repairedEdgeBoost}%</small>
     </div>
@@ -433,79 +332,4 @@ function renderSimulacionAgentes(a, head, x) {
     <section class="panel">
       <h3 style="margin-top:0">Mapa de audiencias y propagación simulada</h3>
       <p class="muted" style="font-size:12.5px">Evolución en la escalera de adopción (Comprende → Prueba → Realiza → Sostiene) en ${simWeeks} semanas:</p>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${sim.audiences.map(aud => `
-          <div class="dash-card" style="padding:14px">
-            <div class="flex" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-              <div>
-                <strong style="font-size:16px">${safe(aud.name)}</strong>
-                <div class="muted" style="font-size:12px">
-                  ${aud.population} personas · Impacto: ${safe(aud.impact)} · Posición: ${safe(aud.position)} ${aud.quadrant ? `· ${aud.quadrant}` : ''}
-                </div>
-              </div>
-              <div style="text-align:right">
-                <span style="font-size:13px" class="muted">Sostiene:</span>
-                <b style="font-size:18px;margin-left:4px">${aud.baseSustainPct}% → <span style="color:#20c5aa">${aud.intSustainPct}%</span></b>
-                ${aud.deltaPct > 0 ? `<span style="color:#6ee3a7;font-size:12px;margin-left:4px">(+${aud.deltaPct}%)</span>` : ''}
-              </div>
-            </div>
-
-            <div style="margin:10px 0">
-              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px" class="muted">
-                <span>Tracción Base (${aud.baseSustainPct}%)</span>
-                <span>Tracción Simulada (${aud.intSustainPct}%)</span>
-              </div>
-              <div style="height:10px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;position:relative">
-                <div style="height:100%;width:${aud.intSustainPct}%;background:linear-gradient(90deg,#20c5aa,#6ee3a7);border-radius:6px"></div>
-                <div style="position:absolute;top:0;left:${aud.baseSustainPct}%;bottom:0;width:2px;background:#efb957" title="Techo Base"></div>
-              </div>
-            </div>
-
-            <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;text-align:center;font-size:11.5px">
-              <div style="background:rgba(255,255,255,0.04);padding:6px;border-radius:6px">
-                <div class="muted">Comprende</div>
-                <b>${aud.baseStages.understands} → ${aud.intStages.understands}</b>
-              </div>
-              <div style="background:rgba(255,255,255,0.04);padding:6px;border-radius:6px">
-                <div class="muted">Prueba</div>
-                <b>${aud.baseStages.tries} → ${aud.intStages.tries}</b>
-              </div>
-              <div style="background:rgba(255,255,255,0.04);padding:6px;border-radius:6px">
-                <div class="muted">Realiza</div>
-                <b>${aud.baseStages.performs} → ${aud.intStages.performs}</b>
-              </div>
-              <div style="background:rgba(32,197,170,0.14);padding:6px;border-radius:6px;border:1px solid rgba(32,197,170,0.35)">
-                <div style="color:#6ee3a7">Sostiene</div>
-                <b>${aud.baseStages.sustains} → ${aud.intStages.sustains}</b>
-              </div>
-            </div>
-
-            ${aud.bottleneckWarning ? `<p style="margin:8px 0 0;font-size:11.5px;color:#efb957">⚠️ ${safe(aud.bottleneckWarning)}</p>` : ''}
-          </div>
-        `).join('')}
-      </div>
-    </section>
-
-    <section class="panel">
-      <h3 style="margin-top:0">Comportamientos por audiencia y curva temporal</h3>
-      <p class="muted" style="font-size:12.5px">Comportamientos meta asociados y proyección semana a semana:</p>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${sim.audiences.map(aud => `
-          <div class="dash-card" style="padding:14px">
-            <strong style="font-size:15px">${safe(aud.name)}</strong>
-            <p class="muted" style="font-size:12.5px;margin:4px 0 10px">${aud.population} personas · Impacto: ${safe(aud.impact)}</p>
-            ${aud.behaviors.length ? aud.behaviors.map(b => `
-              <div style="margin-bottom:8px;font-size:13px;line-height:1.4">
-                ◈ ${safe(b.name || b.behavior || 'Comportamiento')}
-              </div>
-            `).join('') : '<p class="muted" style="font-size:12px">Sin comportamientos específicos asignados.</p>'}
-            <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);font-size:11.5px" class="muted">
-              Curva (${simWeeks} sem): Sem 1 (${aud.intSeries[0]}%) → Sem ${Math.ceil(simWeeks/2)} (${aud.intSeries[Math.floor(simWeeks/2)-1]}%) → Sem ${simWeeks} (<b>${aud.intSeries.at(-1)}%</b>)
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </section>
-  </div>
-  `;
-}
+      <div style="display:flex
