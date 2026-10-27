@@ -68,7 +68,7 @@ async function runAgentSimulation(e) {
   const x=current(), f=e.target, submit=document.getElementById('abm-start'),status=document.getElementById('abm-status');
   const bi=Number(f.elements.behaviorIndex.value);
   const behavior=x.behaviors[bi];
-  const selected=x.audiences.filter(a=>behavior.scope!=='specific'||(behavior.audienceIds||[]).map(String).includes(String(a.id)));
+  const selected=abmSelectedAudiences(x,behavior,bi);
   if(!selected.length){status.textContent='Este comportamiento no tiene audiencias asignadas.';return}
   const allAud = x.audiences || [];
   const dims={};
