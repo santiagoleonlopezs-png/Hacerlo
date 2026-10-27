@@ -100,3 +100,12 @@ El análisis sigue siendo exploratorio; evidencia registrada de un vínculo no i
 GitHub Actions ejecuta esta prueba junto con la suite científica Python y las pruebas de integración V2.
 
 **Pendiente:** validación de UX en navegador con datos de prueba y conexión real autorizada a Supabase/Render. No se ha publicado este PR.
+
+
+### Contexto integrado de Resultados y Pensamiento sistémico
+
+El panel plegable «Hipótesis para interpretar escenarios» recoge hasta 16 factores con rol \`Barrera\` desde \`behaviorDiagnosis\` y hasta 16 condiciones \`Dificulta\` no resueltas desde \`systemV23.conditions\`. Si la condición declara \`behaviorId\`, se filtra por el comportamiento seleccionado; las condiciones sin asociación explícita se presentan como contexto general de iniciativa.
+
+**Estas entradas no se convierten en probabilidades ni alteran parámetros del ABM.** Una barrera cualitativa no se traduce sin evidencia a una supuesta reducción cuantitativa del 18 % o similar. La selección de escenarios sigue a cargo del analista y requiere comprobar posteriormente el cambio observado. Esta es una integración de trazabilidad, no una causalidad inferida.
+
+Prueba: \`tests/abm_v2_evidence.cjs\` verifica que se excluyan facilitadores, condiciones resueltas y comportamientos no relacionados.
