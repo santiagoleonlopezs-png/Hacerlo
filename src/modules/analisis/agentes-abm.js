@@ -41,6 +41,7 @@ function renderAgentSimulationPage(x) {
     '<details id="abm-mapping" ' + (settings.mode === 'observed' ? '' : 'hidden ') + 'style="margin:10px 0"><summary style="cursor:pointer;font-weight:700">Asignación de personas del Grafo a audiencias</summary>' +
     '<p class="notice">La clasificación no se infiere del nombre. Debes asociar cada persona a su audiencia; no se utilizan equipos, barreras ni otros nodos como si fueran personas.</p>' +
     '<div style="max-height:230px;overflow:auto">' + (mappings || '<p class="muted">Sin nodos de Persona. Regístralos en Grafo o utiliza el modo sintético.</p>') + '</div></details>' +
+    '<p class="muted">Modo de red registrada: solo influencias con evidencia Registrada u Observada. Fuerza medida 1–5; sin medida se usa 0,5 hipotético. Las relaciones declaradas/hipotéticas no entran en este modo.</p>' +
     '<p class="muted">Audiencias aplicables al comportamiento: ' + (target.map(a=>safe(a.name)).join(', ') || 'ninguna') + '.</p>' +
     '<p class="notice">Mecanismo v1: COM-B + umbrales + contagio social. Los coeficientes no están calibrados; los resultados NO son pronósticos. Se comparan dos escenarios con la misma semilla.</p>' +
     '<label style="display:flex;align-items:center;gap:8px"><input name="useCalibrated" type="checkbox" style="width:auto" ' +
@@ -95,13 +96,11 @@ async function runAgentSimulation(e) {
     const personIds=new Set(relevant.map(n=>String(n.index)));
     payload.agents=relevant.map(n=>({id:String(n.index),
       audience_id:abmV2AudienceId(x,n,n.index)}));
-    payload.edges=(x.edges||[]).filter(edge=>
-      String(edge.relation||edge.label||'').toLowerCase().trim()==='influye en' &&
-      personIds.has(String(edge.s))&&personIds.has(String(edge.t))
-    ).map(edge=>({source:String(edge.s),target:String(edge.t),
-      weight: edge.measureType==='scale' && Number(edge.measureValue)>0 ? Math.min(1,Number(edge.measureValue)/5) : 1}));
+    const graphInput=abmV2NetworkEdges(x,[...personIds]);
+    payload.edges=graphInput.edges;
     if(relevant.length<2){status.textContent='Registra al menos 2 personas en Grafo o usa el modo sintético.';return}
-    if(!payload.edges.length){status.textContent='No hay conexiones «Influye en» entre personas. Regístralas o utiliza el modo sintético.';return}
+    if(!payload.edges.length){status.textContent='No hay conexiones «Influye en» con evidencia Registrada u Observada entre las personas seleccionadas. Verifica el Grafo o utiliza red sintética.';return}
+    if(graphInput.unmeasured)status.textContent='Aviso: '+graphInput.unmeasured+' vínculos sin fuerza medida usan 0,5 hipotético.';
   }
   if(settings.useCalibrated) {
     const cal=x.abmCalibration;
