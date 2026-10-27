@@ -39,13 +39,14 @@ function abmV2NetworkEdges(x,indices) {
   return result;
 }
 
-function abmV2EvidenceSummary(x,behavior) {
+function abmV2EvidenceSummary(x,behavior,selectedIds=null) {
   const all=(x.audiencePeople||[]);
   const auds=x.audiences||[];
   const eligibleAudienceIds=new Set(auds.filter(a=>
-    behavior?.scope!=='specific'||
+    (selectedIds===null||new Set(selectedIds.map(String)).has(String(a.id)))&&
+    (behavior?.scope!=='specific'||
     (behavior?.audienceIds||[]).map(String).includes(String(a.id))
-  ).map(a=>String(a.id)));
+    )).map(a=>String(a.id)));
   const eligible=behavior?all.filter(p=>eligibleAudienceIds.has(String(p.audienceId))):[];
   const statuses=['unknown','understands','tries','performs','sustains'];
   const byStatus=Object.fromEntries(statuses.map(s=>[s,0]));
@@ -123,7 +124,9 @@ function renderABMV2Hypotheses(x,behavior){
 
 function renderABMV2Evidence(x,behavior) {
   if(!behavior)return '';
-  const r=abmV2EvidenceSummary(x,behavior);
+  const index=(x.behaviors||[]).indexOf(behavior);
+  const chosen=typeof abmSelectedAudiences==='function'&&index>=0?abmSelectedAudiences(x,behavior,index).map(a=>String(a.id)):null;
+  const r=abmV2EvidenceSummary(x,behavior,chosen);
   const format=n=>n===null?'—':Number(n).toFixed(1)+'%';
   const rows=Object.entries(r.byAudience).map(([id,a])=>{
     const label=(x.audiences||[]).find(o=>String(o.id)===id)?.name||id;
@@ -153,7 +156,8 @@ function abmV2UseObservedBase(){
   if(!x||!f)return;
   const bi=Number(f.elements.behaviorIndex.value),b=(x.behaviors||[])[bi];
   if(!b)return;
-  const r=abmV2EvidenceSummary(x,b);
+  const chosen=typeof abmSelectedAudiences==='function'?abmSelectedAudiences(x,b,bi).map(a=>String(a.id)):null;
+  const r=abmV2EvidenceSummary(x,b,chosen);
   if(!r.eligible||r.measured!==r.eligible){
     const status=document.getElementById('abm-status');
     if(status)status.textContent='No se puede usar como línea base: falta evidencia para algunas personas elegibles.';
