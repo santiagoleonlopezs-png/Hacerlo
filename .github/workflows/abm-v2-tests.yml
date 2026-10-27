@@ -50,6 +50,6 @@ jobs:
           assert 'assets/css/agentes.css' in html
           assert 'src/modules/encuestas/encuestas.js' in html
           assert 'src/modules/diseno/audiencias.js' in html
-          assert "a.innerHTML=head+renderABMExperiencePage(x);return" in app
+          assert "a.innerHTML=renderABMExperiencePage(x);return" in app
           assert 'src/modules/analisis/simulacion.js' not in html, 'Archivo antiguo incompleto: no debe cargarse'
           PY
