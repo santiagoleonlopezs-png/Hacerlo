@@ -42,7 +42,7 @@ function sysVisualCard(title,explanation,list,theme,tab,empty){
     '<div class="sv-mini-list">'+
       (list.length?list.slice(0,3).map(item=>
         '<button type="button" class="sv-mini-item" onclick="sysVisualOpen(&quot;'+tab+'&quot;,'+
-        (tab==='mapa'?JSON.stringify(item.id):'null')+')"><span>'+safe(item.name||item.statement||'Sin nombre')+
+        (tab==='mapa'?'&quot;'+safe(String(item.id))+'&quot;':'null')+')"><span>'+safe(item.name||item.statement||'Sin nombre')+
         '</span><small>'+safe(item.state||item.type||item.status||'Registrado')+'</small></button>'
       ).join(''):'<p class="sv-empty">'+empty+'</p>')+
     '</div><button type="button" class="sv-link" onclick="sysVisualOpen(&quot;'+tab+'&quot;)">Explorar y registrar <span aria-hidden="true">↗</span></button></section>';
