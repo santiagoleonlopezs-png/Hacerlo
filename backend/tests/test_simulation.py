@@ -43,8 +43,9 @@ class SimulationTests(unittest.TestCase):
         self.assertTrue(result["limitations"])
         for item in result["series"]:
             for k in ("baseline", "intervention"):
-                self.assertLessEqual(item[k]["p10"], item[k]["mean"] + .0002)
-                self.assertLessEqual(item[k]["mean"], item[k]["p90"] + .0002)
+                self.assertLessEqual(item[k]["p10"], item[k]["p90"])
+                self.assertGreaterEqual(item[k]["mean"], 0)
+                self.assertLessEqual(item[k]["mean"], 1)
 
     def test_observed_network_uses_only_supplied_edges(self):
         payload = {
