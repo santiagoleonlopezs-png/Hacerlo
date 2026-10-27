@@ -126,15 +126,16 @@ async function main(){
     scope:'specific',audienceIds:[audienceId],kind:''
   }));
   assert.equal(current().behaviors[0].audienceIds[0],audienceId);
-  current().nodes=[
-    {name:'P01',type:'Persona',audienceId},
-    {name:'P02',type:'Persona',audienceId},
-    {name:'P03',type:'Persona',audienceId:'aud-b'}
-  ];
-  current().edges=[
-    {s:0,t:1,relation:'Influye en',measureType:'scale',measureValue:4},
-    {s:1,t:2,relation:'Colabora con',measureType:'scale',measureValue:2}
-  ];
+  // Cohorte de al menos 20 agentes, como exige la calibración real.
+  current().nodes=Array.from({length:25},(_,i)=>({
+    name:'P'+String(i+1).padStart(2,'0'),
+    type:'Persona',audienceId:i<22?audienceId:'aud-b'
+  }));
+  current().edges=Array.from({length:21},(_,i)=>({
+    s:i,t:i+1,relation:'Influye en',measureType:'scale',measureValue:4
+  }));
+  current().edges.push({s:21,t:22,relation:'Colabora con',
+    measureType:'scale',measureValue:2});
   vm.runInContext("go('Simulación de agentes')",ctx);
   assert.match(element('app').innerHTML,/Piloto ficticio/);
   assert.match(element('app').innerHTML,/Registrar interacciones/);
@@ -149,8 +150,8 @@ async function main(){
   await vm.runInContext('runAgentSimulation',ctx)({
     preventDefault(){},target:element('abm-form')});
   assert.equal(calls[0].payload.mode,'observed');
-  assert.equal(calls[0].payload.agents.length,2);
-  assert.equal(calls[0].payload.edges.length,1);
+  assert.equal(calls[0].payload.agents.length,22);
+  assert.equal(calls[0].payload.edges.length,21);
   assert.equal(calls[0].payload.edges[0].weight,.8);
   assert.match(calls[0].auth,/^Bearer /);
   assert.equal(current().modelRuns.length,1);
@@ -174,8 +175,8 @@ async function main(){
   assert.equal(current().modelRuns.length,2);
   await vm.runInContext('syncAll()',ctx);
   assert.equal(memory.initiatives.length,1);
-  assert.equal(memory.graph_nodes.length,3);
-  assert.equal(memory.graph_edges.length,2);
+  assert.equal(memory.graph_nodes.length,25);
+  assert.equal(memory.graph_edges.length,22);
   assert.equal(memory.initiatives[0].app_state.modelRuns.length,2);
   assert.equal(memory.initiatives[0].app_state.abmCalibration.result.holdout_mae_pp,6);
   vm.runInContext('db={initiatives:[],selected:null}',ctx);
