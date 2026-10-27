@@ -27,6 +27,15 @@ function renderABMResearchPanel(x, behaviorIndex) {
     '</details></section>';
 }
 
+/* Contrato de comparabilidad: cambios en red, audiencia o condiciones requieren recalibración. */
+function abmInputFingerprint(payload) {
+  return JSON.stringify({
+    behavior:payload.behavior,mode:payload.mode,seed:payload.seed,
+    sample_size:payload.sample_size,audiences:payload.audiences,
+    agents:payload.agents,edges:payload.edges
+  });
+}
+
 function parseABMObservations(raw) {
   const lines=String(raw||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
   const rows=[];
@@ -140,7 +149,9 @@ async function calibrateAgentModel() {
     const x=current();
     x.abmObservationCsv=x.abmObservationCsv||{};
     x.abmObservationCsv[behaviorIndex]=raw;
-    x.abmCalibration={behaviorKey:behaviorIndex,runAt:new Date().toISOString(),result};
+    x.abmCalibration={behaviorKey:behaviorIndex,runAt:new Date().toISOString(),fingerprint:abmInputFingerprint(payload),result};
+    const enable=document.querySelector('input[name="useCalibrated"]');
+    if(enable)enable.disabled=false;
     save();
     document.getElementById('abm-calibration-result').innerHTML=renderABMCalibrationResult(result);
     status.textContent='Calibración retrospectiva terminada. Revisa el error reservado antes de usar los parámetros.';
@@ -162,8 +173,10 @@ async function evaluateABMSensitivity() {
     payload.runs=12;
     payload.periods=Math.min(18,payload.periods);
     if(payload.mode==='synthetic')payload.sample_size=Math.min(300,payload.sample_size);
-    if(cal?.behaviorKey===behaviorIndex && cal.result?.parameters)
+    if(cal?.behaviorKey===behaviorIndex && cal.fingerprint===abmInputFingerprint(payload) && cal.result?.parameters)
       payload.parameters=cal.result.parameters;
+    else if(cal?.behaviorKey===behaviorIndex)
+      status.textContent='Configuración modificada: sensibilidad con parámetros base; recalibra para reutilizar el ajuste.';
     const result=await postABMResearch('/api/simulation/sensitivity',payload);
     x.abmTargetEffect=limit;
     x.abmSensitivity={behaviorKey:behaviorIndex,runAt:new Date().toISOString(),result};
