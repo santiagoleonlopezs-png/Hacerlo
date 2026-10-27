@@ -98,6 +98,52 @@ function renderABMVisualResult(r){
     '</div>';
 }
 
+
+/* Identificador corto de comparabilidad, sin datos personales.
+   Incluye red, audiencias, horizonte, parámetros e inicio, salvo palanca.
+   No se utiliza como mecanismo de seguridad. */
+function abmScenarioFingerprint(payload){
+  const obj={
+    behavior:payload.behavior,mode:payload.mode,
+    initial_adoption:payload.initial_adoption,periods:payload.periods,
+    runs:payload.runs,sample_size:payload.sample_size,seed:payload.seed,
+    audiences:payload.audiences,agents:payload.agents,edges:payload.edges,
+    parameters:payload.parameters||null
+  };
+  const encoded=JSON.stringify(obj);
+  let hash=2166136261;
+  for(let i=0;i<encoded.length;i++){
+    hash^=encoded.charCodeAt(i);
+    hash=Math.imul(hash,16777619);
+  }
+  return 'abm-'+(hash>>>0).toString(16)+'-'+encoded.length;
+}
+function renderABMScenarioComparison(x,active){
+  if(!active?.modelFingerprint)return '';
+  const scenarios=new Map();
+  for(const run of (x.modelRuns||[])){
+    if(run.engine!=='abm-v1'||run.behaviorId!==active.behaviorId||
+       run.modelFingerprint!==active.modelFingerprint||!run.result?.final)continue;
+    scenarios.set(run.scenario,run);
+  }
+  const unique=[...scenarios.values()];
+  if(unique.length<2)return '<p class="abm-repeat-hint">¿Quieres comparar distintas decisiones? Elige otra tarjeta y vuelve a simular manteniendo los demás supuestos.</p>';
+  const labels=Object.fromEntries(ABM_SCENARIO_CARDS.map(s=>[s.id,s.title]));
+  const cards=unique.map(run=>{
+    const d=100*Number(run.result.final.difference?.mean||0);
+    const final=100*Number(run.result.final.intervention?.mean||0);
+    return '<div class="abm-past-scenario'+(run.scenario===active.scenario?' is-current':'')+'">'+
+      '<small>'+safe(labels[run.scenario]||run.scenario)+'</small>'+
+      '<strong>'+(d>0?'+':'')+d.toFixed(1)+' pp</strong>'+
+      '<div class="abm-past-track"><i style="width:'+Math.max(0,Math.min(100,final))+'%"></i></div>'+
+      '<span>Adopción simulada: '+final.toFixed(1)+'%</span></div>';
+  }).join('');
+  return '<div class="abm-multi-comparison"><h3>Comparación de tus decisiones</h3>'+
+    '<p>Resultados de las palancas probadas con el mismo punto de partida, red y parámetros.</p>'+
+    '<div class="abm-past-grid">'+cards+'</div>'+
+    '<small>La comparación corresponde únicamente al modelo ejecutado. No determina qué intervención será más efectiva en la realidad.</small></div>';
+}
+
 function renderABMExperiencePage(x){
   if(!x)return '<section class="panel">Primero selecciona una iniciativa.</section>';
   const behaviors=x.behaviors||[], audiences=x.audiences||[], settings=x.abmSettings||{};
@@ -170,7 +216,7 @@ function renderABMExperiencePage(x){
        '<label class="abm-parameter-choice"><input type="checkbox" name="useCalibrated" '+(x.abmCalibration?.behaviorKey===String(bi)?(settings.useCalibrated?'checked':''):'disabled')+'> Usar parámetros de un ajuste retrospectivo existente (no significa validación prospectiva)</label>'+
        '</div></details></form>'+
        '<aside class="abm-results" id="abm-results"><div class="abm-results-heading"><div><span class="abm-eyebrow">TU EXPERIMENTO</span><h2>¿Qué cambia con tu decisión?</h2></div><span class="abm-results-icon">↗</span></div>'+
-       '<div id="abm-output">'+(last?renderABMVisualResult(last.result):
+       '<div id="abm-output">'+(last?renderABMVisualResult(last.result)+renderABMScenarioComparison(x,last):
        '<div class="abm-result-placeholder"><div class="abm-placeholder-paths"><span><i></i><i></i><i></i><i></i></span><span><i></i><i></i><i></i><i></i></span></div>'+
        '<h3>Dos caminos. Una decisión.</h3><p>Cuando simules, verás qué pasa si mantienes las condiciones actuales y qué cambia al probar tu intervención.</p><div class="abm-placeholder-legend"><span>○ Sin intervenir</span><span>✧ Con tu decisión</span></div></div>')+'</div>'+
        '</aside></div>')+
