@@ -27,3 +27,7 @@ jobs:
         run: node --check simulacion-agentes.js
       - name: Comprobar sintaxis de calibración web
         run: node --check calibracion-agentes.js
+      - name: Probar integración de laboratorio web
+        run: node tests/abm_frontend.cjs
+      - name: Comprobar rutas de calibración y sensibilidad
+        run: PYTHONPATH=backend python -c "from app import app; assert {'/api/simulation/calibrate', '/api/simulation/sensitivity'} <= {r.path for r in app.routes}"
