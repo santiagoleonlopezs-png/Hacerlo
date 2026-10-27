@@ -84,9 +84,6 @@ async function runAgentSimulation(e) {
   const payload={behavior:behavior.name,audiences,scenario:settings.scenario,mode:settings.mode,
     initial_adoption:settings.initialPct/100,periods:settings.periods,runs:settings.runs,
     sample_size:settings.sampleSize,seed:settings.seed,agents:[],edges:[]};
-  if(settings.useCalibrated && x.abmCalibration?.behaviorKey === String(bi) && x.abmCalibration.result?.parameters){
-    payload.parameters=x.abmCalibration.result.parameters;
-  }
   if(settings.mode==='observed') {
     const people=(x.nodes||[]).map((n,i)=>({...n,index:i})).filter(n=>n.type==='Persona');
     const selectedIds=new Set(selected.map(a=>String(a.id)));
@@ -103,6 +100,14 @@ async function runAgentSimulation(e) {
       weight: edge.measureType==='scale' && Number(edge.measureValue)>0 ? Math.min(1,Number(edge.measureValue)/5) : 1}));
     if(relevant.length<2){status.textContent='Registra al menos 2 personas en Grafo o usa el modo sintético.';return}
     if(!payload.edges.length){status.textContent='No hay conexiones «Influye en» entre personas. Regístralas o utiliza el modo sintético.';return}
+  }
+  if(settings.useCalibrated) {
+    const cal=x.abmCalibration;
+    if(cal?.behaviorKey!==String(bi)||cal.fingerprint!==abmInputFingerprint(payload)||!cal.result?.parameters) {
+      status.textContent='La configuración cambió desde la calibración. Vuelve a calibrar con los nuevos datos o desactiva «Usar parámetros calibrados».';
+      return;
+    }
+    payload.parameters=cal.result.parameters;
   }
   submit.disabled=true;status.textContent='Simulando comparaciones apareadas…';
   try {
