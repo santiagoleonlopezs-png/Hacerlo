@@ -207,7 +207,9 @@ function renderABMExperiencePage(x){
   const target=abmSelectedAudiences(x,behavior,bi);
   const selectedIds=new Set(target.map(a=>String(a.id)));
   const last=(x.modelRuns||[]).filter(r=>r.engine==='abm-v1'&&behavior&&
-    (r.behaviorId===abmV2BehaviorKey(behavior,bi)||(!r.behaviorId&&r.behavior===behavior.name))).at(-1);
+    (r.behaviorId===abmV2BehaviorKey(behavior,bi)||(!r.behaviorId&&r.behavior===behavior.name))&&
+    JSON.stringify((r.settings?.selectedAudienceIds||eligible.map(a=>String(a.id))).slice().sort())===
+    JSON.stringify(target.map(a=>String(a.id)).slice().sort())).at(-1);
   const scenario=ABM_SCENARIO_CARDS.some(s=>s.id===settings.scenario)?settings.scenario:'friction';
   const value=(v,d)=>v===undefined||v===null?d:v;
   const initial=value(settings.initialPct,10);
