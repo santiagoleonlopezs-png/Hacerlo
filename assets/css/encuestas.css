@@ -11,3 +11,51 @@
 .ee-tone-alert{color:#ffae70!important}.ee-tone-accelerate{color:#f4d365!important}.ee-tone-consolidate{color:#83bfff!important}.ee-tone-sustain{color:#a4dc68!important}.ee-reading-ranges{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin:12px 0}.ee-reading-ranges article{border:1px solid currentColor;border-radius:10px;padding:12px;background:#0b2b3d}.ee-reading-ranges b,.ee-reading-ranges small{display:block}.ee-reading-ranges p{font-size:13px;line-height:1.5;margin-bottom:0;color:#cee0e8}
 
 .ee-score .ee-reading{color:inherit!important;width:max-content;max-width:100%;margin:6px 0 0}.ee-word-cloud{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:baseline;padding:18px 0}.ee-word-cloud span{color:#81cec7;line-height:1.4}.ee-word-cloud small{font-size:11px;color:#a9c2cc}.ee-short-answers{display:flex;flex-wrap:wrap;gap:15px}.ee-answer-row{margin:12px 0}.ee-answer-row>div:first-child{display:flex;justify-content:space-between;gap:15px;overflow-wrap:anywhere}.ee-answer-track{height:7px;border-radius:5px;background:#234555;margin-top:6px;overflow:hidden}.ee-answer-track span{display:block;height:100%;background:#52bfb5}.ee-comments-board{margin-top:20px}.ee-comments-board .ee-question b{display:block}.ee-comments-board .ee-question p{white-space:pre-wrap;overflow-wrap:anywhere}
+
+
+/* HACERLO V2 · Selector compacto de instrumentos · Sin columna lateral */
+.ee-single-column{display:flex;flex-direction:column;gap:15px;min-width:0}
+.ee-single-column>.panel{margin:0;min-width:0}
+.ee-instrument-toolbar{padding:18px 22px;background:linear-gradient(120deg,#103249,#0b283b);border-color:#356276}
+.ee-toolbar-row{display:flex;align-items:end;gap:18px;flex-wrap:wrap}
+.ee-toolbar-picker{flex:1 1 350px;min-width:215px;margin:0!important;display:flex;flex-direction:column;gap:7px;color:#a9c9d7;font-size:12px;font-weight:650}
+.ee-toolbar-picker>span{display:block}
+.ee-toolbar-picker>select{width:100%;margin:0;min-height:45px;border:1px solid #45818a;background:#092637;border-radius:10px;color:#f0f9ff;padding:9px 12px;font-size:15px;text-overflow:ellipsis}
+.ee-toolbar-picker>select:focus-visible{outline:2px solid #73e6d2;outline-offset:2px}
+.ee-toolbar-status{min-width:142px;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:3px 0 5px}
+.ee-toolbar-status small{font-size:11px;color:#abc6d4}
+.ee-toolbar-status strong{font-size:13px;color:#f2e1a9}
+.ee-manage-button{flex:0 0 auto;min-height:43px;white-space:normal;padding:10px 14px;margin:0}
+.ee-manager-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:17px;padding-top:18px;border-top:1px solid #2d596d}
+.ee-manager-option{min-width:0;border:1px solid #2c586d;border-radius:13px;background:#092639;padding:17px 18px}
+.ee-manager-option h3{font-size:17px;margin:0 0 6px}
+.ee-manager-option>.muted{font-size:12px;line-height:1.5;margin:0 0 13px}
+.ee-manager-option label{font-size:12px;color:#bcd3dd;margin:8px 0}
+.ee-manager-option label>input[type=file]{min-width:0;width:100%}
+.ee-manager-inputs{display:grid;grid-template-columns:minmax(110px,.7fr) minmax(170px,1.3fr);gap:11px;align-items:end;margin-bottom:12px}
+.ee-manager-inputs input,.ee-manager-inputs select{width:100%}
+.ee-manager-trash{grid-column:1/-1}
+.ee-manager-trash>details{margin:0}
+.ee-active-toolbar{padding:17px 21px 12px;border:1px solid #315568;background:#0a2639;min-width:0}
+.ee-active-row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.ee-current-instrument{display:flex;align-items:baseline;gap:10px 13px;flex-wrap:wrap;min-width:0}
+.ee-current-label{font-size:11px;color:#9ebdc9;letter-spacing:.3px;white-space:nowrap}
+.ee-current-instrument strong{font-size:16px;color:#e6f3f8;min-width:0;overflow-wrap:anywhere}
+.ee-current-instrument small{font-size:11px;color:#9ebdc9}
+.ee-instrument-options{position:relative;margin:0!important;min-width:190px}
+.ee-instrument-options>summary{border:1px solid #305a70;border-radius:9px;background:#143e53;padding:10px 14px;color:#c3e7ed;font-weight:700;font-size:12px;list-style:none;cursor:pointer;white-space:nowrap}
+.ee-instrument-options>summary::-webkit-details-marker{display:none}
+.ee-instrument-options[open]>summary{border-radius:9px 9px 0 0}
+.ee-options-content{padding:13px 16px;border:1px solid #2c5970;border-radius:0 0 10px 10px;background:#0b2e41;display:flex;flex-direction:column;gap:12px}
+.ee-options-actions{display:flex;flex-wrap:wrap;gap:8px}
+.ee-options-actions button{font-size:12px;white-space:normal}
+.ee-options-content>details{margin:0;padding-top:8px;border-top:1px solid #305468}
+.ee-options-content>details>summary{font-size:12px;cursor:pointer}
+.ee-options-content>p{font-size:12px;color:#acc7d4;line-height:1.5;margin:0}
+.ee-single-column .ee-tabs{display:flex;flex-wrap:wrap;gap:7px;margin:15px 0 0;align-items:center}
+.ee-single-column .ee-tabs button{font-size:13px;padding:10px 13px;margin:0}
+.ee-single-column #ee-quick-panel{margin:0}
+.ee-single-column .ee-hero{margin:0}
+.ee-single-column .panel{min-width:0}
+@media(max-width:920px){.ee-manager-grid{grid-template-columns:1fr}.ee-toolbar-picker{flex-basis:250px}.ee-active-row{align-items:stretch}}
+@media(max-width:600px){.ee-instrument-toolbar,.ee-active-toolbar{padding:14px}.ee-toolbar-picker{flex-basis:100%;min-width:0}.ee-toolbar-status{flex:1}.ee-manage-button{flex:0 0 auto}.ee-manager-inputs{grid-template-columns:1fr}.ee-instrument-options{flex:1;min-width:0}.ee-instrument-options>summary{white-space:normal}.ee-single-column .ee-tabs button{flex:1 1 auto}}
