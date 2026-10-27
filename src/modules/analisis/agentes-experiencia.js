@@ -144,13 +144,68 @@ function renderABMScenarioComparison(x,active){
     '<small>La comparación corresponde únicamente al modelo ejecutado. No determina qué intervención será más efectiva en la realidad.</small></div>';
 }
 
+
+/* Segmentación voluntaria sobre audiencias que ya pertenecen al comportamiento.
+   Si no se ha seleccionado un subconjunto, se conservan TODAS por defecto. */
+function abmApplicableAudiences(x,behavior){
+  if(!behavior)return [];
+  const allowed=(behavior.audienceIds||[]).map(String);
+  return (x.audiences||[]).filter(a=>behavior.scope!=='specific'||allowed.includes(String(a.id)));
+}
+function abmSelectedAudiences(x,behavior,index){
+  const applicable=abmApplicableAudiences(x,behavior);
+  const key=abmV2BehaviorKey(behavior,index);
+  const saved=x.abmAudienceSelection?.[key];
+  if(!Array.isArray(saved))return applicable;
+  const ids=new Set(saved.map(String));
+  return applicable.filter(a=>ids.has(String(a.id)));
+}
+function abmToggleAudience(audienceId,checked){
+  const x=current(),form=document.getElementById('abm-form');
+  if(!x||!form)return;
+  const index=Number(form.elements.behaviorIndex.value),behavior=(x.behaviors||[])[index];
+  const eligible=abmApplicableAudiences(x,behavior);
+  if(!eligible.some(a=>String(a.id)===String(audienceId)))return;
+  const before=abmSelectedAudiences(x,behavior,index);
+  const chosen=new Set(before.map(a=>String(a.id)));
+  if(checked)chosen.add(String(audienceId));else chosen.delete(String(audienceId));
+  x.abmAudienceSelection ||= {};
+  x.abmAudienceSelection[abmV2BehaviorKey(behavior,index)]=eligible.filter(a=>chosen.has(String(a.id))).map(a=>String(a.id));
+  save();
+  abmRefreshAudienceChoice(x,behavior,index);
+}
+function abmSelectAllAudiences(){
+  const x=current(),form=document.getElementById('abm-form');
+  if(!x||!form)return;
+  const index=Number(form.elements.behaviorIndex.value),behavior=(x.behaviors||[])[index];
+  if(!behavior)return;
+  x.abmAudienceSelection ||= {};
+  delete x.abmAudienceSelection[abmV2BehaviorKey(behavior,index)];
+  save();
+  abmRefreshAudienceChoice(x,behavior,index);
+}
+function abmRefreshAudienceChoice(x,behavior,index){
+  const selected=abmSelectedAudiences(x,behavior,index),ids=new Set(selected.map(a=>String(a.id)));
+  document.querySelectorAll('[data-abm-audience]').forEach(box=>{
+    box.checked=ids.has(String(box.value));
+  });
+  const label=document.getElementById('abm-audience-summary');
+  if(label)label.textContent=selected.length+' seleccionada'+(selected.length===1?'':'s')+
+    (selected.length?' · '+selected.slice(0,3).map(a=>a.name).join(', ')+(selected.length>3?'…':''):' · selecciona al menos una');
+  const button=document.getElementById('abm-start');
+  if(button)button.disabled=!selected.length;
+  if(typeof abmMarkPreviewStale==='function')abmMarkPreviewStale();
+}
+
 function renderABMExperiencePage(x){
   if(!x)return '<section class="panel">Primero selecciona una iniciativa.</section>';
   const behaviors=x.behaviors||[], audiences=x.audiences||[], settings=x.abmSettings||{};
   const index=Number(settings.behaviorIndex??0);
   const bi=index>=0&&index<behaviors.length?index:0;
   const behavior=behaviors[bi];
-  const target=behavior?audiences.filter(a=>behavior.scope!=='specific'||(behavior.audienceIds||[]).map(String).includes(String(a.id))):[];
+  const eligible=abmApplicableAudiences(x,behavior);
+  const target=abmSelectedAudiences(x,behavior,bi);
+  const selectedIds=new Set(target.map(a=>String(a.id)));
   const last=(x.modelRuns||[]).filter(r=>r.engine==='abm-v1'&&behavior&&
     (r.behaviorId===abmV2BehaviorKey(behavior,bi)||(!r.behaviorId&&r.behavior===behavior.name))).at(-1);
   const scenario=ABM_SCENARIO_CARDS.some(s=>s.id===settings.scenario)?settings.scenario:'friction';
@@ -192,7 +247,7 @@ function renderABMExperiencePage(x){
       '<div class="abm-workspace"><form id="abm-form" class="abm-form" onsubmit="runAgentSimulation(event)">'+
        '<section class="abm-block"><div class="abm-step-title"><span>01</span><div><h2>¿Qué quieres que cambie?</h2><p>Escoge el comportamiento diseñado en esta iniciativa.</p></div></div>'+
        '<label class="abm-field">Comportamiento<select name="behaviorIndex" onchange="setABMBehavior(this.value)">'+behaviorsOptions+'</select></label>'+
-       '<div class="abm-audiences"><span class="abm-aud-dot"></span><span>'+target.length+' audiencias relacionadas</span><strong>'+safe(target.map(a=>a.name).slice(0,3).join(' · ')+(target.length>3?' y otras':''))+'</strong></div></section>'+
+       '<div class="abm-audience-picker"><div class="abm-audience-heading"><strong>¿En cuáles audiencias quieres probar esta decisión?</strong><button class="secondary" type="button" onclick="abmSelectAllAudiences()">Seleccionar todas</button></div>'+'<p class="muted">Solo puedes elegir audiencias asociadas a este comportamiento en Diseño.</p><div class="abm-audience-options" role="group" aria-label="Audiencias para simular">'+eligible.map(a=>'<label class="abm-audience-option"><input type="checkbox" data-abm-audience value="'+safe(a.id)+'" '+(selectedIds.has(String(a.id))?'checked ':'')+'onchange="abmToggleAudience(this.value,this.checked)"><span>'+safe(a.name)+'</span></label>').join('')+'</div>'+'<p id="abm-audience-summary" class="abm-audience-summary" role="status">'+target.length+' seleccionada'+(target.length===1?'':'s')+(target.length?' · '+safe(target.slice(0,3).map(a=>a.name).join(', ')):' · selecciona al menos una')+'</p></div></section>'+
        '<section class="abm-block"><div class="abm-step-title"><span>02</span><div><h2>¿Qué harías para impulsar el cambio?</h2><p>Elige una decisión. Después podrás probar otra y compararlas.</p></div></div>'+
        '<div class="abm-scenario-grid" role="group" aria-label="Decisiones para simular">'+scenarioCards+'</div>'+
        '<select name="scenario" class="abm-visually-hidden" aria-label="Escenario seleccionado">'+ABM_SCENARIO_CARDS.map(s=>'<option value="'+s.id+'"'+(s.id===scenario?' selected':'')+'>'+s.title+'</option>').join('')+'</select>'+
