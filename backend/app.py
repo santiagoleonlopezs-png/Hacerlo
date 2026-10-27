@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.3.4')
+app = FastAPI(title='HACERLO Computational Engine', version='1.4.0')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['https://santiagoleonlopezs-png.github.io'],
@@ -33,7 +33,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.3.4'}
+    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.4.0'}
 
 @app.get('/api/health')
 def health():
@@ -42,6 +42,7 @@ def health():
         'engine': 'HACERLO',
         'networkx': 'ready-v1.1',
         'ai': 'openrouter-configured' if os.getenv('OPENROUTER_API_KEY') else 'not-configured',
+        'abm': 'experimental-v1',
         'mesa': 'pending',
         'pysd': 'pending'
     }
@@ -127,3 +128,75 @@ def ai_interpret(
         '- hypotheses: 3 a 5 hipótesis sistémicas (title, rationale, evidence_limit) que expliquen por qué las personas actúan como lo hacen (factores de motivación, contexto, liderazgo o incentivos), siempre presentadas como premisas a validar en terreno y no como verdades absolutas. '
         '- interventions: 3 recomendaciones de acción directivas y humanas (name, why, measure), enfocadas en diseño de entornos de decisión (nudges), habilitación de líderes puente, reducción de fricciones y acompañamiento al cambio. '
         '- what_to_measure: 4 a 5 indicadores clave de adopción de hábitos, pulso cultural y tracción organizacional para el tablero
+.'
+    )
+    if len(encoded) > 35000:
+        raise HTTPException(413, 'El contexto supera el límite del motor de IA.')
+    try:
+        answer = post_json(
+            'https://openrouter.ai/api/v1/chat/completions',
+            {'model': os.getenv('OPENROUTER_MODEL', 'openai/gpt-4o-mini'),
+             'messages': [{'role': 'system', 'content': system},
+                          {'role': 'user', 'content': encoded}],
+             'response_format': {'type': 'json_object'}},
+            {'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'},
+            timeout=45
+        )
+        raw = answer['choices'][0]['message']['content']
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            raise ValueError('La respuesta no es un objeto JSON.')
+        return parsed
+    except (HTTPError, URLError, KeyError, ValueError, TimeoutError) as exc:
+        raise HTTPException(502, 'La interpretación de IA no pudo completarse.') from exc
+
+
+# Motor experimental de adopción: requiere sesión HACERLO.
+# Los límites por proceso no sustituyen el control de cuota global en producción.
+from simulation import simulate_adoption
+
+class SimulationRequest(BaseModel):
+    audiences: List[Dict[str, Any]] = Field(min_length=1, max_length=50)
+    agents: List[Dict[str, Any]] = Field(default_factory=list, max_length=500)
+    edges: List[Dict[str, Any]] = Field(default_factory=list, max_length=5000)
+    mode: str = 'synthetic'
+    scenario: str = 'training'
+    behavior: str = Field(default='Comportamiento objetivo', max_length=160)
+    initial_adoption: float = Field(default=0.10, ge=0, le=1)
+    periods: int = Field(default=12, ge=1, le=24)
+    runs: int = Field(default=40, ge=5, le=80)
+    sample_size: int = Field(default=150, ge=2, le=500)
+    seed: int = Field(default=2026, ge=0, le=2147483647)
+
+_simulation_requests = defaultdict(deque)
+
+@app.post('/api/simulation/adoption')
+def adoption_simulation(
+    payload: SimulationRequest,
+    authorization: Optional[str] = Header(None),
+    x_supabase_apikey: Optional[str] = Header(None)
+):
+    if not authorization or not authorization.startswith('Bearer ') or not x_supabase_apikey:
+        raise HTTPException(401, 'Se requiere una sesión de HACERLO válida.')
+    try:
+        user = get_json(
+            'https://mflakxgdkpuhemgslgsa.supabase.co/auth/v1/user',
+            {'Authorization': authorization, 'apikey': x_supabase_apikey}
+        )
+        user_id = user.get('id')
+        if not user_id:
+            raise ValueError('Sesión inválida')
+    except Exception as exc:
+        raise HTTPException(401, 'La sesión de Supabase no pudo verificarse.') from exc
+
+    now = time.monotonic()
+    calls = _simulation_requests[user_id]
+    while calls and now - calls[0] > 3600:
+        calls.popleft()
+    if len(calls) >= 20:
+        raise HTTPException(429, 'Límite experimental de 20 simulaciones por hora.')
+    calls.append(now)
+    try:
+        return simulate_adoption(payload.model_dump())
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise HTTPException(422, str(exc)) from exc
