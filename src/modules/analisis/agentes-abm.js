@@ -7,7 +7,7 @@ function renderAgentSimulationPage(x) {
   const bi = count >= 0 && count < behaviors.length ? count : 0;
   const behavior = behaviors[bi];
   const target = behavior ? audiences.filter(a => behavior.scope !== 'specific' || (behavior.audienceIds || []).map(String).includes(String(a.id))) : [];
-  const last = (x.modelRuns || []).filter(r => r.engine === 'abm-v1').slice(-1)[0];
+  const last = (x.modelRuns || []).filter(r => r.engine === 'abm-v1' && behavior && (r.behaviorId === abmV2BehaviorKey(behavior,bi) || (!r.behaviorId && r.behavior === behavior.name))).slice(-1)[0];
   const val = (v, fallback) => v === undefined || v === null ? fallback : v;
   const controls = (audiences.length ? audiences : []).map((a, i) => {
     const d = (settings.dimensions || {})[String(a.id)] || {};
@@ -19,11 +19,12 @@ function renderAgentSimulationPage(x) {
   }).join('');
   const mappings = personNodes.map(n => '<label style="display:flex;align-items:center;gap:10px;justify-content:space-between;border-top:1px solid #24455a;padding:4px 0"><span>' + safe(n.name || 'Persona ' + n.idx) +
     '</span><select style="max-width:230px;margin:3px 0" onchange="setABMAudienceMapping(' + n.idx + ',this.value)"><option value="">Sin asignar</option>' +
-    audiences.map(a => '<option value="' + safe(a.id) + '"' + (String((x.abmAudienceMap || {})[n.idx] || n.audienceId || '') === String(a.id) ? ' selected' : '') + '>' + safe(a.name) + '</option>').join('') +
+    audiences.map(a => '<option value="' + safe(a.id) + '"' + (abmV2AudienceId(x,n,n.idx) === String(a.id) ? ' selected' : '') + '>' + safe(a.name) + '</option>').join('') +
     '</select></label>').join('');
   return '<div class="hero"><div class="subtle">ANÁLISIS · EXPERIMENTACIÓN COMPUTACIONAL</div><h1>Laboratorio de agentes</h1><p>Experimenta con decisiones sobre adopción conductual. Simula mecanismos hipotéticos y contrástalos después con evidencia observada.</p></div>' +
     '<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>1. Modelo conectado con Diseño y Grafo</h2><p class="muted">Se reutilizan audiencias y comportamientos. Solo las relaciones explícitas «Influye en» se usan como influencia social.</p></div><button class="secondary" onclick="go(&quot;Grafo de adopción&quot;)">Revisar Grafo</button></div>' +
     '<div class="triple"><div><div class="metric">' + audiences.length + '</div><small>Audiencias registradas</small></div><div><div class="metric">' + behaviors.length + '</div><small>Comportamientos</small></div><div><div class="metric">' + personNodes.length + '</div><small>Nodos de tipo Persona</small></div></div></section>' +
+    (behavior ? renderABMV2Evidence(x,behavior) : '') +
     (!behaviors.length || !audiences.length ? '<section class="panel"><p class="notice">Primero registra audiencias y comportamientos en Diseño.</p><button class="primary" onclick="phase=1;go(\'RDAIM\')">Abrir Diseño</button></section>' :
     '<form id="abm-form" class="panel" onsubmit="runAgentSimulation(event)"><h2>2. Diseñar experimento</h2>' +
     '<div class="grid"><label>Comportamiento a simular<select name="behaviorIndex" onchange="setABMBehavior(this.value)">' +
@@ -31,7 +32,7 @@ function renderAgentSimulationPage(x) {
     '<label>Escenario de intervención<select name="scenario">' +
     [['training','Formación · mejora capacidad'],['friction','Reducir fricciones · mejora oportunidad'],['incentives','Incentivos · mejora motivación'],['ambassadors','Embajadores · activar nodos conectados']].map(([v,txt]) => '<option value="' + v + '"' + (settings.scenario === v ? ' selected' : '') + '>' + txt + '</option>').join('') + '</select></label>' +
     '<label>Origen de red<select name="mode" onchange="switchABMMode(this.value)"><option value="synthetic"' + (settings.mode !== 'observed' ? ' selected' : '') + '>Exploratorio · red sintética</option><option value="observed"' + (settings.mode === 'observed' ? ' selected' : '') + '>Grafo registrado · solo personas</option></select></label>' +
-    '<label>Adopción inicial estimada (%)<input name="initialPct" type="number" min="0" max="100" step="1" value="' + safe(val(settings.initialPct,10)) + '"></label>' +
+    '<label>Adopción inicial estimada (%)<input name="initialPct" type="number" min="0" max="100" step="1" value="' + safe(val(settings.initialPct,10)) + '" oninput="this.dataset.source=\'manual_hypothesis\'"></label>' +
     '<label>Periodos<input name="periods" type="number" min="1" max="24" value="' + safe(val(settings.periods,12)) + '"></label>' +
     '<label>Repeticiones Monte Carlo<input name="runs" type="number" min="5" max="80" value="' + safe(val(settings.runs,40)) + '"></label>' +
     '<label>Muestra de agentes (modo sintético)<input name="sampleSize" type="number" min="2" max="500" value="' + safe(val(settings.sampleSize,150)) + '"></label>' +
@@ -77,7 +78,8 @@ async function runAgentSimulation(e) {
   const settings={behaviorIndex:bi,scenario:f.elements.scenario.value,mode:f.elements.mode.value,
     initialPct:Number(f.elements.initialPct.value),periods:Number(f.elements.periods.value),
     runs:Number(f.elements.runs.value),sampleSize:Number(f.elements.sampleSize.value),
-    seed:Number(f.elements.seed.value),dimensions:dims,useCalibrated:!!f.elements.useCalibrated?.checked};
+    seed:Number(f.elements.seed.value),dimensions:dims,useCalibrated:!!f.elements.useCalibrated?.checked,
+    initialSource:f.elements.initialPct.dataset?.source||'manual_hypothesis'};
   const audiences=selected.map(a=>({
     id:String(a.id),name:String(a.name),population:Number(a.population)||0,...dims[String(a.id)]
   }));
@@ -87,12 +89,12 @@ async function runAgentSimulation(e) {
   if(settings.mode==='observed') {
     const people=(x.nodes||[]).map((n,i)=>({...n,index:i})).filter(n=>n.type==='Persona');
     const selectedIds=new Set(selected.map(a=>String(a.id)));
-    const missing=people.filter(n=>!String((x.abmAudienceMap||{})[n.index]||n.audienceId||''));
+    const missing=people.filter(n=>!abmV2AudienceId(x,n,n.index));
     if(missing.length) {status.textContent='Asigna una audiencia a las '+missing.length+' personas del Grafo (abre el panel de asignación).';return}
-    const relevant=people.filter(n=>selectedIds.has(String((x.abmAudienceMap||{})[n.index]||n.audienceId)));
+    const relevant=people.filter(n=>selectedIds.has(abmV2AudienceId(x,n,n.index)));
     const personIds=new Set(relevant.map(n=>String(n.index)));
     payload.agents=relevant.map(n=>({id:String(n.index),
-      audience_id:String((x.abmAudienceMap||{})[n.index]||n.audienceId)}));
+      audience_id:abmV2AudienceId(x,n,n.index)}));
     payload.edges=(x.edges||[]).filter(edge=>
       String(edge.relation||edge.label||'').toLowerCase().trim()==='influye en' &&
       personIds.has(String(edge.s))&&personIds.has(String(edge.t))
@@ -120,7 +122,7 @@ async function runAgentSimulation(e) {
     const result=await response.json();
     x.abmSettings=settings;
     x.modelRuns=x.modelRuns||[];
-    x.modelRuns.push({engine:'abm-v1',date:new Date().toISOString(),behavior:behavior.name,
+    x.modelRuns.push({engine:'abm-v1',date:new Date().toISOString(),behaviorId:abmV2BehaviorKey(behavior,bi),behavior:behavior.name,
       scenario:settings.scenario,mode:settings.mode,settings,result});
     if(x.modelRuns.length>40)x.modelRuns=x.modelRuns.slice(-40);
     save();
@@ -142,7 +144,7 @@ function renderABMResult(r) {
     const lower=r.series.map((v,i)=>xy(i,(v[k]||{}).p10)).reverse();
     return upper.concat(lower).join(' ');
   };
-  return '<p class="notice">MODELO EXPERIMENTAL SIN CALIBRACIÓN · ' + (r.mode==='synthetic'?'Red sintética hipotética':'Grafo registrado, coeficientes hipotéticos') + '</p>' +
+  return '<p class="notice">' + (r.parameter_origin==='retrospective_fit_unvalidated'?'AJUSTE RETROSPECTIVO, NO VALIDACIÓN PROSPECTIVA':'MODELO EXPERIMENTAL SIN CALIBRACIÓN') + ' · ' + (r.mode==='synthetic'?'Red sintética hipotética':'Grafo registrado, efectos aún hipotéticos') + '</p>' +
     '<div class="triple"><div class="panel"><small>Sin intervención</small><div class="metric">'+pct(b.mean)+'</div><small>p10–p90: '+pct(b.p10)+'–'+pct(b.p90)+'</small></div>' +
     '<div class="panel"><small>Con intervención</small><div class="metric">'+pct(t.mean)+'</div><small>p10–p90: '+pct(t.p10)+'–'+pct(t.p90)+'</small></div>' +
     '<div class="panel"><small>Diferencia media (puntos porcentuales)</small><div class="metric">'+(100*Number(d.mean||0)).toFixed(1)+'</div><small>p10–p90: '+(100*Number(d.p10||0)).toFixed(1)+' a '+(100*Number(d.p90||0)).toFixed(1)+' pp</small></div></div>' +
