@@ -143,3 +143,6 @@
 .abm-ux .abm-past-track{height:6px;background:#24475a;overflow:hidden;border-radius:15px}
 .abm-ux .abm-past-track i{height:100%;display:block;background:#49d6b3;border-radius:15px}
 .abm-ux .abm-multi-comparison>small{font-size:11px;color:#90adba;line-height:1.5;display:block;margin-top:11px}
+
+/* La hero global de la aplicación es redundante en el laboratorio guiado. */
+main:has(.abm-ux)>.hero{display:none}
