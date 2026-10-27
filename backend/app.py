@@ -127,8 +127,7 @@ def ai_interpret(
         '- structural_findings: Máximo 5 hallazgos clave redactados en lenguaje de gestión humana y cambio: al menos 2 sobre brechas o comportamientos críticos del diagnóstico; 1 sobre intervenciones/encuestas; y máximo 2 sobre estructura relacional (traduciendo métricas como centralidad o intermediación a "referentes clave", "puentes de comunicación" o "riesgos de sobrecarga/silos"). '
         '- hypotheses: 3 a 5 hipótesis sistémicas (title, rationale, evidence_limit) que expliquen por qué las personas actúan como lo hacen (factores de motivación, contexto, liderazgo o incentivos), siempre presentadas como premisas a validar en terreno y no como verdades absolutas. '
         '- interventions: 3 recomendaciones de acción directivas y humanas (name, why, measure), enfocadas en diseño de entornos de decisión (nudges), habilitación de líderes puente, reducción de fricciones y acompañamiento al cambio. '
-        '- what_to_measure: 4 a 5 indicadores clave de adopción de hábitos, pulso cultural y tracción organizacional para el tablero
-.'
+        '- what_to_measure: 4 a 5 indicadores clave de adopción de hábitos, pulso cultural y tracción organizacional para el tablero.'
     )
     if len(encoded) > 35000:
         raise HTTPException(413, 'El contexto supera el límite del motor de IA.')
