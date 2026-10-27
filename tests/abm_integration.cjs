@@ -106,6 +106,8 @@ const ctx={console,FormData:MockFormData,
 vm.createContext(ctx);
 vm.runInContext(inline[1]+'\n'+sim+'\n'+lab,ctx);
 async function main(){
+  // Login y carga de pertenencia organizacional antes de empezar el piloto.
+  await vm.runInContext('loadCloud()',ctx);
   const event=data=>({preventDefault(){},target:{data}});
   const fields={name:{value:'Piloto ficticio: adopción CRM'},
     description:{value:'Prueba técnica automatizada, sin personas reales'},
