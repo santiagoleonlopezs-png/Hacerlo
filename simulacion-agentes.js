@@ -42,10 +42,13 @@ function renderAgentSimulationPage(x) {
     '<div style="max-height:230px;overflow:auto">' + (mappings || '<p class="muted">Sin nodos de Persona. Regístralos en Grafo o utiliza el modo sintético.</p>') + '</div></details>' +
     '<p class="muted">Audiencias aplicables al comportamiento: ' + (target.map(a=>safe(a.name)).join(', ') || 'ninguna') + '.</p>' +
     '<p class="notice">Mecanismo v1: COM-B + umbrales + contagio social. Los coeficientes no están calibrados; los resultados NO son pronósticos. Se comparan dos escenarios con la misma semilla.</p>' +
+    '<label style="display:flex;align-items:center;gap:8px"><input name="useCalibrated" type="checkbox" style="width:auto" ' +
+    (x.abmCalibration?.behaviorKey === String(bi) ? (settings.useCalibrated ? 'checked' : '') : 'disabled') +
+    '>Usar parámetros calibrados en esta comparación (si hay calibración del comportamiento)</label>' +
     '<div class="flex"><button class="primary" id="abm-start">Ejecutar y comparar escenarios</button><span class="muted" id="abm-status">Sin experimento en ejecución.</span></div></form>') +
     '<section class="panel"><h2>3. Resultados experimentales</h2><div id="abm-output">' +
     (last ? renderABMResult(last.result) : '<div class="empty">Configura y ejecuta un experimento. Aquí aparecerán las trayectorias y diferencias entre escenarios.</div>') +
-    '</div></section>';
+    '</div></section>' + renderABMResearchPanel(x, bi);
 }
 function setABMBehavior(index) {
   const x=current(); x.abmSettings={...(x.abmSettings||{}),behaviorIndex:Number(index)}; save();render();
@@ -74,13 +77,16 @@ async function runAgentSimulation(e) {
   const settings={behaviorIndex:bi,scenario:f.elements.scenario.value,mode:f.elements.mode.value,
     initialPct:Number(f.elements.initialPct.value),periods:Number(f.elements.periods.value),
     runs:Number(f.elements.runs.value),sampleSize:Number(f.elements.sampleSize.value),
-    seed:Number(f.elements.seed.value),dimensions:dims};
+    seed:Number(f.elements.seed.value),dimensions:dims,useCalibrated:!!f.elements.useCalibrated?.checked};
   const audiences=selected.map(a=>({
     id:String(a.id),name:String(a.name),population:Number(a.population)||0,...dims[String(a.id)]
   }));
   const payload={behavior:behavior.name,audiences,scenario:settings.scenario,mode:settings.mode,
     initial_adoption:settings.initialPct/100,periods:settings.periods,runs:settings.runs,
     sample_size:settings.sampleSize,seed:settings.seed,agents:[],edges:[]};
+  if(settings.useCalibrated && x.abmCalibration?.behaviorKey === String(bi) && x.abmCalibration.result?.parameters){
+    payload.parameters=x.abmCalibration.result.parameters;
+  }
   if(settings.mode==='observed') {
     const people=(x.nodes||[]).map((n,i)=>({...n,index:i})).filter(n=>n.type==='Persona');
     const selectedIds=new Set(selected.map(a=>String(a.id)));
