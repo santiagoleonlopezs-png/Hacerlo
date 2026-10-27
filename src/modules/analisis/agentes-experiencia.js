@@ -181,7 +181,7 @@ function renderABMExperiencePage(x){
     'Puedes empezar aunque aún no tengas mediciones; todo será exploratorio.';
   const research=behaviors.length&&audiences.length?renderABMResearchPanel(x,bi):'';
   return '<div class="abm-ux">'+
-    '<header class="abm-hero"><div><span class="abm-eyebrow">HACERLO · LABORATORIO DE DECISIONES</span>'+
+    '<header class="abm-hero"><div><span class="abm-eyebrow">HACERLO · LABORATORIO DE DECISIONES · '+safe(x.name||'Iniciativa')+'</span>'+
       '<h1>¿Qué pasaría si…?</h1><p>Prueba decisiones antes de implementarlas. Elige un comportamiento, mueve una palanca y compara lo que podría pasar.</p>'+
       '<span class="abm-hero-tag">Basado en mecanismos de ciencia del comportamiento · Resultados exploratorios</span></div>'+
       '<div class="abm-orbit" aria-hidden="true"><span class="abm-orbit-core">H</span><i class="abm-node-1"></i><i class="abm-node-2"></i><i class="abm-node-3"></i><i class="abm-node-4"></i></div></header>'+
