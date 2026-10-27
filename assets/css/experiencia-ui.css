@@ -109,3 +109,10 @@ main:has(#app .ee-hero)>.hero{display:none}
 .hcx-more summary:focus-visible,.hcx-ai-export summary:focus-visible,.ee-hero button:focus-visible{outline:2px solid #79dfcd;outline-offset:2px}
 .hcx-dense-help{font-size:12px;color:#a4c4d0}
 @media(max-width:800px){.hcx-intel>.triple{grid-template-columns:1fr}.hcx-intel>.hcx-main-panel{padding:16px}.hcx-intel>.hcx-fold-content>.grid{grid-template-columns:1fr}}
+
+/* Inicio y homes RDAIM conservan su estructura, pero comparten profundidad visual. */
+main>.hero{position:relative;overflow:hidden;border:1px solid rgba(67,142,163,.38);background:radial-gradient(ellipse at 89% 45%,rgba(31,173,155,.18),transparent 42%),linear-gradient(115deg,#13384e,#0a2337 74%);border-radius:19px;padding:28px 31px}
+main>.hero:after{content:"";pointer-events:none;position:absolute;right:38px;top:14px;width:125px;height:125px;border:1px dashed rgba(106,211,193,.22);border-radius:50%;box-shadow:0 0 0 23px rgba(57,191,170,.035),0 0 0 44px rgba(57,191,170,.025)}
+main>.hero h1{font-size:clamp(30px,3.2vw,43px);line-height:1.15;letter-spacing:-.7px}
+main>.hero p{color:#bfdae7;max-width:750px;line-height:1.6}
+@media(max-width:650px){main>.hero{padding:22px 18px}main>.hero:after{display:none}}
