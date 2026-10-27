@@ -12,6 +12,14 @@ const audiences=read('src/modules/diseno/audiencias.js');
 const surveys=read('src/modules/encuestas/encuestas.js');
 const css=read('assets/css/experiencia-ui.css');
 const ux=read('src/core/experiencia-ui.js');
+const stage0=core.slice(core.indexOf('if(phase===0)body='),core.indexOf('if(phase===1)body='));
+assert.match(stage0,/results-stage-stack/,'Resultados usa distribución vertical propia');
+assert.ok(stage0.indexOf('Comportamiento objetivo de la iniciativa')<stage0.indexOf('Todos los indicadores de la iniciativa'),'Comportamiento va arriba de Indicadores');
+assert.match(stage0,/textarea id="objective"/,'Se conserva la edición del comportamiento');
+assert.match(stage0,/setField\('expected',this.value\)/,'Se conservan resultados esperados');
+assert.match(stage0,/indicatorTable\(x\)/,'Se conserva la tabla y su vinculación');
+assert.match(read('assets/css/experiencia-ui.css'),/\.results-stage-stack\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
+
 const ia=read('src/modules/inteligencia/ia.js');
 const integrated=read('src/modules/inteligencia/integrada.js');
 for(const path of ['src/core/experiencia-ui.js','assets/css/experiencia-ui.css']){
