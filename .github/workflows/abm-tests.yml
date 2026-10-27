@@ -25,3 +25,5 @@ jobs:
         run: PYTHONPATH=backend python -m unittest discover -s backend/tests -v
       - name: Comprobar sintaxis del laboratorio web
         run: node --check simulacion-agentes.js
+      - name: Comprobar sintaxis de calibración web
+        run: node --check calibracion-agentes.js
