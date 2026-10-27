@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: '22'
       - name: Instalar dependencias de ejecución y pruebas
-        run: pip install -r backend/requirements.txt httpx
+        run: pip install -r backend/requirements.txt httpx2
       - name: Comprobar sintaxis del motor
         run: python -m compileall -q backend
       - name: Verificar rutas del backend
