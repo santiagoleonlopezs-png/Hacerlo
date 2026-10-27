@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.3.5')
+app = FastAPI(title='HACERLO Computational Engine', version='1.5.1-v2')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['https://santiagoleonlopezs-png.github.io'],
@@ -33,7 +33,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.3.5'}
+    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.5.1-v2'}
 
 @app.get('/api/health')
 def health():
@@ -42,6 +42,7 @@ def health():
         'engine': 'HACERLO',
         'networkx': 'ready-v1.1',
         'ai': 'openrouter-configured' if os.getenv('OPENROUTER_API_KEY') else 'not-configured',
+        'abm': 'experimental-v1.1',
         'mesa': 'pending',
         'pysd': 'pending'
     }
@@ -342,3 +343,112 @@ def ai_interpret(
     except (ValueError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         print('HACERLO OPENROUTER PARSE ERROR: ' + type(exc).__name__ + ' · ' + str(exc)[:500], flush=True)
         raise HTTPException(502, 'OpenRouter respondió, pero HACERLO no pudo estructurar la interpretación. Revisa Render Logs: HACERLO OPENROUTER PARSE.')
+
+# Motor experimental de adopción: requiere sesión HACERLO.
+# Los límites por proceso no sustituyen el control de cuota global en producción.
+from simulation import simulate_adoption
+
+class SimulationRequest(BaseModel):
+    audiences: List[Dict[str, Any]] = Field(min_length=1, max_length=50)
+    agents: List[Dict[str, Any]] = Field(default_factory=list, max_length=500)
+    edges: List[Dict[str, Any]] = Field(default_factory=list, max_length=5000)
+    mode: str = 'synthetic'
+    scenario: str = 'training'
+    behavior: str = Field(default='Comportamiento objetivo', max_length=160)
+    initial_adoption: float = Field(default=0.10, ge=0, le=1)
+    periods: int = Field(default=12, ge=1, le=24)
+    runs: int = Field(default=40, ge=5, le=80)
+    sample_size: int = Field(default=150, ge=2, le=500)
+    seed: int = Field(default=2026, ge=0, le=2147483647)
+    parameters: Dict[str, float] = Field(default_factory=dict)
+
+_simulation_requests = defaultdict(deque)
+
+@app.post('/api/simulation/adoption')
+def adoption_simulation(
+    payload: SimulationRequest,
+    authorization: Optional[str] = Header(None),
+    x_supabase_apikey: Optional[str] = Header(None)
+):
+    if not authorization or not authorization.startswith('Bearer ') or not x_supabase_apikey:
+        raise HTTPException(401, 'Se requiere una sesión de HACERLO válida.')
+    try:
+        user = get_json(
+            'https://mflakxgdkpuhemgslgsa.supabase.co/auth/v1/user',
+            {'Authorization': authorization, 'apikey': x_supabase_apikey}
+        )
+        user_id = user.get('id')
+        if not user_id:
+            raise ValueError('Sesión inválida')
+    except Exception as exc:
+        raise HTTPException(401, 'La sesión de Supabase no pudo verificarse.') from exc
+
+    now = time.monotonic()
+    calls = _simulation_requests[user_id]
+    while calls and now - calls[0] > 3600:
+        calls.popleft()
+    if len(calls) >= 20:
+        raise HTTPException(429, 'Límite experimental de 20 simulaciones por hora.')
+    calls.append(now)
+    try:
+        return simulate_adoption(payload.model_dump())
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+# La calibración y sensibilidad comparten límites de sesión con la simulación.
+# El acceso a iniciativas sigue gobernado por Supabase; ningún endpoint recibe
+# identificadores de organización ni puede leer filas protegidas de la base.
+from calibration import calibrate_adoption, sensitivity_adoption
+
+class CalibrationRequest(SimulationRequest):
+    observations: List[Dict[str, Any]] = Field(min_length=6, max_length=16)
+
+class SensitivityRequest(SimulationRequest):
+    target_effect_pp: float = Field(default=5, ge=0, le=100)
+
+
+def check_abm_session_and_quota(authorization, x_supabase_apikey):
+    if not authorization or not authorization.startswith('Bearer ') or not x_supabase_apikey:
+        raise HTTPException(401, 'Se requiere una sesión válida de HACERLO.')
+    try:
+        user = get_json('https://mflakxgdkpuhemgslgsa.supabase.co/auth/v1/user',
+                        {'Authorization': authorization, 'apikey': x_supabase_apikey})
+        user_id = user.get('id')
+        if not user_id:
+            raise ValueError('Sin usuario')
+    except Exception as exc:
+        raise HTTPException(401, 'No se pudo verificar la sesión de Supabase.') from exc
+    now = time.monotonic()
+    calls = _simulation_requests[user_id]
+    while calls and now - calls[0] > 3600:
+        calls.popleft()
+    if len(calls) >= 20:
+        raise HTTPException(429, 'Límite experimental de 20 solicitudes por hora.')
+    calls.append(now)
+
+
+@app.post('/api/simulation/calibrate')
+def adoption_calibration(
+    payload: CalibrationRequest,
+    authorization: Optional[str] = Header(None),
+    x_supabase_apikey: Optional[str] = Header(None),
+):
+    check_abm_session_and_quota(authorization, x_supabase_apikey)
+    try:
+        return calibrate_adoption(payload.model_dump())
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.post('/api/simulation/sensitivity')
+def adoption_sensitivity(
+    payload: SensitivityRequest,
+    authorization: Optional[str] = Header(None),
+    x_supabase_apikey: Optional[str] = Header(None),
+):
+    check_abm_session_and_quota(authorization, x_supabase_apikey)
+    try:
+        return sensitivity_adoption(payload.model_dump())
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise HTTPException(422, str(exc)) from exc
