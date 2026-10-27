@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/v2-motor-agentes-cientifico
+      - feature/v2-laboratorio-visual
   pull_request:
     branches:
       - hacerlo-v2-modular
@@ -27,6 +28,7 @@ jobs:
           node --check src/modules/analisis/agentes-evidencia-v2.js
           node --check src/modules/analisis/agentes-abm.js
           node --check src/modules/analisis/agentes-calibracion.js
+          node --check src/modules/analisis/agentes-experiencia.js
       - name: Suite científica y API con autenticación simulada
         run: PYTHONPATH=backend python -m unittest discover -s backend/tests -v
       - name: Prueba de render ABM V2
@@ -44,8 +46,10 @@ jobs:
           assert 'src/modules/analisis/agentes-evidencia-v2.js' in html
           assert 'src/modules/analisis/agentes-abm.js' in html
           assert 'src/modules/analisis/agentes-calibracion.js' in html
+          assert 'src/modules/analisis/agentes-experiencia.js' in html
+          assert 'assets/css/agentes.css' in html
           assert 'src/modules/encuestas/encuestas.js' in html
           assert 'src/modules/diseno/audiencias.js' in html
-          assert "a.innerHTML=head+renderAgentSimulationPage(x);return" in app
+          assert "a.innerHTML=head+renderABMExperiencePage(x);return" in app
           assert 'src/modules/analisis/simulacion.js' not in html, 'Archivo antiguo incompleto: no debe cargarse'
           PY
