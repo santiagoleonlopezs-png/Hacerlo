@@ -5,6 +5,7 @@ on:
       - feature/v2-motor-agentes-cientifico
       - feature/v2-laboratorio-visual
       - feature/v2-audiencias-sistema-visual
+      - feature/v2-ux-coherencia-limpieza
   pull_request:
     branches:
       - hacerlo-v2-modular
@@ -32,10 +33,18 @@ jobs:
           node --check src/modules/analisis/agentes-experiencia.js
           node --check src/modules/analisis/sistemico.js
           node --check src/modules/analisis/sistemico-experiencia.js
+          node --check src/core/experiencia-ui.js
+          node --check src/modules/inteligencia/integrada.js
+          node --check src/modules/inteligencia/ia.js
+          node --check src/modules/resultados/diagnostico.js
+          node --check src/modules/diseno/audiencias.js
+          node --check src/modules/encuestas/encuestas.js
       - name: Suite científica y API con autenticación simulada
         run: PYTHONPATH=backend python -m unittest discover -s backend/tests -v
       - name: Prueba de render ABM V2
         run: node tests/abm_v2_frontend.cjs
+      - name: Consistencia de interfaz y preservación de formularios
+        run: node tests/ux_v2_consistency.cjs
       - name: Audiencias seleccionadas en simulación V2
         run: node tests/abm_v2_audiences.cjs
       - name: Experiencia visual de pensamiento sistémico
@@ -56,6 +65,8 @@ jobs:
           assert 'src/modules/analisis/agentes-experiencia.js' in html
           assert 'assets/css/agentes.css' in html
           assert 'src/modules/analisis/sistemico-experiencia.js' in html
+          assert 'src/core/experiencia-ui.js' in html
+          assert 'assets/css/experiencia-ui.css' in html
           assert 'assets/css/sistemico-experiencia.css' in html
           assert 'src/modules/encuestas/encuestas.js' in html
           assert 'src/modules/diseno/audiencias.js' in html
