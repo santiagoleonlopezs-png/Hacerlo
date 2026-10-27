@@ -69,4 +69,20 @@ assert.equal(net.edges[0].weight,.8);
 assert.equal(net.edges[1].weight,.5);
 assert.equal(context.abmV2NetworkEdges(network,[0,1]).edges.length,1);
 
+const systemic={
+  behaviorDiagnosis:{
+    o:{role:'Barrera',factor:'Sin permisos en CRM',dimension:'Entorno'},
+    c:{role:'Facilitador',factor:'Experiencia',dimension:'Capacidad'}
+  },systemV23:{conditions:[
+    {name:'Restricción de permisos',orientation:'Dificulta',state:'Persistente',behaviorId:'b1'},
+    {name:'Condición resuelta',orientation:'Dificulta',state:'Resuelta',behaviorId:'b1'},
+    {name:'No relacionada',orientation:'Dificulta',state:'Presente',behaviorId:'b2'}
+  ]}
+};
+const hypotheses=context.abmV2HypothesisContext(systemic,behavior);
+assert.equal(hypotheses.factors.length,1);
+assert.equal(hypotheses.conditions.length,1);
+assert.match(context.renderABMV2Hypotheses(systemic,behavior),/NO alteran automáticamente/);
+assert.match(context.renderABMV2Hypotheses(systemic,behavior),/Sin permisos en CRM/);
+
 console.log('Evidencia V2 OK: cobertura, última medición, audiencias, mapeo y opt-in');
