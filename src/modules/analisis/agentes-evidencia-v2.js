@@ -12,6 +12,33 @@ function abmV2AudienceId(x,node,index) {
     return String(node.sourceId);
   return String(node?.audienceId??'');
 }
+
+/* Grafo V2: conserva únicamente influencias explícitas con evidencia registrada.
+   Enlaces declarados/hipotéticos nunca se disfrazan de red observada.
+   La fuerza es 1–5 para measureType "influence" (V2); falta de medida = 0,5 hipotética. */
+function abmV2NetworkEdges(x,indices) {
+  const selected=new Set(indices.map(String));
+  const result={edges:[],candidate:0,excludedUnverified:0,unmeasured:0};
+  for(const e of (x.edges||[])){
+    if(String(e.relation||e.label||'').trim().toLowerCase()!=='influye en')continue;
+    if(!selected.has(String(e.s))||!selected.has(String(e.t))||String(e.s)===String(e.t))continue;
+    result.candidate++;
+    const evidence=String(e.evidence||'').trim().toLowerCase();
+    if(!['observada','registrada'].includes(evidence)){
+      result.excludedUnverified++;
+      continue;
+    }
+    const raw=Number(e.measureValue);
+    const measured=['influence','scale'].includes(String(e.measureType)) &&
+      e.measureValue!==null && e.measureValue!==undefined && e.measureValue!=='' &&
+      Number.isInteger(raw) && raw>=1 && raw<=5;
+    if(!measured)result.unmeasured++;
+    result.edges.push({source:String(e.s),target:String(e.t),
+      weight:measured?raw/5:0.5});
+  }
+  return result;
+}
+
 function abmV2EvidenceSummary(x,behavior) {
   const all=(x.audiencePeople||[]);
   const auds=x.audiences||[];
