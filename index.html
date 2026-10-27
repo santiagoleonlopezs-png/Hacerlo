@@ -394,4 +394,4 @@ function removeExperiment(i){if(!confirm('¿Eliminar este escenario?'))return;cu
 function addObservation(e){e.preventDefault();let x=current();x.observations=x.observations||[];x.observations.push({...Object.fromEntries(new FormData(e.target)),date:new Date().toISOString().slice(0,10)});save();render()}
 
 nav();render();
-</script><script src="simulacion-agentes.js"></script></body></html>
+</script><script src="simulacion-agentes.js"></script><script src="calibracion-agentes.js"></script></body></html>
