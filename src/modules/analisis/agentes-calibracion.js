@@ -108,13 +108,9 @@ function getABMResearchInputs() {
     const includedIds=new Set(included.map(n=>String(n.idx)));
     payload.agents=included.map(n=>({id:String(n.idx),
       audience_id:abmV2AudienceId(x,n,n.idx)}));
-    payload.edges=(x.edges||[]).filter(edge=>
-      String(edge.relation||edge.label||'').trim().toLowerCase()==='influye en' &&
-      includedIds.has(String(edge.s))&&includedIds.has(String(edge.t)))
-      .map(edge=>({source:String(edge.s),target:String(edge.t),
-        weight:edge.measureType==='scale'&&Number(edge.measureValue)>0
-          ?Math.min(1,Number(edge.measureValue)/5):1}));
-    if(!payload.edges.length)throw Error('No hay enlaces «Influye en» entre las personas seleccionadas.');
+    const graphInput=abmV2NetworkEdges(x,[...includedIds]);
+    payload.edges=graphInput.edges;
+    if(!payload.edges.length)throw Error('No hay enlaces «Influye en» con evidencia Registrada u Observada entre personas seleccionadas.');
   }
   return {payload,behaviorIndex:String(bi)};
 }
