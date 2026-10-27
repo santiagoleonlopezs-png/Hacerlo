@@ -163,6 +163,7 @@ function abmV2UseObservedBase(){
   if(!initial)return;
   initial.value=Math.round(r.observedPct);
   initial.dataset.source='audience-adoption-history';
+  if(typeof abmUpdateObservedPreview==='function')abmUpdateObservedPreview(initial.value);
   const status=document.getElementById('abm-status');
   if(status)status.textContent='Referencia inicial tomada de registros agregados. Revisa el porcentaje antes de ejecutar; no valida los coeficientes.';
 }
