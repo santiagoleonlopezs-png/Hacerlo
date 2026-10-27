@@ -23,7 +23,7 @@ function abmV2EvidenceSummary(x,behavior) {
   const statuses=['unknown','understands','tries','performs','sustains'];
   const byStatus=Object.fromEntries(statuses.map(s=>[s,0]));
   const byAudience={};
-  let measured=0,invalid=0,latestDate='';
+  let measured=0,latestDate='';
   for(const p of eligible) {
     let history=(p.adoptionHistory||[]).filter(row=>
       String(row.behaviorId)===String(behavior.id) &&
@@ -39,11 +39,8 @@ function abmV2EvidenceSummary(x,behavior) {
     const a=byAudience[String(p.audienceId)];
     a.eligible++;
     byStatus[state]++;
-    if(row){measured++;a.measured++;if(row.observedOn>latestDate)latestDate=row.observedOn}
+    if(row && state!=='unknown'){measured++;a.measured++;if(row.observedOn>latestDate)latestDate=row.observedOn}
     if(state==='performs'||state==='sustains')a.confirmed++;
-    if((p.adoptionHistory||[]).some(r=>
-      String(r.behaviorId)===String(behavior.id) &&
-      r.stage==='unknown'&&r.context==='noOpportunity'))invalid++;
   }
   const eligibleCount=eligible.length;
   const confirmed=byStatus.performs+byStatus.sustains;
