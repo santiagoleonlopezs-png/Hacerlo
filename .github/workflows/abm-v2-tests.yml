@@ -7,6 +7,7 @@ on:
       - feature/v2-audiencias-sistema-visual
       - feature/v2-ux-coherencia-limpieza
       - fix/v2-editar-intervenciones
+      - feature/v2-encuestas-selector-compacto
   pull_request:
     branches:
       - hacerlo-v2-modular
@@ -47,6 +48,8 @@ jobs:
         run: node tests/abm_v2_frontend.cjs
       - name: Editar acciones de Implementación sin duplicarlas
         run: node tests/implementation_v2_edit.cjs
+      - name: Selector compacto de encuestas y experiencias
+        run: node tests/ee_v2_compact_selector.cjs
       - name: Consistencia de interfaz y preservación de formularios
         run: node tests/ux_v2_consistency.cjs
       - name: Audiencias seleccionadas en simulación V2
