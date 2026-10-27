@@ -5,6 +5,7 @@ const app=fs.readFileSync('src/core/app.js','utf8');
 const evidence=fs.readFileSync('src/modules/analisis/agentes-evidencia-v2.js','utf8');
 const sim=fs.readFileSync('src/modules/analisis/agentes-abm.js','utf8');
 const lab=fs.readFileSync('src/modules/analisis/agentes-calibracion.js','utf8');
+const guided=fs.readFileSync('src/modules/analisis/agentes-experiencia.js','utf8');
 const memory={initiatives:[],graph_nodes:[],graph_edges:[],memberships:[
   {organization_id:'org-test',role:'owner'}]};
 let uuid=0;
@@ -104,7 +105,7 @@ const ctx={console,FormData:MockFormData,
   }
 };
 vm.createContext(ctx);
-vm.runInContext(app+'\n'+evidence+'\n'+sim+'\n'+lab,ctx);
+vm.runInContext(app+'\n'+evidence+'\n'+sim+'\n'+lab+'\n'+guided,ctx);
 async function main(){
   // Login y carga de pertenencia organizacional antes de empezar el piloto.
   vm.runInContext("cloudOrgId='org-test';cloudReady=true",ctx);
@@ -136,6 +137,10 @@ async function main(){
   vm.runInContext("go('Simulación de agentes')",ctx);
   assert.match(element('app').innerHTML,/Piloto ficticio/);
   assert.match(element('app').innerHTML,/Registrar interacciones/);
+  assert.match(element('app').innerHTML,/¿Qué pasaría si/);
+  assert.match(element('app').innerHTML,/Elige una acción/);
+  assert.match(element('app').innerHTML,/abm-scenario/);
+  assert.match(element('app').innerHTML,/Profundizar con datos y ciencia/);
   const controls={behaviorIndex:{value:'0'},scenario:{value:'friction'},
     mode:{value:'observed'},initialPct:{value:'10'},periods:{value:'5'},
     runs:{value:'6'},sampleSize:{value:'50'},seed:{value:'2026'},
@@ -152,6 +157,8 @@ async function main(){
   assert.equal(calls[0].payload.edges[0].weight,.8);
   assert.match(calls[0].auth,/^Bearer /);
   assert.equal(current().modelRuns.length,1);
+  assert.match(element('abm-output').innerHTML,/Dos caminos|Escenarios comparados/);
+  assert.match(element('abm-output').innerHTML,/10.0/);
   const csv='periodo,adoptados,poblacion_elegible,fuente\n'+
     [4,6,10,12,15,18].map((count,i)=>i+','+count+',40,Registro ficticio '+i).join('\n');
   element('abm-observation-csv').value=csv;
