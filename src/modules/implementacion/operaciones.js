@@ -12,7 +12,56 @@ function removeBehavior(i){if(confirm('¿Eliminar este comportamiento? Los indic
 function addSystemVariable(e){e.preventDefault();current().systemVariables.push(Object.fromEntries(new FormData(e.target)));save();render()}
 function addSystemLink(e){e.preventDefault();let z=Object.fromEntries(new FormData(e.target));if(z.from===z.to)return alert('Elige dos variables diferentes');current().systemLinks.push({from:Number(z.from),to:Number(z.to),sign:Number(z.sign),delay:!!z.delay,evidence:z.evidence});save();render()}
 function setNote(v){let x=current();x.notes=x.notes||{};x.notes[phase]=v;save()}function xPhase(){current().phase=phase;save();render()}function setDim(d,v){current().dimensions[d]=Number(v);save();render()}
-function addIndicator(e){e.preventDefault();let z=Object.fromEntries(new FormData(e.target));z.history=z.value!==''?[{date:new Date().toISOString(),value:Number(z.value)}]:[];current().indicators.push(z);save();render()}function updateIndicator(i,v){let z=current().indicators[i];z.value=v;z.history=z.history||[];if(v!=='')z.history.push({date:new Date().toISOString(),value:Number(v)});save();render()}function addAction(e){e.preventDefault();let z=Object.fromEntries(new FormData(e.target));if(z.end<z.start)return alert('La fecha final debe ser igual o posterior a la inicial');current().actions.push({...z,status:'Pendiente'});save();render()}function setAction(i,v){current().actions[i].status=v;save();render()}
+function addIndicator(e){e.preventDefault();let z=Object.fromEntries(new FormData(e.target));z.history=z.value!==''?[{date:new Date().toISOString(),value:Number(z.value)}]:[];current().indicators.push(z);save();render()}function updateIndicator(i,v){let z=current().indicators[i];z.value=v;z.history=z.history||[];if(v!=='')z.history.push({date:new Date().toISOString(),value:Number(v)});save();render()}function addAction(e){
+ e.preventDefault();
+ const x=current(),f=e.target;
+ if(!x||!f)return;
+ const z=Object.fromEntries(new FormData(f));
+ const rawIndex=String(z.editIndex??'').trim();
+ delete z.editIndex; // El índice de edición es estado de UI, no un dato de la acción.
+ z.name=String(z.name||'').trim();
+ if(!z.name)return alert('Escribe el nombre de la acción.');
+ if(z.start&&z.end&&z.end<z.start)return alert('La fecha final debe ser igual o posterior a la inicial');
+ if(rawIndex!==''){
+   const i=Number(rawIndex);
+   if(!Number.isSafeInteger(i)||i<0||!x.actions?.[i])
+     return alert('Esta acción ya no está disponible. Vuelve a seleccionarla.');
+   // Actualiza en el mismo registro y conserva estado, origen, medición, ID,
+   // fechas de creación y vínculos utilizados por el análisis sistémico o la IA.
+   Object.assign(x.actions[i],z,{updatedAt:new Date().toISOString()});
+ }else{
+   x.actions.push({...z,status:'Pendiente'});
+ }
+ save();render();
+}
+function editAction(i){
+ const x=current(),action=x?.actions?.[i],f=document.getElementById('action-form');
+ if(!action||!f)return;
+ f.elements.namedItem('editIndex').value=String(i);
+ for(const field of ['name','dimension','owner','start','end','source','hypothesis']){
+   const control=f.elements.namedItem(field);
+   if(control)control.value=String(action[field]??'');
+ }
+ const title=document.getElementById('action-form-title');
+ if(title)title.textContent='Editar acción';
+ const submit=document.getElementById('action-submit');
+ if(submit)submit.textContent='Guardar cambios';
+ document.getElementById('action-cancel')?.classList.remove('hide');
+ f.closest('.panel')?.scrollIntoView({behavior:'smooth',block:'start'});
+ f.elements.namedItem('name')?.focus({preventScroll:true});
+}
+function cancelActionEdit(){
+ const f=document.getElementById('action-form');
+ if(!f)return;
+ f.reset();
+ f.elements.namedItem('editIndex').value='';
+ const title=document.getElementById('action-form-title');
+ if(title)title.textContent='Nueva acción';
+ const submit=document.getElementById('action-submit');
+ if(submit)submit.textContent='+ Crear acción';
+ document.getElementById('action-cancel')?.classList.add('hide');
+}
+function setAction(i,v){current().actions[i].status=v;save();render()}
 function toggleReverse(sel){let form=sel.form,group=form.querySelector('.reverse-fields'),on=sel.value==='bidirectional';group.hidden=!on;group.querySelectorAll('input,select').forEach(el=>el.disabled=!on)}
 function addNode(e){e.preventDefault();let x=current(),n=Object.fromEntries(new FormData(e.target));n.name=String(n.name||'').trim();if(!n.name)return alert('Indica un nombre');if((n.type==='Persona'||n.type==='Equipo')&&typeof graphAudienceKey==='function'){let match=(x.nodes||[]).find(v=>(v.type==='Persona'||v.type==='Equipo')&&graphAudienceKey(v.name)===graphAudienceKey(n.name));if(match)return alert('Este nombre ya existe en el grafo. Puedes editar o vincular el registro existente.')}x.nodes.push(n);if(typeof graphSyncAudiences==='function')graphSyncAudiences(x);x.graphSelectedNode=x.nodes.length-1;x.graphSelectedEdge=null;x.networkAnalysis=null;save();render()}
 function addEdge(e){e.preventDefault();let z=Object.fromEntries(new FormData(e.target));if(z.source===z.target)return alert('Selecciona dos nodos diferentes');let relation=z.relation==='Otra'?(z.customRelation||'Otra').trim():z.relation;let edge={s:Number(z.source),t:Number(z.target),relation,relationKey:normalizeRelation(relation),evidence:z.evidence||'Declarada'};if(z.measureType&&z.measureValue!==''){edge.measureType=z.measureType;edge.measureValue=Number(z.measureValue);if(z.measureUnit)edge.measureUnit=z.measureUnit}current().edges.push(edge);save();render()}
