@@ -42,4 +42,24 @@ assert.deepEqual(ctx.abmSelectedAudiences(initiative,b,0).map(v=>v.id),['a','b']
 assert.equal(start.disabled,false);
 const config=initiative.abmAudienceSelection;
 assert.ok(!Object.hasOwn(config,'b1'),'Restaurar selección total es el valor predeterminado');
+
+form.elements.mode={value:'synthetic'};
+form.elements.scenario={value:'training'};
+form.elements.initialPct={value:'10'};
+form.elements.periods={value:'6'};
+form.elements.sampleSize={value:'50'};
+form.elements.seed={value:'2026'};
+form.elements.runs={value:'10'};
+for(const i of [0,1,2]){
+  for(const k of ['capability','opportunity','motivation']){
+    form.elements[k+'_'+i]={value:'0.5'};
+  }
+}
+initiative.abmAudienceSelection={b1:['b']};
+const research=ctx.getABMResearchInputs().payload;
+assert.deepEqual(research.audiences.map(a=>a.id),['b'],'La calibración debe usar la audiencia seleccionada');
+assert.equal(research.audiences[0].population,20);
+initiative.abmAudienceSelection={b1:[]};
+assert.throws(()=>ctx.getABMResearchInputs(),/No hay audiencias aplicables/);
+
 console.log('Audiencias ABM V2 OK: selección múltiple, filtrado, vacío y restauración total');
