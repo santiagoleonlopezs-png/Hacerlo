@@ -84,3 +84,6 @@
 @media(max-width:1100px){.sv-metrics{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.sv-hero{padding:23px}.sv-orbit{display:none}.sv-focus-grid,.sv-reading-grid,.sv-pattern-grid{grid-template-columns:1fr}.sv-focus,.sv-reading,.sv-pattern,.sv-evolution{padding:17px}.sv-focus-top,.sv-section-title,.sv-action-band{flex-direction:column;align-items:stretch}.sv-context{text-align:left}.sv-moments button{font-size:11px;padding:10px 4px}.sv-action-band{padding:19px}}
 @media(max-width:470px){.sv-metrics{gap:8px}.sv-metric{padding:12px}.sv-metric strong{font-size:25px}.sv-metric span{font-size:11px}.sv-mini-item{flex-direction:column;align-items:flex-start}.sv-mini-item>span{white-space:normal}}
+
+/* El laboratorio sistémico trae su propio encabezado y no duplica la hero global. */
+main:has(.sv-shell)>.hero{display:none}
