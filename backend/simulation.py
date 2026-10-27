@@ -138,6 +138,8 @@ def single_run(agents, incoming, scenario, initial_adoption, periods, rng_seed):
         following = adopted.copy()
         for a in agents:
             identity = a["id"]
+            # Consumir el mismo sorteo por agente y periodo en ambos escenarios.
+            draw = rng.random()
             if adopted[identity]:
                 continue
             c = clamp(a["capability"] + (effects["capability"] if scenario == "training" else 0))
@@ -149,7 +151,7 @@ def single_run(agents, incoming, scenario, initial_adoption, periods, rng_seed):
             drive = 0.35 * c + 0.35 * o + 0.30 * m + 0.25 * peer
             # Forma funcional y coeficientes son supuestos falsables; no parámetros estimados.
             p = 0.28 / (1 + math.exp(-8 * (drive - thresholds[identity])))
-            if rng.random() < p:
+            if draw < p:
                 following[identity] = True
         adopted = following
         history.append(sum(adopted.values()) / len(ids))
