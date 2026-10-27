@@ -129,7 +129,7 @@ async function main(){
     type:'Persona',audienceId:i<22?audienceId:'aud-b'
   }));
   current().edges=Array.from({length:21},(_,i)=>({
-    s:i,t:i+1,relation:'Influye en',measureType:'scale',measureValue:4
+    s:i,t:i+1,relation:'Influye en',evidence:'Observada',measureType:'influence',measureValue:4
   }));
   current().edges.push({s:21,t:22,relation:'Colabora con',
     measureType:'scale',measureValue:2});
