@@ -1,0 +1,53 @@
+/* Contratos de evidencia HACERLO V2: cálculo local, cobertura y procedencia. */
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const code=fs.readFileSync('src/modules/analisis/agentes-evidencia-v2.js','utf8');
+const context={console,safe:v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')};
+vm.createContext(context);vm.runInContext(code,context);
+const behavior={id:'b1',name:'Registrar interacciones',scope:'specific',audienceIds:['a']};
+const when=(stage,date,behaviorId='b1')=>({behaviorId,stage,observedOn:date,recordedAt:date+'T12:00:00Z'});
+const x={audiences:[{id:'a',name:'Asesores'},{id:'b',name:'No aplicable'}],
+  audiencePeople:[
+    {id:'p1',audienceId:'a',adoptionHistory:[when('understands','2026-01-01'),when('performs','2026-02-01')]},
+    {id:'p2',audienceId:'a',adoptionHistory:[when('sustains','2026-02-01')]},
+    {id:'p3',audienceId:'a',adoptionHistory:[]},
+    {id:'p4',audienceId:'b',adoptionHistory:[when('sustains','2026-02-01')]},
+    {id:'p5',audienceId:'a',adoptionHistory:[when('tries','2026-02-01'),when('unknown','2026-03-01')]}
+  ],nodes:[
+    {name:'Asesores',type:'Persona',sourceKind:'audiencia',sourceId:'a'},
+    {name:'Indefinido',type:'Persona'}
+  ],behaviors:[behavior]};
+const result=context.abmV2EvidenceSummary(x,behavior);
+assert.equal(result.eligible,4);
+assert.equal(result.confirmed,2);
+assert.equal(result.measured,2);
+assert.equal(result.unknown,2);
+assert.equal(result.observedPct,50);
+assert.equal(result.coveragePct,50);
+assert.equal(result.stages.performs,1);
+assert.equal(result.stages.sustains,1);
+assert.equal(result.stages.unknown,2);
+assert.equal(result.byAudience.a.confirmed,2);
+assert.equal(result.byAudience.b,undefined);
+assert.equal(result.source,'Gestión de audiencias · historial de adopción');
+const html=context.renderABMV2Evidence(x,behavior);
+assert.match(html,/Cobertura de evidencia/);
+assert.match(html,/50.0%/);
+assert.match(html,/disabled/);
+assert.equal(context.abmV2AudienceId(x,x.nodes[0],0),'a');
+assert.equal(context.abmV2AudienceId(x,x.nodes[1],1),'');
+x.abmAudienceMap={0:'b'};
+assert.equal(context.abmV2AudienceId(x,x.nodes[0],0),'b','El mapeo explícito prevalece sobre el catálogo');
+x.abmAudienceMap={};
+x.audiencePeople[2].adoptionHistory=[when('performs','2026-03-01')];
+x.audiencePeople[4].adoptionHistory.push(when('tries','2026-04-01'));
+const ready=context.abmV2EvidenceSummary(x,behavior);
+assert.equal(ready.measured,4);
+assert.equal(ready.coveragePct,100);
+assert.equal(ready.confirmed,3);
+assert.equal(ready.observedPct,75);
+const readyHtml=context.renderABMV2Evidence(x,behavior);
+assert.match(readyHtml,/75.0%/);
+assert.doesNotMatch(readyHtml,/disabled onclick="abmV2UseObservedBase/);
+// La función de aplicación requiere una acción explícita, no se ejecuta al renderizar.
+assert.equal(x.abmSettings,undefined);
+console.log('Evidencia V2 OK: cobertura, última medición, audiencias, mapeo y opt-in');
