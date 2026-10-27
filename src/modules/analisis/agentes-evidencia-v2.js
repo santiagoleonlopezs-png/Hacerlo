@@ -88,6 +88,39 @@ function abmV2EvidenceSummary(x,behavior) {
     ]
   };
 }
+
+/* Diagnóstico y Pensamiento sistémico aportan hipótesis, nunca coeficientes
+   automáticos: ninguna barrera equivale por sí sola a -0,18 de oportunidad. */
+function abmV2HypothesisContext(x,behavior) {
+  const factors=Object.values(x.behaviorDiagnosis||{})
+    .filter(f=>f&&f.role==='Barrera')
+    .slice(0,16)
+    .map(f=>({name:String(f.factor||f.name||'Factor'),
+              dimension:String(f.dimension||'Sin dimensión')}));
+  const conditions=(x.systemV23?.conditions||[])
+    .filter(c=>c&&c.orientation==='Dificulta'&&c.state!=='Resuelta' &&
+      (!c.behaviorId||String(c.behaviorId)===String(behavior?.id)))
+    .slice(0,16)
+    .map(c=>({name:String(c.name||'Condición'),state:String(c.state||'Sin información')}));
+  return {factors,conditions,
+    scope:'Hipótesis registradas en la iniciativa. Sin vínculo individual validado, pueden ser contextuales y no exclusivas del comportamiento.'};
+}
+function renderABMV2Hypotheses(x,behavior){
+  if(!behavior)return '';
+  const context=abmV2HypothesisContext(x,behavior);
+  const factorList=context.factors.map(f=>'<li>'+safe(f.dimension)+': '+safe(f.name)+'</li>').join('');
+  const condList=context.conditions.map(c=>'<li>'+safe(c.name)+' · '+safe(c.state)+'</li>').join('');
+  return '<details class="panel" style="margin:12px 0"><summary style="font-weight:700;cursor:pointer">'+
+    'Hipótesis para interpretar escenarios · Diagnóstico y Pensamiento sistémico'+
+    ' ('+(context.factors.length+context.conditions.length)+')</summary>'+
+    '<p class="notice">Estas barreras y condiciones NO alteran automáticamente las probabilidades del ABM. Son evidencias contextuales para formular y contrastar supuestos.</p>'+
+    '<div class="grid"><div><h3>Factores conductuales registrados</h3>'+
+    (factorList?'<ul>'+factorList+'</ul>':'<p class="muted">No hay barreras conductuales registradas.</p>')+
+    '</div><div><h3>Condiciones sistémicas activas</h3>'+
+    (condList?'<ul>'+condList+'</ul>':'<p class="muted">No hay condiciones restrictivas activas registradas.</p>')+
+    '</div></div><p class="muted">'+safe(context.scope)+'</p></details>';
+}
+
 function renderABMV2Evidence(x,behavior) {
   if(!behavior)return '';
   const r=abmV2EvidenceSummary(x,behavior);
