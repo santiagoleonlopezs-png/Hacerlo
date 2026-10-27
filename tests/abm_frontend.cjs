@@ -19,7 +19,7 @@ const project={
 let html=context.renderAgentSimulationPage(project);
 assert.match(html,/Laboratorio de agentes/);
 assert.match(html,/Contrastar con evidencia/);
-assert.match(html,/Simulación/);
+assert.match(html,/Simula mecanismos/);
 assert.match(html,/Sensibilidad/);
 assert.match(html,/abm-observation-csv/);
 assert.match(html,/Registrar interacciones/);
