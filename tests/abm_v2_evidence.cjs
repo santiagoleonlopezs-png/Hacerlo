@@ -50,4 +50,23 @@ assert.match(readyHtml,/75.0%/);
 assert.doesNotMatch(readyHtml,/disabled onclick="abmV2UseObservedBase/);
 // La función de aplicación requiere una acción explícita, no se ejecuta al renderizar.
 assert.equal(x.abmSettings,undefined);
+const network={
+  edges:[
+    {s:0,t:1,relation:'Influye en',evidence:'Observada',measureType:'influence',measureValue:4},
+    {s:1,t:2,relation:'Influye en',evidence:'Declarada',measureType:'influence',measureValue:5},
+    {s:2,t:3,relation:'Influye en',evidence:'Hipótesis',measureType:'influence',measureValue:1},
+    {s:3,t:4,relation:'Influye en',evidence:'Registrada'},
+    {s:4,t:5,relation:'Colabora con',evidence:'Observada'},
+    {s:5,t:5,relation:'Influye en',evidence:'Observada',measureType:'influence',measureValue:5}
+  ]
+};
+const net=context.abmV2NetworkEdges(network,[0,1,2,3,4,5]);
+assert.equal(net.edges.length,2);
+assert.equal(net.candidate,4);
+assert.equal(net.excludedUnverified,2);
+assert.equal(net.unmeasured,1);
+assert.equal(net.edges[0].weight,.8);
+assert.equal(net.edges[1].weight,.5);
+assert.equal(context.abmV2NetworkEdges(network,[0,1]).edges.length,1);
+
 console.log('Evidencia V2 OK: cobertura, última medición, audiencias, mapeo y opt-in');
