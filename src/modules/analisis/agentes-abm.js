@@ -121,11 +121,11 @@ async function runAgentSimulation(e) {
     const result=await response.json();
     x.abmSettings=settings;
     x.modelRuns=x.modelRuns||[];
-    x.modelRuns.push({engine:'abm-v1',date:new Date().toISOString(),behaviorId:abmV2BehaviorKey(behavior,bi),behavior:behavior.name,
+    x.modelRuns.push({engine:'abm-v1',date:new Date().toISOString(),modelFingerprint:abmScenarioFingerprint(payload),behaviorId:abmV2BehaviorKey(behavior,bi),behavior:behavior.name,
       scenario:settings.scenario,mode:settings.mode,settings,result});
     if(x.modelRuns.length>40)x.modelRuns=x.modelRuns.slice(-40);
     save();
-    document.getElementById('abm-output').innerHTML=renderABMVisualResult(result);
+    document.getElementById('abm-output').innerHTML=renderABMVisualResult(result)+renderABMScenarioComparison(x,x.modelRuns.at(-1));
     status.textContent='Simulación ejecutada y guardada en la iniciativa.';
   }catch(err){console.error(err);status.textContent='No fue posible simular: '+err.message}
   finally{submit.disabled=false}
