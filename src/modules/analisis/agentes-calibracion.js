@@ -74,8 +74,7 @@ function getABMResearchInputs() {
   if(!x||!f)throw Error('Selecciona una iniciativa y configura el experimento.');
   const bi=Number(f.elements.behaviorIndex.value),behavior=(x.behaviors||[])[bi];
   if(!behavior)throw Error('Selecciona un comportamiento en Diseño.');
-  const audienceSet=(x.audiences||[]).filter(a=>
-    behavior.scope!=='specific'||(behavior.audienceIds||[]).map(String).includes(String(a.id)));
+  const audienceSet=abmSelectedAudiences(x,behavior,bi);
   if(!audienceSet.length)throw Error('No hay audiencias aplicables al comportamiento.');
   const allAud=x.audiences||[];
   const dimensions={};

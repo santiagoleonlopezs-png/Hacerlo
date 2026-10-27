@@ -68,7 +68,7 @@ async function runAgentSimulation(e) {
   const x=current(), f=e.target, submit=document.getElementById('abm-start'),status=document.getElementById('abm-status');
   const bi=Number(f.elements.behaviorIndex.value);
   const behavior=x.behaviors[bi];
-  const selected=x.audiences.filter(a=>behavior.scope!=='specific'||(behavior.audienceIds||[]).map(String).includes(String(a.id)));
+  const selected=abmSelectedAudiences(x,behavior,bi);
   if(!selected.length){status.textContent='Este comportamiento no tiene audiencias asignadas.';return}
   const allAud = x.audiences || [];
   const dims={};
@@ -79,7 +79,7 @@ async function runAgentSimulation(e) {
   const settings={behaviorIndex:bi,scenario:f.elements.scenario.value,mode:f.elements.mode.value,
     initialPct:Number(f.elements.initialPct.value),periods:Number(f.elements.periods.value),
     runs:Number(f.elements.runs.value),sampleSize:Number(f.elements.sampleSize.value),
-    seed:Number(f.elements.seed.value),dimensions:dims,useCalibrated:!!f.elements.useCalibrated?.checked,
+    seed:Number(f.elements.seed.value),dimensions:dims,selectedAudienceIds:selected.map(a=>String(a.id)),useCalibrated:!!f.elements.useCalibrated?.checked,
     initialSource:f.elements.initialPct.dataset?.source||'manual_hypothesis'};
   const audiences=selected.map(a=>({
     id:String(a.id),name:String(a.name),population:Number(a.population)||0,...dims[String(a.id)]
