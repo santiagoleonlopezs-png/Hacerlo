@@ -81,8 +81,8 @@ if(page==='Diseño de comportamientos')body=`<div class="grid"><section class="p
 if(phase===2)body=`<div class="analysis-grid">${[['Grafo de adopción','Relaciones entre personas, equipos y barreras','Grafo de adopción','network'],['Pensamiento sistémico','Variables y relaciones causales hipotéticas','Pensamiento sistémico','workflow'],['Simulación de agentes','Simulación de adopción y análisis científico','Simulación de agentes','users'],['Inteligencia integrada','Modelo organizacional, escenarios y aprendizaje','Inteligencia integrada','brain']].map(v=>`<section class="panel"><h2>${v[0]}</h2><p class="muted">${v[1]}</p><button class="primary" onclick="go('${v[2]}')">Abrir módulo →</button></section>`).join('')}</div><section class="panel"><h2>Indicadores para contrastar hipótesis</h2>${indicatorTable(x)}<button class="secondary" onclick="go('Indicadores')">Editar indicadores</button></section>`;
 if(phase===3)body=`<section class="panel"><div class="flex" style="justify-content:space-between"><h2>Intervenciones, tablero y cronograma</h2><button class="primary" onclick="go('Intervenciones')">Gestionar acciones →</button></div>${gantt(x)}<p class="muted">Las fechas y barras se actualizan al registrar acciones.</p></section>`;
 if(phase===4)body=`<div class="triple">${[['INS de personas','ins_personas'],['INS de proceso','ins_proceso'],['CNPS','cnps']].map(([label,key])=>metricCard(x,label,key)).join('')}</div><section class="panel"><h2>Analítica de la iniciativa</h2><p class="muted">Indicadores predictivos de comportamiento, indicadores de resultados, INS, CNPS y seguimiento de adopción.</p><div class="grid"><div>${indicatorTable(x,['Predictivos','Resultados'])}</div><div><h3>Avance por dimensión</h3>${dimensionBars(x)}</div></div><button class="primary" onclick="go('Analítica')">Abrir panel de analítica →</button></section>`;
-if(phase===0 && page==='RDAIM')body+=`<section class="panel"><h2>Encuestas y experiencias</h2><p class="muted">SENTIR, NPS, CNPS, Conocimiento y experiencias libres, conectadas con la evidencia de tu iniciativa.</p><button class="primary" onclick="go('Encuestas y experiencias')">Abrir módulo →</button></section>`;
-if(phase===0 && page==='RDAIM')body+=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>Diagnóstico organizacional</h2><p class="muted">Explora factores conductuales y registra hallazgos de manera independiente.</p></div><button class="primary" onclick="go('Diagnóstico')">Abrir diagnóstico →</button></div></section>`;a.innerHTML=head+body;return}
+
+a.innerHTML=head+body;return}
 if(page==='Inicio de Resultados'){a.innerHTML=hcxHero('Resultados',x,'Define qué queremos transformar y observa cómo avanza la iniciativa.','RDAIM · RESULTADOS','◉')+resultadosHome(x);return}
 if(page==='Resultado global'){a.innerHTML=hcxHero('Resultado global',x,'Define el cambio esperado y cómo medirlo.','RDAIM · RESULTADOS','◉')+resultGlobalPanel(x);return}
 if(page==='Comportamiento objetivo'){a.innerHTML=hcxHero('Comportamiento objetivo',x,'Define la conducta observable y su hipótesis de valor.','RDAIM · RESULTADOS','◎')+objectivePanel(x);return}
@@ -126,11 +126,30 @@ function saveObjectiveBehavior(e){e.preventDefault();const f=e.target,z=Object.f
 function resultadosHome(x){
  const r=x.globalResult,b=x.objectiveBehavior;
  const findings=(x.diagnosisFindings||[]).length,indicators=(x.indicators||[]).length;
- const hasDx=Boolean(findings||(x.diagnosisFactors||[]).length||(x.diagnosisHypotheses||[]).length);
- const card=(number,title,description,ready,destination,detail)=>`<section class="panel" style="display:flex;flex-direction:column;gap:12px;min-width:0;padding:20px"><div class="flex" style="align-items:center;justify-content:space-between"><span style="display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#60d8cd;color:#072434;font-weight:800;width:34px;height:34px">${number}</span><span class="muted" style="font-size:12px">${ready?'✓ Registrado':'Pendiente'}</span></div><h2 style="margin:0">${title}</h2><p class="muted" style="margin:0;flex:1">${description}</p>${detail?`<p class="muted" style="margin:0;font-size:12px">${safe(detail)}</p>`:''}<button class="primary" onclick="go('${destination}')">${ready?'Consultar':'Comenzar'} →</button></section>`;
- return `<div class="results-stage-stack"><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));align-items:stretch;gap:14px">
- ${card('01','Resultado global','Define qué quieres lograr y cómo medirlo.',Boolean(r),'Resultado global',r?`Meta: ${r.target} · ${r.dueDate||'Sin fecha'}`:null)}
- ${card('02','Comportamiento objetivo','Establece la conducta observable y su hipótesis.',Boolean(b),'Comportamiento objetivo',b?`Frecuencia: ${b.frequency}`:null)}
- ${card('03','Diagnóstico','Comprende barreras, facilitadores y experiencias.',hasDx,'Diagnóstico',hasDx?`${findings} hallazgos registrados`:null)}</div>
- <div class="flex" style="align-items:center;gap:16px;flex-wrap:wrap;padding:6px 4px"><span class="muted" style="font-size:13px"><strong>${indicators}</strong> indicadores</span><span class="muted" style="font-size:13px"><strong>${findings}</strong> hallazgos</span><button class="secondary" style="margin-left:auto" onclick="go('Indicadores')">Ver indicadores →</button></div></div>`;
+ const hasDiagnosis=Boolean(findings||(x.diagnosisFactors||[]).length||(x.diagnosisHypotheses||[]).length);
+ const complete=Number(Boolean(r))+Number(Boolean(b))+Number(hasDiagnosis);
+ const fmtDate=value=>{if(!value)return '';const date=new Date(value+'T00:00:00');return Number.isNaN(date.getTime())?String(value):new Intl.DateTimeFormat('es-CO',{day:'numeric',month:'short',year:'numeric'}).format(date)};
+ const globalDetail=r?`Meta: ${r.target??'—'}${r.dueDate?' · '+fmtDate(r.dueDate):''}`:'Sin definir';
+ const behaviorDetail=b?`${b.frequency||'Frecuencia por definir'}${b.observeFrom?' · Desde '+fmtDate(b.observeFrom):''}`:'Sin definir';
+ const diagnosisDetail=hasDiagnosis?`${findings} ${findings===1?'hallazgo registrado':'hallazgos registrados'}`:'Por explorar';
+ const card=(number,title,subtitle,detail,ready,destination,action,tone)=>{
+  const state=ready?(number==='03'?'Con evidencia':'Definido'):'Pendiente';
+  return `<article class="results-home-card results-home-card--${tone}" aria-label="${safe(title)}: ${safe(state)}">
+   <div class="results-home-card-top"><span class="results-home-card-index" aria-hidden="true">${number}</span><span class="results-home-state ${ready?'is-ready':''}">${ready?'✓ ':''}${state}</span></div>
+   <div class="results-home-card-body"><h3>${safe(title)}</h3><p>${safe(subtitle)}</p></div>
+   <div class="results-home-card-foot"><span class="results-home-card-detail" title="${safe(detail)}">${safe(detail)}</span><button type="button" class="results-home-card-action" onclick="go('${destination}')">${action}<span aria-hidden="true">↗</span></button></div>
+  </article>`;
+ };
+ return `<div class="results-home results-stage-stack">
+ <section class="results-home-hero" aria-labelledby="results-home-heading">
+   <div class="results-home-hero-copy"><span class="results-home-eyebrow"><span class="results-home-eyebrow-dot" aria-hidden="true"></span> RDAIM / 01 · RESULTADOS</span><h1 id="results-home-heading">De la intención al impacto.</h1><p>Define qué quieres lograr, qué conducta necesitas movilizar y qué condiciones pueden influir.</p></div>
+   <div class="results-home-progress"><span class="results-home-progress-label">Avance de la etapa</span><div class="results-home-progress-number">${complete}<span>/3</span></div><div class="results-home-progress-track" role="progressbar" aria-label="Espacios con información" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${complete}"><span style="width:${Math.round(complete/3*100)}%"></span></div><small>${complete===3?'Los tres espacios tienen información':complete===0?'Comienza por cualquiera de los espacios':complete===1?'1 espacio con información':complete+' espacios con información'}</small></div>
+ </section>
+ <section class="results-home-main" aria-label="Espacios de Resultados">
+   ${card('01','Resultado global','Define el resultado esperado y cómo medirlo.',globalDetail,Boolean(r),'Resultado global',r?'Revisar':'Definir','goal')}
+   ${card('02','Comportamiento objetivo','Establece la conducta observable y su hipótesis de valor.',behaviorDetail,Boolean(b),'Comportamiento objetivo',b?'Revisar':'Configurar','behavior')}
+   ${card('03','Diagnóstico','Explora qué facilita o dificulta el cambio.',diagnosisDetail,hasDiagnosis,'Diagnóstico','Explorar','diagnosis')}
+ </section>
+ <section class="results-home-bottom" aria-label="Seguimiento y accesos relacionados"><div class="results-home-bottom-summary"><span class="results-home-bottom-label">EN ESTA INICIATIVA</span><span><strong>${indicators}</strong> ${indicators===1?'indicador':'indicadores'}</span><span class="results-home-separator" aria-hidden="true"></span><span><strong>${findings}</strong> ${findings===1?'hallazgo':'hallazgos'}</span></div><div class="results-home-bottom-actions"><button type="button" class="secondary" onclick="go('Indicadores')">Ver indicadores <span aria-hidden="true">↗</span></button><button type="button" class="secondary" onclick="go('Encuestas y experiencias')">Encuestas y experiencias <span aria-hidden="true">↗</span></button></div></section>
+ </div>`;
 }
