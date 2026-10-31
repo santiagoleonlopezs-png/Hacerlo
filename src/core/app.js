@@ -31,7 +31,7 @@ const current=()=>db.initiatives.find(x=>x.id===db.selected);
 // Navegación jerárquica: RDAIM es un marco integrado, no una pantalla superpuesta.
 const HACERLO_NAV_GROUPS=[
  {title:'Espacio de trabajo',items:[['Inicio','⌂'],['Iniciativas','▦']]},
- {title:'Resultados',step:0,items:[['Inicio de Resultados','⌂'],['Resultado global','◉'],['Comportamiento objetivo','◎'],['Diagnóstico','◈'],['Indicadores','▤'],['Encuestas y experiencias','◉']]},
+ {title:'Resultados',step:0,items:[['Resultado global','◉'],['Comportamiento objetivo','◎'],['Diagnóstico','◈'],['Indicadores','▤']]},
  {title:'Diseño',step:1,items:[['Diseño de comportamientos','◈'],['Gestión de audiencias','♧']]},
  {title:'Análisis',step:2,items:[['Grafo de adopción','◎'],['Pensamiento sistémico','⟲'],['Simulación de agentes','♧'],['Inteligencia integrada','✧']]},
  {title:'Implementación',step:3,items:[['Intervenciones','▥']]},
