@@ -123,3 +123,54 @@ main>.hero p{color:#bfdae7;max-width:750px;line-height:1.6}
 .results-stage-stack textarea{resize:vertical;min-height:130px}
 .results-stage-stack>.panel:last-child table{width:100%}
 .results-stage-stack>.panel:last-child{overflow-x:auto}
+
+
+/* Home ejecutivo de Resultados · diseño compacto y navegación sin duplicados */
+main:has(#app .results-home-hero)>.hero{display:none}
+.results-home{--results-cyan:#69dfd1;gap:14px}
+.results-home .results-home-hero,.results-home .results-home-bottom{margin:0}
+.results-home-hero{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:28px;min-height:174px;padding:25px 31px;border:1px solid rgba(70,155,173,.45);border-radius:19px;background:radial-gradient(circle at 82% 35%,rgba(36,192,176,.16),transparent 40%),linear-gradient(110deg,#10384e,#092235 73%,#0b283b);box-shadow:inset 0 1px rgba(255,255,255,.04)}
+.results-home-hero:before{content:"";position:absolute;pointer-events:none;z-index:-1;width:236px;height:236px;border:1px solid rgba(109,224,210,.12);border-radius:50%;right:19%;top:-110px;box-shadow:0 0 0 40px rgba(71,188,175,.025),0 0 0 80px rgba(71,188,175,.018)}
+.results-home-hero-copy{min-width:0;max-width:680px}
+.results-home-eyebrow{display:inline-flex;align-items:center;gap:9px;color:#86e7dc;font-size:11px;letter-spacing:1.4px;font-weight:800}
+.results-home-eyebrow-dot{width:7px;height:7px;border-radius:50%;background:#61e4d3;box-shadow:0 0 0 4px rgba(97,228,211,.1)}
+.results-home-hero h1{margin:10px 0 9px;font-size:clamp(25px,2.4vw,35px);letter-spacing:-.6px;line-height:1.16;color:#f4fbff;font-weight:800}
+.results-home-hero p{margin:0;line-height:1.55;color:#bfdae5;font-size:14px;max-width:590px}
+.results-home-progress{flex:0 0 200px;min-width:0;border-left:1px solid rgba(131,187,199,.22);padding-left:26px;position:relative;z-index:1}
+.results-home-progress-label{font-size:11px;color:#a4c8d4;text-transform:uppercase;letter-spacing:.6px;font-weight:750}
+.results-home-progress-number{font-size:39px;letter-spacing:-1px;line-height:1.2;font-weight:850;color:#f1fdff;margin:5px 0 12px}
+.results-home-progress-number span{color:#7db2c2;font-size:20px;font-weight:600}
+.results-home-progress-track{height:5px;background:#1a4356;border-radius:20px;overflow:hidden}
+.results-home-progress-track span{display:block;height:100%;background:linear-gradient(90deg,#35bcbf,#79e6c5);border-radius:20px;transition:width .2s ease}
+.results-home-progress small{display:block;color:#a3c4ce;font-size:11px;margin-top:9px;line-height:1.35}
+.results-home-main{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.results-home-card{--card-accent:#65d9e4;position:relative;overflow:hidden;display:flex;flex-direction:column;min-width:0;min-height:220px;padding:19px 21px 17px;border:1px solid #27536a;border-radius:15px;background:linear-gradient(155deg,rgba(25,67,88,.63),rgba(9,31,49,.97) 69%);box-shadow:inset 0 1px rgba(255,255,255,.025);transition:border-color .18s ease,transform .18s ease,background .18s ease}
+.results-home-card:before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:linear-gradient(90deg,var(--card-accent),transparent 75%);opacity:.8}
+.results-home-card:hover{border-color:#44879a;transform:translateY(-2px)}
+.results-home-card--behavior{--card-accent:#65e0c0}
+.results-home-card--diagnosis{--card-accent:#95b8fb}
+.results-home-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.results-home-card-index{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(125,225,221,.17);border-radius:11px;background:#1a5265;color:#94efe3;font-size:13px;font-weight:850}
+.results-home-state{font-size:11px;color:#9eb8ca;white-space:nowrap}
+.results-home-state.is-ready{color:#85e0cf}
+.results-home-card-body{flex:1;margin:19px 0 13px}
+.results-home-card h3{font-size:19px;line-height:1.25;letter-spacing:-.25px;color:#f2faff;margin:0 0 9px}
+.results-home-card-body p{font-size:13px;line-height:1.5;color:#a7c4d3;margin:0;max-width:320px}
+.results-home-card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px;padding-top:12px;border-top:1px solid rgba(111,173,190,.15)}
+.results-home-card-detail{font-size:12px;color:#91bbca;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+button.results-home-card-action{display:inline-flex;align-items:center;justify-content:center;gap:10px;flex:0 0 auto;border:1px solid rgba(81,215,205,.35);background:#12485b;color:#b9fff0;padding:9px 12px;border-radius:9px;font-size:12px;font-weight:750;cursor:pointer}
+button.results-home-card-action:hover{background:#1a6472;border-color:#70dbcc;color:white}
+button.results-home-card-action:focus-visible,.results-home-bottom-actions button:focus-visible{outline:2px solid #83f0de;outline-offset:3px}
+.results-home-card-action span{font-size:16px;line-height:1}
+.results-home-bottom{display:flex;align-items:center;justify-content:space-between;gap:13px;flex-wrap:wrap;background:rgba(15,43,61,.85);border:1px solid #214b61;border-radius:13px;padding:12px 17px}
+.results-home-bottom-summary,.results-home-bottom-actions{display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+.results-home-bottom-summary{font-size:13px;color:#bbd2de}
+.results-home-bottom-summary strong{color:#f1faff}
+.results-home-bottom-label{font-size:10px;color:#7eb6c7;font-weight:850;letter-spacing:1px}
+.results-home-separator{height:16px;width:1px;background:#30566b}
+.results-home-bottom-actions{gap:8px}
+.results-home-bottom-actions button.secondary{margin:0;padding:9px 12px;font-size:12px}
+.results-home-bottom-actions button span{margin-left:5px;color:#94ddda}
+@media(max-width:980px){.results-home-main{grid-template-columns:repeat(2,minmax(0,1fr))}.results-home-card:last-child{grid-column:1/-1;min-height:180px}.results-home-hero{gap:18px;padding:23px}.results-home-progress{flex-basis:180px;padding-left:20px}}
+@media(max-width:680px){.results-home-hero{display:block;min-height:0;padding:22px 19px}.results-home-hero:before{display:none}.results-home-progress{padding:14px 0 0;margin-top:17px;border-left:0;border-top:1px solid rgba(131,187,199,.22)}.results-home-progress-number{font-size:31px;margin:3px 0 8px}.results-home-main{grid-template-columns:1fr}.results-home-card:last-child{grid-column:auto}.results-home-card{min-height:188px}.results-home-card-body{margin:15px 0 12px}.results-home-bottom{align-items:flex-start}.results-home-bottom-actions{width:100%}.results-home-bottom-actions button{flex:1}.results-home-bottom-label{flex-basis:100%}}
+@media(prefers-reduced-motion:reduce){.results-home-card,.results-home-progress-track span{transition:none}.results-home-card:hover{transform:none}}
