@@ -118,7 +118,12 @@ function convertAIIntervention(index){
  const x=current(),a=x?.integratedAIAnalysis?.interventions?.[index];
  if(!x||!a)return;
  x.actions=x.actions||[];
+ const sourceKey=String(x.integratedAIAnalysis?.generatedAt||'')+':'+String(index);
+ if(x.actions.some(action=>action.aiProposalKey===sourceKey)){
+   alert('Esta propuesta ya está en seguimiento.');go('Intervenciones');return;
+ }
  x.actions.push({
+   aiProposalKey:sourceKey,
    name:a.name||'Intervención sugerida por Inteligencia HACERLO',
    dimension:'Por definir',owner:'',start:'',end:'',
    hypothesis:a.why||'',measurement:a.measure||'',status:'Pendiente',
