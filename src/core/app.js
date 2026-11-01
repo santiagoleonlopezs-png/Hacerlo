@@ -101,27 +101,108 @@ const RESULT_TYPES=['Porcentaje de adopción','Porcentaje de cumplimiento','Frec
 const RESULT_UNITS=['Porcentaje (%)','Puntos / índice','Escala','Número de personas','Frecuencia (veces)','Tiempo (minutos)','Tasa','Valor monetario (COP)'];
 const OBS_FREQUENCIES=['Diaria','Semanal','Quincenal','Mensual','Trimestral','Semestral','Anual','Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];
 const resultSelect=(items,value)=>items.map(v=>`<option value="${safe(v)}" ${v===value?'selected':''}>${safe(v)}</option>`).join('');
+let resultEditorInitiative=null;
+let resultEditorsExpanded={global:null,objective:null};
+function resultEditorIsOpen(x,kind,hasSavedRecord){
+ if(resultEditorInitiative!==String(x.id)){
+  resultEditorInitiative=String(x.id);
+  resultEditorsExpanded={global:null,objective:null};
+ }
+ return resultEditorsExpanded[kind]===null?!hasSavedRecord:resultEditorsExpanded[kind];
+}
+function resultEditorToggle(kind,details){resultEditorsExpanded[kind]=!details.open}
+function resultEditorOpen(kind){
+ const x=current();if(!x)return;
+ resultEditorIsOpen(x,kind,kind==='global'?!!x.globalResult:!!x.objectiveBehavior);
+ resultEditorsExpanded[kind]=true;
+ const el=document.getElementById('result-editor-'+kind);
+ if(el){
+  el.open=true;
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+  el.querySelector(kind==='global'?'[name="complement"]':'[name="actor"]')?.focus({preventScroll:true});
+ }else render();
+}
+function resultEditorClose(kind){
+ resultEditorsExpanded[kind]=false;
+ const el=document.getElementById('result-editor-'+kind);
+ if(el)el.open=false;
+}
+function resultDateLabel(value){
+ const date=String(value||'');
+ return /^\d{4}-\d{2}-\d{2}$/.test(date)?date.slice(8,10)+'/'+date.slice(5,7)+'/'+date.slice(0,4):date||'Sin definir';
+}
+function resultEditorHeader(kind){
+ const isGlobal=kind==='global';
+ return `<summary onclick="resultEditorToggle('${kind}',this.parentElement)">
+ <span class="hcx-result-editor-icon" aria-hidden="true">＋</span>
+ <span class="hcx-result-editor-heading"><strong>Diseñar ${isGlobal?'resultado global':'comportamiento objetivo'}</strong>
+ <small>${isGlobal?'Define el cambio esperado y cómo medirlo.':'Describe quién actuará, qué hará y en qué condiciones.'}</small></span>
+ <span class="hcx-result-editor-chevron" aria-hidden="true">⌄</span></summary>`;
+}
+function resultEmptyCard(kind,legacy){
+ return `<section class="panel hcx-result-read-card is-empty"><div class="hcx-result-read-head"><div>
+ <span class="hcx-result-read-eyebrow">${kind==='global'?'RESULTADO GLOBAL':'COMPORTAMIENTO OBJETIVO'}</span>
+ <h2>${legacy?'Registro anterior':'Aún sin definir'}</h2></div></div>
+ ${legacy?`<p class="hcx-result-read-legacy">${safe(legacy)}</p><p class="muted">Esta formulación anterior se conserva. Utiliza el formulario superior para completar el diseño estructurado.</p>`:
+ `<p class="muted">Completa el formulario desplegable de arriba para mostrar aquí el ${kind==='global'?'resultado que buscamos':'comportamiento que esperamos observar'}.</p>`}
+ </section>`;
+}
 function resultGlobalPanel(x){
- const r=x.globalResult||{},legacy=!x.globalResult&&x.expected;
- return `<section class="panel"><h2>1. Resultado global</h2><p class="muted">¿Qué queremos lograr y cómo sabremos que lo conseguimos?</p>${legacy?'<p class="notice">Se conserva el resultado esperado anterior. Completa la nueva plantilla cuando estés listo.</p>':''}
+ const r=x.globalResult||{},saved=!!x.globalResult,legacy=!saved&&x.expected;
+ const expanded=resultEditorIsOpen(x,'global',saved);
+ return `<div class="hcx-result-design">
+ <details id="result-editor-global" class="panel hcx-result-editor" ${expanded?'open':''}>
+ ${resultEditorHeader('global')}
+ <div class="hcx-result-editor-content">
+ ${legacy?'<p class="notice">Se conserva el resultado esperado anterior. Completa la nueva plantilla cuando estés listo.</p>':''}
  <form onsubmit="saveGlobalResult(event)"><div class="grid"><label>Verbo<select name="verb">${resultSelect(['Incrementar','Mantener','Reducir','Mejorar','Fortalecer'],r.verb||'Incrementar')}</select></label><label>Complemento<input name="complement" required value="${safe(r.complement||'')}" placeholder="Ej. la colaboración entre equipos"></label></div>
  <div class="grid"><label>¿Cómo vamos a medirlo?<select name="measureType">${resultSelect(RESULT_TYPES,r.measureType||RESULT_TYPES[0])}</select></label><label>Unidad de medición<select name="unit" onchange="resultToggleScale(this.form)">${resultSelect(RESULT_UNITS,r.unit||RESULT_UNITS[0])}</select></label></div>
  <div data-scale-box style="display:${r.unit==='Escala'?'block':'none'}"><label>¿Qué escala vas a utilizar?<select name="scale" onchange="resultToggleScale(this.form)">${resultSelect(['1-5','1-10','1-100','Personalizada'],r.scale||'1-5')}</select></label><div class="grid" data-custom-scale style="display:${r.scale==='Personalizada'?'grid':'none'}"><label>Desde<input name="scaleMin" type="number" step="any" value="${safe(r.scaleMin??1)}"></label><label>Hasta<input name="scaleMax" type="number" step="any" value="${safe(r.scaleMax??5)}"></label></div></div>
  <div class="grid"><label>Línea base<input name="baseline" type="number" step="any" required value="${safe(r.baseline??'')}"></label><label>Meta esperada<input name="target" type="number" step="any" required value="${safe(r.target??'')}"></label><label>Fecha meta<input name="dueDate" type="date" required value="${safe(r.dueDate||'')}"></label></div>
- <button class="primary">Guardar resultado global</button></form>${x.globalResult?`<p class="notice"><b>Resultado registrado:</b> ${safe(resultSentence(r))}</p>`:''}</section>`;
+ <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar resultado global</button><button class="secondary" type="button" onclick="resultEditorClose('global')">Cancelar</button></div></form>
+ </div></details>
+ ${saved?`<section class="panel hcx-result-read-card"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">RESULTADO GLOBAL DEFINIDO</span><h2>${safe(r.verb||'')} ${safe(r.complement||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('global')">Editar resultado</button></div>
+ <div class="hcx-result-facts">
+ <div><span>¿Cómo lo mediremos?</span><strong>${safe(r.measureType||'No definido')}</strong></div>
+ <div><span>Unidad de medición</span><strong>${safe(r.unit||'No definida')}${r.unit==='Escala'?' · '+safe(r.scale==='Personalizada'?(r.scaleMin+' a '+r.scaleMax):(r.scale||'')):''}</strong></div>
+ <div><span>Línea base</span><strong>${safe(r.baseline??'—')}</strong></div>
+ <div><span>Meta esperada</span><strong>${safe(r.target??'—')}</strong></div>
+ <div><span>Fecha meta</span><strong>${safe(resultDateLabel(r.dueDate))}</strong></div>
+ </div></section>`:resultEmptyCard('global',legacy)}
+ </div>`;
 }
 function resultToggleScale(f){const scale=f.elements.unit.value==='Escala';f.querySelector('[data-scale-box]').style.display=scale?'block':'none';f.querySelector('[data-custom-scale]').style.display=scale&&f.elements.scale.value==='Personalizada'?'grid':'none'}
 function resultSentence(r){const scale=r.unit==='Escala'?` (escala ${r.scale==='Personalizada'?r.scaleMin+' a '+r.scaleMax:r.scale.replace('-',' a ')})`:'';return `${r.verb} ${r.complement}, medido mediante ${r.measureType.toLowerCase()}, en ${r.unit.toLowerCase()}${scale}, de ${r.baseline} a ${r.target} para el ${r.dueDate}.`}
-function saveGlobalResult(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f));const baseline=Number(z.baseline),target=Number(z.target);let min=-Infinity,max=Infinity;if(z.unit==='Porcentaje (%)'){min=0;max=100}else if(z.unit==='Escala'){const b=z.scale==='Personalizada'?[Number(z.scaleMin),Number(z.scaleMax)]:z.scale.split('-').map(Number);[min,max]=b;if(!(min<max))return alert('La escala debe tener un mínimo menor al máximo.')}if(baseline<min||baseline>max||target<min||target>max)return alert('Línea base y meta deben estar dentro de la escala o rango seleccionado.');if(['Incrementar','Mejorar','Fortalecer'].includes(z.verb)&&target<baseline||z.verb==='Reducir'&&target>baseline||z.verb==='Mantener'&&target!==baseline)return alert('Revisa que la meta sea coherente con el verbo seleccionado.');const x=current();x.globalResult={...z,baseline,target,scaleMin:Number(z.scaleMin),scaleMax:Number(z.scaleMax)};x.expected=resultSentence(x.globalResult);save();render()}
-function objectivePanel(x){const b=x.objectiveBehavior||{};const conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];const details={'Al iniciar una actividad':'¿Qué actividad debe iniciar?','Al finalizar una actividad':'¿Qué actividad debe finalizar?','Ante una situación específica':'¿Qué situación específica debe ocurrir?','Otra':'Especifica la frecuencia o condición'};return `<section class="panel"><h2>2. Comportamiento objetivo</h2><p class="muted">¿Qué deben hacer las personas de forma observable?</p>${!x.objectiveBehavior&&x.objective?'<p class="notice">Tu descripción anterior se conserva en el campo de acción observable.</p>':''}
+function saveGlobalResult(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f));const baseline=Number(z.baseline),target=Number(z.target);let min=-Infinity,max=Infinity;if(z.unit==='Porcentaje (%)'){min=0;max=100}else if(z.unit==='Escala'){const b=z.scale==='Personalizada'?[Number(z.scaleMin),Number(z.scaleMax)]:z.scale.split('-').map(Number);[min,max]=b;if(!(min<max))return alert('La escala debe tener un mínimo menor al máximo.')}if(baseline<min||baseline>max||target<min||target>max)return alert('Línea base y meta deben estar dentro de la escala o rango seleccionado.');if(['Incrementar','Mejorar','Fortalecer'].includes(z.verb)&&target<baseline||z.verb==='Reducir'&&target>baseline||z.verb==='Mantener'&&target!==baseline)return alert('Revisa que la meta sea coherente con el verbo seleccionado.');const x=current();x.globalResult={...z,baseline,target,scaleMin:Number(z.scaleMin),scaleMax:Number(z.scaleMax)};x.expected=resultSentence(x.globalResult);resultEditorsExpanded.global=false;save();render()}
+function objectivePanel(x){
+ const b=x.objectiveBehavior||{},saved=!!x.objectiveBehavior,legacy=!saved&&x.objective;
+ const conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];
+ const details={'Al iniciar una actividad':'¿Qué actividad debe iniciar?','Al finalizar una actividad':'¿Qué actividad debe finalizar?','Ante una situación específica':'¿Qué situación específica debe ocurrir?','Otra':'Especifica la frecuencia o condición'};
+ const expanded=resultEditorIsOpen(x,'objective',saved);
+ return `<div class="hcx-result-design">
+ <details id="result-editor-objective" class="panel hcx-result-editor" ${expanded?'open':''}>
+ ${resultEditorHeader('objective')}
+ <div class="hcx-result-editor-content">
+ ${legacy?'<p class="notice">Tu descripción anterior se conserva en el campo de acción observable.</p>':''}
  <form onsubmit="saveObjectiveBehavior(event)"><label>¿Quién debe realizarlo?<input name="actor" required value="${safe(b.actor||'')}" placeholder="Ej. Los líderes de equipo"></label><label>¿Qué acción observable esperamos?<textarea name="action" required placeholder="Ej. compartir información y coordinar decisiones">${safe(b.action||x.objective||'')}</textarea></label><label>¿En qué situación o contexto?<input name="context" value="${safe(b.context||'')}" placeholder="Ej. durante la planificación de proyectos"></label>
  <label>¿Con qué frecuencia esperamos observarlo?<select name="frequency" onchange="objectiveToggleCondition(this.form)">${resultSelect(OBS_FREQUENCIES,b.frequency||'Semanal')}</select></label><label data-condition style="display:${conditional.includes(b.frequency)?'block':'none'}"><span data-condition-label>${details[b.frequency]||''}</span><input name="condition" value="${safe(b.condition||'')}" placeholder="Especifica la actividad o situación"></label>
- <details><summary>¿Cómo sabremos que ocurrió? (opcional)</summary><label>Evidencia observable<textarea name="evidence" placeholder="Ej. acuerdos documentados">${safe(b.evidence||'')}</textarea></label></details><label>¿Desde cuándo esperamos observar este comportamiento?<input type="date" name="observeFrom" required value="${safe(b.observeFrom||'')}"></label><button class="primary">Guardar comportamiento objetivo</button></form>
- ${x.objectiveBehavior?`<p class="notice"><b>Comportamiento registrado:</b> ${safe(objectiveSentence(b))}</p>`:''}
- <h3>Hipótesis de valor</h3>${x.globalResult&&x.objectiveBehavior?`<p class="notice">Si logramos que ${safe(objectiveSentence(b))}, entonces esperamos ${safe(resultSentence(x.globalResult))}</p><p class="muted">Formulación automática. Se contrastará posteriormente con evidencia; no implica causalidad demostrada.</p>`:'<p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p>'}</section>`}
+ <details ${b.evidence?'open':''}><summary>¿Cómo sabremos que ocurrió? (opcional)</summary><label>Evidencia observable<textarea name="evidence" placeholder="Ej. acuerdos documentados">${safe(b.evidence||'')}</textarea></label></details><label>¿Desde cuándo esperamos observar este comportamiento?<input type="date" name="observeFrom" required value="${safe(b.observeFrom||'')}"></label>
+ <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar comportamiento objetivo</button><button class="secondary" type="button" onclick="resultEditorClose('objective')">Cancelar</button></div></form>
+ </div></details>
+ ${saved?`<section class="panel hcx-result-read-card"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span><h2>${safe(b.action||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('objective')">Editar comportamiento</button></div>
+ <div class="hcx-result-facts">
+ <div><span>¿Quién?</span><strong>${safe(b.actor||'No definido')}</strong></div>
+ <div><span>Contexto</span><strong>${safe(b.context||'No especificado')}</strong></div>
+ <div><span>Frecuencia</span><strong>${safe(b.frequency||'No definida')}${b.condition?' · '+safe(b.condition):''}</strong></div>
+ <div><span>Desde cuándo</span><strong>${safe(resultDateLabel(b.observeFrom))}</strong></div>
+ ${b.evidence?`<div class="hcx-result-facts-wide"><span>Evidencia observable</span><strong>${safe(b.evidence)}</strong></div>`:''}
+ </div></section>`:resultEmptyCard('objective',legacy)}
+ <section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2>${x.globalResult&&saved?`<p>Si logramos que ${safe(objectiveSentence(b))}, entonces esperamos ${safe(resultSentence(x.globalResult))}</p><small>Formulación automática que deberá contrastarse con evidencia; no demuestra causalidad.</small>`:'<p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p>'}</section>
+ </div>`;
+}
 function objectiveToggleCondition(f){const frequency=f.elements.frequency.value,conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];const label=f.querySelector('[data-condition]');label.style.display=conditional.includes(frequency)?'block':'none';label.querySelector('[data-condition-label]').textContent=({'Al iniciar una actividad':'¿Qué actividad debe iniciar?','Al finalizar una actividad':'¿Qué actividad debe finalizar?','Ante una situación específica':'¿Qué situación específica debe ocurrir?','Otra':'Especifica la frecuencia o condición'})[frequency]||'';f.elements.condition.required=conditional.includes(frequency)}
 function objectiveSentence(b){return `${b.actor} ${b.action}${b.context?' '+b.context:''}, ${b.frequency.toLowerCase()}${b.condition?': '+b.condition:''}, desde el ${b.observeFrom}`}
-function saveObjectiveBehavior(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f)),conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];if(conditional.includes(z.frequency)&&!z.condition.trim())return alert('Especifica la actividad o situación que activa el comportamiento.');const x=current();x.objectiveBehavior=z;x.objective=objectiveSentence(z);save();render()}
+function saveObjectiveBehavior(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f)),conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];if(conditional.includes(z.frequency)&&!z.condition.trim())return alert('Especifica la actividad o situación que activa el comportamiento.');const x=current();x.objectiveBehavior=z;x.objective=objectiveSentence(z);resultEditorsExpanded.objective=false;save();render()}
 
 function resultadosHome(x){
  const r=x.globalResult,b=x.objectiveBehavior;
