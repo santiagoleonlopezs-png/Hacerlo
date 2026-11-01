@@ -212,7 +212,7 @@ function objectivePanel(x){
  ${b.context?'<p class="hcx-result-narrative-evidence"><strong>Contexto:</strong> '+safe(b.context)+'</p>':''}
  ${b.evidence?'<p class="hcx-result-narrative-evidence"><strong>Evidencia observable:</strong> '+safe(b.evidence)+'</p>':''}
  </section>`:resultEmptyCard('objective',legacy)}
- <section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2>${x.globalResult&&saved?`<p>${safe(resultValueHypothesis(x))}</p><small>Formulación automática que deberá contrastarse con evidencia; no demuestra causalidad.</small>`:'<p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p>'}</section>
+ <section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2>${x.globalResult&&saved?`<p>${safe(resultValueHypothesis(x))}</p>`:'<p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p>'}</section>
  </div>`;
 }
 function objectiveToggleCondition(f){const frequency=f.elements.frequency.value,conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];const label=f.querySelector('[data-condition]');label.style.display=conditional.includes(frequency)?'block':'none';label.querySelector('[data-condition-label]').textContent=({'Al iniciar una actividad':'¿Qué actividad debe iniciar?','Al finalizar una actividad':'¿Qué actividad debe finalizar?','Ante una situación específica':'¿Qué situación específica debe ocurrir?','Otra':'Especifica la frecuencia o condición'})[frequency]||'';f.elements.condition.required=conditional.includes(frequency)}
@@ -225,10 +225,19 @@ function objectiveCoreStatement(b){
 }
 // Hipótesis resumida: evita duplicar el comportamiento largo y la fecha en la misma frase.
 function resultValueHypothesis(x){
- const r=x.globalResult||{};
- const verb=resultTextClean(r.verb).toLocaleLowerCase('es');
- const complement=resultTextClean(r.complement);
- return 'Si el comportamiento objetivo se observa de forma sostenida, esperamos '+[verb,complement].filter(Boolean).join(' ')+'.';
+ const r=x.globalResult||{},b=x.objectiveBehavior||{};
+ const action=resultTextClean(b.action),actor=resultTextClean(b.actor)
+   .replace(/^(Los|Las|El|La|Un|Una|Todos|Todas)\b/u,word=>word.toLocaleLowerCase('es'));
+ const result=[resultTextClean(r.verb).toLocaleLowerCase('es'),resultTextClean(r.complement)]
+   .filter(Boolean).join(' ');
+ const measure=resultTextClean(r.measureType);
+ const from=resultNarrativeAmount(r.baseline,r.unit);
+ const to=resultNarrativeAmount(r.target,r.unit);
+ const unit=resultNarrativeUnit(r);
+ const date=resultDateLabel(r.dueDate);
+ return 'Si se observa de forma sostenida la conducta «'+action+'» por parte de '+actor+
+  ', esperamos '+result+'. Lo mediremos mediante '+measure+unit+
+  ', pasando de '+from+' a '+to+' para el '+date+'.';
 }
 function objectiveSentence(b){
  const core=objectiveCoreStatement(b);
