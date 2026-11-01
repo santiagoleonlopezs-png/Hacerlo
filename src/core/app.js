@@ -206,16 +206,39 @@ function objectivePanel(x){
  <details ${b.evidence?'open':''}><summary>¿Cómo sabremos que ocurrió? (opcional)</summary><label>Evidencia observable<textarea name="evidence" placeholder="Ej. acuerdos documentados">${safe(b.evidence||'')}</textarea></label></details><label>¿Desde cuándo esperamos observar este comportamiento?<input type="date" name="observeFrom" required value="${safe(b.observeFrom||'')}"></label>
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar comportamiento objetivo</button><button class="secondary" type="button" onclick="resultEditorClose('objective')">Cancelar</button></div></form>
  </div></details>
- ${saved?`<section class="panel hcx-result-read-card hcx-result-read-narrative"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span><h2>${safe(b.action||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('objective')">Editar comportamiento</button></div>
- <p class="hcx-result-narrative">Este comportamiento corresponde a <strong>${safe(b.actor||'las personas definidas')}</strong>. Se espera observarlo <strong>${safe(objectiveNarrativeFrequency(b.frequency))}</strong>${b.condition?' ('+safe(b.condition)+')':''}, desde el <strong>${safe(resultDateLabel(b.observeFrom))}</strong>.</p>
+ ${saved?`<section class="panel hcx-result-read-card hcx-result-read-narrative"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('objective')">Editar comportamiento</button></div>
+ <p class="hcx-result-objective-statement">${safe(objectiveCoreStatement(b))}.</p>
+ <p class="hcx-result-objective-meta">Frecuencia esperada: <strong>${safe(objectiveNarrativeFrequency(b.frequency))}</strong>${b.condition?' · '+safe(b.condition):''}. Desde el <strong>${safe(resultDateLabel(b.observeFrom))}</strong>.</p>
  ${b.context?'<p class="hcx-result-narrative-evidence"><strong>Contexto:</strong> '+safe(b.context)+'</p>':''}
  ${b.evidence?'<p class="hcx-result-narrative-evidence"><strong>Evidencia observable:</strong> '+safe(b.evidence)+'</p>':''}
  </section>`:resultEmptyCard('objective',legacy)}
- <section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2>${x.globalResult&&saved?`<p>Si logramos que ${safe(objectiveSentence(b))}, entonces esperamos ${safe(resultSentence(x.globalResult))}</p><small>Formulación automática que deberá contrastarse con evidencia; no demuestra causalidad.</small>`:'<p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p>'}</section>
+ <section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2>${x.globalResult&&saved?`<p>${safe(resultValueHypothesis(x))}</p><small>Formulación automática que deberá contrastarse con evidencia; no demuestra causalidad.</small>`:'<p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p>'}</section>
  </div>`;
 }
 function objectiveToggleCondition(f){const frequency=f.elements.frequency.value,conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];const label=f.querySelector('[data-condition]');label.style.display=conditional.includes(frequency)?'block':'none';label.querySelector('[data-condition-label]').textContent=({'Al iniciar una actividad':'¿Qué actividad debe iniciar?','Al finalizar una actividad':'¿Qué actividad debe finalizar?','Ante una situación específica':'¿Qué situación específica debe ocurrir?','Otra':'Especifica la frecuencia o condición'})[frequency]||'';f.elements.condition.required=conditional.includes(frequency)}
-function objectiveSentence(b){return `${b.actor} ${b.action}${b.context?' '+b.context:''}, ${b.frequency.toLowerCase()}${b.condition?': '+b.condition:''}, desde el ${b.observeFrom}`}
+function resultTextClean(value){
+ return String(value??'').trim().replace(/[\s.,;:!?]+$/u,'');
+}
+// En la ficha, el actor inicia la formulación; se respetan las palabras introducidas.
+function objectiveCoreStatement(b){
+ return [resultTextClean(b.actor),resultTextClean(b.action)].filter(Boolean).join(' ').trim();
+}
+// Hipótesis resumida: evita duplicar el comportamiento largo y la fecha en la misma frase.
+function resultValueHypothesis(x){
+ const r=x.globalResult||{};
+ const verb=resultTextClean(r.verb).toLocaleLowerCase('es');
+ const complement=resultTextClean(r.complement);
+ return 'Si el comportamiento objetivo se observa de forma sostenida, esperamos '+[verb,complement].filter(Boolean).join(' ')+'.';
+}
+function objectiveSentence(b){
+ const core=objectiveCoreStatement(b);
+ const context=resultTextClean(b.context);
+ const frequency=objectiveNarrativeFrequency(b.frequency);
+ const condition=resultTextClean(b.condition);
+ const date=resultDateLabel(b.observeFrom);
+ return core+(context?'. Contexto: '+context:'')+'. Frecuencia esperada: '+frequency+
+   (condition?' ('+condition+')':'')+'. Desde el '+date+'.';
+}
 function saveObjectiveBehavior(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f)),conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];if(conditional.includes(z.frequency)&&!z.condition.trim())return alert('Especifica la actividad o situación que activa el comportamiento.');const x=current();x.objectiveBehavior=z;x.objective=objectiveSentence(z);resultEditorsExpanded.objective=false;save();render()}
 
 function resultadosHome(x){
