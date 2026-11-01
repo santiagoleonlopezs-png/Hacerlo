@@ -200,3 +200,11 @@ button.results-home-card-action:focus-visible,.results-home-bottom-actions butto
 .diag-matrix-empty{margin:0;padding:18px 14px;font-size:12px;color:#8caebf;line-height:1.5}
 @media(max-width:1050px){.diag-matrix-columns{grid-template-columns:repeat(2,minmax(0,1fr))}.diag-matrix-column:last-child{grid-column:1/-1}}
 @media(max-width:700px){.diag-matrix-columns{grid-template-columns:1fr}.diag-matrix-column:last-child{grid-column:auto}.diag-matrix-overview{gap:8px}.diag-matrix-progress{font-size:11px}}
+
+
+/* Diagnóstico · radar de frecuencia de hallazgos */
+.diag-radar-wrap{max-width:100%;min-width:0}
+.diag-hallazgos-radar{display:block;width:100%;height:auto;max-height:430px;overflow:visible}
+.diag-radar-note{margin:8px 0 0;color:#9ab9c8;font-size:11px;line-height:1.5;text-align:center}
+.diag-radar-empty{display:flex;align-items:center;justify-content:center;min-height:240px;border:1px dashed #315b70;border-radius:12px;color:#97b8ca;font-size:13px;text-align:center;padding:20px}
+@media(max-width:650px){.diag-radar-wrap{overflow-x:auto}.diag-hallazgos-radar{min-width:470px;max-height:none}.diag-radar-note{text-align:left}}
