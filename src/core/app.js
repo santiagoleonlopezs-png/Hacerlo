@@ -161,14 +161,9 @@ function resultGlobalPanel(x){
  <div class="grid"><label>Línea base<input name="baseline" type="number" step="any" required value="${safe(r.baseline??'')}"></label><label>Meta esperada<input name="target" type="number" step="any" required value="${safe(r.target??'')}"></label><label>Fecha meta<input name="dueDate" type="date" required value="${safe(r.dueDate||'')}"></label></div>
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar resultado global</button><button class="secondary" type="button" onclick="resultEditorClose('global')">Cancelar</button></div></form>
  </div></details>
- ${saved?`<section class="panel hcx-result-read-card"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">RESULTADO GLOBAL DEFINIDO</span><h2>${safe(r.verb||'')} ${safe(r.complement||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('global')">Editar resultado</button></div>
- <div class="hcx-result-facts">
- <div><span>¿Cómo lo mediremos?</span><strong>${safe(r.measureType||'No definido')}</strong></div>
- <div><span>Unidad de medición</span><strong>${safe(r.unit||'No definida')}${r.unit==='Escala'?' · '+safe(r.scale==='Personalizada'?(r.scaleMin+' a '+r.scaleMax):(r.scale||'')):''}</strong></div>
- <div><span>Línea base</span><strong>${safe(r.baseline??'—')}</strong></div>
- <div><span>Meta esperada</span><strong>${safe(r.target??'—')}</strong></div>
- <div><span>Fecha meta</span><strong>${safe(resultDateLabel(r.dueDate))}</strong></div>
- </div></section>`:resultEmptyCard('global',legacy)}
+ ${saved?`<section class="panel hcx-result-read-card hcx-result-read-narrative"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">RESULTADO GLOBAL DEFINIDO</span><h2>${safe(r.verb||'')} ${safe(r.complement||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('global')">Editar resultado</button></div>
+ <p class="hcx-result-narrative">Mediremos el avance mediante <strong>${safe(r.measureType||'el indicador definido')}</strong>. Partimos de <strong>${safe(r.baseline??'—')}</strong> y buscamos alcanzar <strong>${safe(r.target??'—')}</strong>, expresados en <strong>${safe(r.unit||'la unidad definida')}</strong>${r.unit==='Escala'?' (escala '+safe(r.scale==='Personalizada'?r.scaleMin+' a '+r.scaleMax:(r.scale||'').replace('-',' a '))+')':''}, para el <strong>${safe(resultDateLabel(r.dueDate))}</strong>.</p>
+ </section>`:resultEmptyCard('global',legacy)}
  </div>`;
 }
 function resultToggleScale(f){const scale=f.elements.unit.value==='Escala';f.querySelector('[data-scale-box]').style.display=scale?'block':'none';f.querySelector('[data-custom-scale]').style.display=scale&&f.elements.scale.value==='Personalizada'?'grid':'none'}
@@ -189,14 +184,11 @@ function objectivePanel(x){
  <details ${b.evidence?'open':''}><summary>¿Cómo sabremos que ocurrió? (opcional)</summary><label>Evidencia observable<textarea name="evidence" placeholder="Ej. acuerdos documentados">${safe(b.evidence||'')}</textarea></label></details><label>¿Desde cuándo esperamos observar este comportamiento?<input type="date" name="observeFrom" required value="${safe(b.observeFrom||'')}"></label>
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar comportamiento objetivo</button><button class="secondary" type="button" onclick="resultEditorClose('objective')">Cancelar</button></div></form>
  </div></details>
- ${saved?`<section class="panel hcx-result-read-card"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span><h2>${safe(b.action||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('objective')">Editar comportamiento</button></div>
- <div class="hcx-result-facts">
- <div><span>¿Quién?</span><strong>${safe(b.actor||'No definido')}</strong></div>
- <div><span>Contexto</span><strong>${safe(b.context||'No especificado')}</strong></div>
- <div><span>Frecuencia</span><strong>${safe(b.frequency||'No definida')}${b.condition?' · '+safe(b.condition):''}</strong></div>
- <div><span>Desde cuándo</span><strong>${safe(resultDateLabel(b.observeFrom))}</strong></div>
- ${b.evidence?`<div class="hcx-result-facts-wide"><span>Evidencia observable</span><strong>${safe(b.evidence)}</strong></div>`:''}
- </div></section>`:resultEmptyCard('objective',legacy)}
+ ${saved?`<section class="panel hcx-result-read-card hcx-result-read-narrative"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span><h2>${safe(b.action||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('objective')">Editar comportamiento</button></div>
+ <p class="hcx-result-narrative">Este comportamiento corresponde a <strong>${safe(b.actor||'las personas definidas')}</strong>. Se espera observarlo <strong>${safe((b.frequency||'con la frecuencia definida').toLowerCase())}</strong>${b.condition?' ('+safe(b.condition)+')':''}, desde el <strong>${safe(resultDateLabel(b.observeFrom))}</strong>.</p>
+ ${b.context?'<p class="hcx-result-narrative-evidence"><strong>Contexto:</strong> '+safe(b.context)+'</p>':''}
+ ${b.evidence?'<p class="hcx-result-narrative-evidence"><strong>Evidencia observable:</strong> '+safe(b.evidence)+'</p>':''}
+ </section>`:resultEmptyCard('objective',legacy)}
  <section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2>${x.globalResult&&saved?`<p>Si logramos que ${safe(objectiveSentence(b))}, entonces esperamos ${safe(resultSentence(x.globalResult))}</p><small>Formulación automática que deberá contrastarse con evidencia; no demuestra causalidad.</small>`:'<p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p>'}</section>
  </div>`;
 }
