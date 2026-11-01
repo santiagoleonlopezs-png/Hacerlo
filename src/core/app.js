@@ -31,7 +31,7 @@ const current=()=>db.initiatives.find(x=>x.id===db.selected);
 // Navegación jerárquica: RDAIM es un marco integrado, no una pantalla superpuesta.
 const HACERLO_NAV_GROUPS=[
  {title:'Espacio de trabajo',items:[['Inicio','⌂'],['Iniciativas','▦']]},
- {title:'Resultados',step:0,items:[['Resultado global','◉'],['Comportamiento objetivo','◎'],['Diagnóstico','◈'],['Encuestas y experiencias','▤'],['Indicadores','▤']]},
+ {title:'Resultados',step:0,items:[['Resultado global','◉'],['Comportamiento objetivo','◎'],['Diagnóstico','◈'],['Indicadores','▤']]},
  {title:'Diseño',step:1,items:[['Diseño de comportamientos','◈'],['Gestión de audiencias','♧']]},
  {title:'Análisis',step:2,items:[['Grafo de adopción','◎'],['Pensamiento sistémico','⟲'],['Simulación de agentes','♧'],['Inteligencia integrada','✧']]},
  {title:'Implementación',step:3,items:[['Intervenciones','▥']]},
@@ -56,7 +56,7 @@ function nav(){
   const id=`nav-stage-${group.step}`;
   return `<section class="nav-accordion ${opened?'is-open':''} ${active?'has-active':''}">
    <button type="button" class="nav-stage ${active?'is-current':''}" aria-expanded="${opened}" aria-controls="${id}" onclick="toggleNavStep(${group.step})"><span class="nav-stage-mark" style="--stage-color:${phases[group.step][2]}">${phases[group.step][0]}</span><span>${group.title}</span><span class="nav-chevron" aria-hidden="true">${opened?'⌄':'›'}</span></button>
-   <div class="nav-stage-children" id="${id}" ${opened?'':'hidden'}>${group.items.map(([n,icon])=>`<button type="button" class="nav nav-child ${page===n?'active':''}" onclick="go('${n}')"><span class="nav-symbol" aria-hidden="true">${icon}</span><span>${n}</span></button>`).join('')}</div>
+   <div class="nav-stage-children" id="${id}" ${opened?'':'hidden'}>${group.items.map(([n,icon])=>`<button type="button" class="nav nav-child ${(page===n||(n==='Diagnóstico'&&page==='Encuestas y experiencias'))?'active':''}" onclick="go('${n}')"><span class="nav-symbol" aria-hidden="true">${icon}</span><span>${n}</span></button>`).join('')}</div>
   </section>`;
  }).join('');
 }

@@ -50,7 +50,7 @@ function diagInit(x){
   for(const finding of x.diagnosisFindings){if(Array.isArray(finding.factors))finding.factors=[...new Set(finding.factors.map(k=>k===oldKey?newKey:k))]}
  }
 }
-function diagSwitch(t){diagTab=t;render()}
+function diagSwitch(t){diagTab=t;if(page==='Encuestas y experiencias')go('Diagnóstico');else render()}
 function diagSetDim(d){diagDim=d;render()}
 function diagFactorKey(d,n){return d+'::'+n}
 function diagToggle(d,n){let x=current();diagInit(x);let k=diagFactorKey(d,n);if(x.behaviorDiagnosis[k])delete x.behaviorDiagnosis[k];else x.behaviorDiagnosis[k]={dimension:d,factor:n,role:'Por explorar'};save();render()}
@@ -67,7 +67,8 @@ function diagSaveFinding(e){e.preventDefault();let x=current();diagInit(x);let f
  if(old)Object.assign(old,record);else x.diagnosisFindings.push(record);diagEditId=null;diagTriad=null;save();render()}
 function diagSaveHypothesis(e){e.preventDefault();let x=current();diagInit(x);let t=new FormData(e.target).get('text').trim();if(!t)return;x.diagnosisHypotheses.push({id:diagId(),text:t,createdAt:new Date().toISOString()});save();render()}
 function diagEsc(v){return safe(v||'')}
-function diagTabButton(key,label){return `<button type="button" class="secondary ${diagTab===key?'active':''}" onclick="diagSwitch('${key}')">${label}</button>`}
+function diagTabButton(key,label,active=diagTab){return `<button type="button" class="secondary ${active===key?'active':''}" ${active===key?'aria-current="page"':''} onclick="diagSwitch('${key}')">${label}</button>`}
+function diagModuleMenu(active=diagTab){return `<section class="panel diag-module-menu"><nav class="diag-tabs hcx-section-tabs" aria-label="Componentes de Diagnóstico"><button type="button" class="secondary ${active==='encuestas'?'active':''}" ${active==='encuestas'?'aria-current="page"':''} onclick="go('Encuestas y experiencias')">📋 Encuestas y experiencias</button>${diagTabButton('conductual','🧠 Diagnóstico conductual',active)}${diagTabButton('hallazgos','🔎 Hallazgos y micronarrativas',active)}${diagTabButton('visual','📊 Tablero integrado',active)}</nav></section>`}
 function diagBehaviorOptions(x,selected=[]){return x.behaviors.length?`<div class="diag-linklist">${x.behaviors.map((b,i)=>`<label><input type="checkbox" name="behavior" value="${i}" ${selected.includes(String(i))?'checked':''}>${diagEsc(b.name)}</label>`).join('')}</div>`:'<p class="diag-hint">Los comportamientos se recuperan de Diseño cuando estén disponibles.</p>'}
 function diagFactorOptions(x,selected=[]){let list=Object.entries(x.behaviorDiagnosis).filter(([k,v])=>v);return list.length?`<div class="diag-linklist">${list.map(([k,v])=>`<label><input type="checkbox" name="factorLink" value="${diagEsc(k)}" ${selected.includes(k)?'checked':''}>${diagEsc(v.factor)}</label>`).join('')}</div>`:'<p class="diag-hint">Puedes registrar hallazgos sin seleccionar factores conductuales.</p>'}
 function diagConductual(x){
@@ -277,7 +278,7 @@ function diagVisual(x){
  <section class="panel diag-analytics-card diag-analytics-card--radar"><h2>Mapa de hallazgos</h2>${diagHallazgosRadar(categories)}</section>
  <section class="panel diag-analytics-card diag-analytics-card--evidence"><h2>Tipo de evidencia</h2>${diagEvidenciasDonut(findings)}</section>
  </div>${diagRelationsCompact(x)}<p class="notice">La cantidad de hallazgos no mide por sí misma la magnitud del efecto. Las asociaciones registradas no demuestran causalidad.</p>`}
-function diagnosisPage(x){diagInit(x);return hcxHero('Diagnóstico',x,'Explora barreras, facilitadores y experiencias para comprender el comportamiento.','RDAIM · RESULTADOS','◈')+`<section class="panel"><div class="diag-tabs hcx-section-tabs"><button type="button" class="secondary" onclick="go('Encuestas y experiencias')">📋 Encuestas y experiencias</button>${diagTabButton('conductual','🧠 Diagnóstico conductual')}${diagTabButton('hallazgos','🔎 Hallazgos y micronarrativas')}${diagTabButton('visual','📊 Tablero integrado')}</div></section>${diagTab==='conductual'?diagConductual(x):diagTab==='hallazgos'?diagHallazgos(x):diagVisual(x)}`}
+function diagnosisPage(x){diagInit(x);return hcxHero('Diagnóstico',x,'Explora barreras, facilitadores y experiencias para comprender el comportamiento.','RDAIM · RESULTADOS','◈')+diagModuleMenu(diagTab)+(diagTab==='conductual'?diagConductual(x):diagTab==='hallazgos'?diagHallazgos(x):diagVisual(x))}
 
 function diagFindingItem(z){return `<div class="diag-item"><div class="flex"><span class="diag-pill">${diagEsc(z.evidenceType)}</span><span class="diag-pill">${diagEsc(z.role)}</span>${(z.categories||[]).map(c=>`<span class="diag-pill">${diagEsc(c)}</span>`).join('')}</div><p>${diagEsc(z.text)}</p><div class="diag-mini">${diagEsc(z.source)}${z.indicator?' · '+diagEsc(z.indicator):''}</div><div class="flex"><button class="secondary" onclick="diagEditFinding('${diagEsc(z.id)}')">Editar</button><button class="secondary" onclick="diagRemoveFinding('${diagEsc(z.id)}')">Eliminar</button></div></div>`;}
 function diagIsSurveyFinding(z){return !!z.surveyId&&String(z.sourceKey||'').startsWith('ee:'+z.surveyId+':');}

@@ -16,6 +16,7 @@ const context={
  EE:{init:()=>x.surveys,create:(kind,title)=>({id:'s-new',title,kind,status:'draft',version:1,responses:[],questions:[]})},
  safe:v=>String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'),
  save:()=>saves++,render:()=>renders++,
+ diagModuleMenu:active=>'<nav id="diagnostico-nav" data-active="'+active+'">Diagnóstico</nav>',
  alert:msg=>{throw Error('Unexpected alert '+msg)}
 };
 vm.createContext(context);vm.runInContext(code,context);
@@ -37,6 +38,8 @@ assert.equal(vm.runInContext('eePickerOpen',context),false,'Selector lateral no 
 let page=context.eePage(x);
 assert.match(page,/id="ee-instrument-select"/);
 assert.match(page,/ee-single-column/);
+assert.match(page,/id="diagnostico-nav" data-active="encuestas"/);
+assert.match(page,/RDAIM · RESULTADOS · DIAGNÓSTICO/);
 assert.doesNotMatch(page,/class="panel ee-sidebar"/);
 assert.doesNotMatch(page,/ee-layout/);
 assert.ok(page.includes('DX inicial Experiencia Conectados'));

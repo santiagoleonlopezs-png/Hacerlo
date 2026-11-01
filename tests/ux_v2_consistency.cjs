@@ -34,7 +34,7 @@ assert.match(core,/if\(page==='Simulación de agentes'\)\{a.innerHTML=renderABME
 assert.match(core,/if\(page==='Pensamiento sistémico'\)\{sysRender\(a,head,x\)/);
 assert.match(diagnosis,/hcxHero\('Diagnóstico'/);
 assert.match(audiences,/hcxHero\('Gestión de audiencias'/);
-assert.match(surveys,/RDAIM · MEDICIÓN/);
+assert.match(surveys,/RDAIM · RESULTADOS · DIAGNÓSTICO/);
 assert.match(surveys,/hcx-more/);
 for(const attr of ['data-k="id"','data-k="type"','data-k="min"','data-k="max"','data-k="options"','data-k="correct"']){
  assert.ok(surveys.includes(attr),'No debe perderse el campo '+attr);
