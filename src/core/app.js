@@ -192,55 +192,40 @@ function resultToggleScale(f){const scale=f.elements.unit.value==='Escala';f.que
 function resultSentence(r){const scale=r.unit==='Escala'?` (escala ${r.scale==='Personalizada'?r.scaleMin+' a '+r.scaleMax:r.scale.replace('-',' a ')})`:'';return `${r.verb} ${r.complement}, medido mediante ${r.measureType.toLowerCase()}, en ${r.unit.toLowerCase()}${scale}, de ${r.baseline} a ${r.target} para el ${r.dueDate}.`}
 function saveGlobalResult(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f));const baseline=Number(z.baseline),target=Number(z.target);let min=-Infinity,max=Infinity;if(z.unit==='Porcentaje (%)'){min=0;max=100}else if(z.unit==='Escala'){const b=z.scale==='Personalizada'?[Number(z.scaleMin),Number(z.scaleMax)]:z.scale.split('-').map(Number);[min,max]=b;if(!(min<max))return alert('La escala debe tener un mínimo menor al máximo.')}if(baseline<min||baseline>max||target<min||target>max)return alert('Línea base y meta deben estar dentro de la escala o rango seleccionado.');if(['Incrementar','Mejorar','Fortalecer'].includes(z.verb)&&target<baseline||z.verb==='Reducir'&&target>baseline||z.verb==='Mantener'&&target!==baseline)return alert('Revisa que la meta sea coherente con el verbo seleccionado.');const x=current();x.globalResult={...z,baseline,target,scaleMin:Number(z.scaleMin),scaleMax:Number(z.scaleMax)};x.expected=resultSentence(x.globalResult);resultEditorsExpanded.global=false;save();render()}
 // Visualización RDAIM: conducta una vez, relación esperada y medición separadas.
-function objectiveOverviewCard(b){
- const context=resultTextClean(b.context),evidence=resultTextClean(b.evidence),condition=resultTextClean(b.condition);
- return `<section class="panel hcx-objective-overview" aria-label="Comportamiento objetivo definido">
-  <div class="hcx-objective-overview-top"><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span></div>
-  <div class="hcx-objective-overview-content">
-   <div class="hcx-objective-overview-actor"><span>¿Quién realiza la acción?</span><strong>${safe(resultTextClean(b.actor))}</strong></div>
-   <div class="hcx-objective-overview-action"><span>¿Qué comportamiento esperamos?</span><p>${safe(resultTextClean(b.action))}</p></div>
-  </div>
-  <div class="hcx-objective-overview-footer">
-   <div class="hcx-objective-overview-meta">
-    <span><strong>Frecuencia</strong> ${safe(objectiveNarrativeFrequency(b.frequency))}${condition?' · '+safe(condition):''}</span>
-    <span><strong>Desde</strong> ${safe(resultDateLabel(b.observeFrom))}</span>
-   </div>
+function objectiveIntegratedFlow(x){
+ const b=x.objectiveBehavior||{},r=x.globalResult||{};
+ const full=!!x.globalResult;
+ const actor=resultTextClean(b.actor),action=resultTextClean(b.action);
+ const ctx=resultTextClean(b.context),evidence=resultTextClean(b.evidence),cond=resultTextClean(b.condition);
+ const outcome=[resultTextClean(r.verb),resultTextClean(r.complement)].filter(Boolean).join(' ');
+ const dateMismatch=/^\d{4}-\d{2}-\d{2}$/.test(String(b.observeFrom||''))&&
+ /^\d{4}-\d{2}-\d{2}$/.test(String(r.dueDate||''))&&String(r.dueDate)<String(b.observeFrom);
+ return `<div class="hcx-hypothesis-triptych" aria-label="Relación entre comportamiento, hipótesis y resultado">
+  <section class="hcx-hypothesis-side hcx-hypothesis-behavior">
+   <span class="hcx-hypothesis-eyebrow">COMPORTAMIENTO OBJETIVO</span>
+   <div class="hcx-hypothesis-side-group"><small>Quién realiza la acción</small><strong>${safe(actor)}</strong></div>
+   <div class="hcx-hypothesis-side-group"><small>Comportamiento esperado</small><p class="hcx-hypothesis-action-preview" title="${safe(action)}">${safe(action)}</p></div>
+   <div class="hcx-hypothesis-side-meta"><span>${safe(objectiveNarrativeFrequency(b.frequency))}${cond?' · '+safe(cond):''}</span><span>Desde ${safe(resultDateLabel(b.observeFrom))}</span></div>
+   ${ctx||evidence?`<details class="hcx-hypothesis-more"><summary>Contexto y evidencia</summary><div>${ctx?'<p><b>Contexto:</b> '+safe(ctx)+'</p>':''}${evidence?'<p><b>Evidencia:</b> '+safe(evidence)+'</p>':''}</div></details>`:''}
    <button type="button" class="hcx-result-objective-edit" onclick="resultEditorOpen('objective')">Editar comportamiento</button>
-  </div>
-  ${context||evidence?`<details class="hcx-objective-overview-support"><summary>Contexto y evidencia <span aria-hidden="true">⌄</span></summary>
-   <div>${context?`<p><strong>Contexto</strong> ${safe(context)}</p>`:''}${evidence?`<p><strong>Evidencia observable</strong> ${safe(evidence)}</p>`:''}</div>
-  </details>`:''}
- </section>`;
+  </section>
+  <section class="hcx-hypothesis-central">
+   <div class="hcx-hypothesis-central-head"><span class="hcx-hypothesis-eyebrow">HIPÓTESIS DE VALOR</span><span class="hcx-hypothesis-logic">SI → ENTONCES</span></div>
+   ${full?`<p class="hcx-hypothesis-fulltext">${safe(resultValueHypothesis(x))}</p>`:
+    '<p class="hcx-hypothesis-pending">Define el resultado global para construir la hipótesis de valor completa.</p>'}
+   ${full&&dateMismatch?`<p class="hcx-hypothesis-date-alert">Revisa las fechas: la meta (${safe(resultDateLabel(r.dueDate))}) es anterior al inicio previsto del comportamiento (${safe(resultDateLabel(b.observeFrom))}).</p>`:''}
+  </section>
+  <section class="hcx-hypothesis-side hcx-hypothesis-result ${full?'':'is-pending'}">
+   <span class="hcx-hypothesis-eyebrow">RESULTADO GLOBAL</span>
+   ${full?`<h3>${safe(outcome)}</h3>
+    <div class="hcx-hypothesis-side-group"><small>Indicador</small><strong>${safe(resultTextClean(r.measureType)||'No definido')}${safe(resultNarrativeUnit(r))}</strong></div>
+    <div class="hcx-hypothesis-target"><div><small>Línea base</small><strong>${safe(resultNarrativeAmount(r.baseline,r.unit))}</strong></div><span aria-hidden="true">→</span><div><small>Meta</small><strong>${safe(resultNarrativeAmount(r.target,r.unit))}</strong></div></div>
+    <div class="hcx-hypothesis-side-meta"><span>Fecha meta: ${safe(resultDateLabel(r.dueDate))}</span></div>`:
+    '<p class="hcx-hypothesis-pending">Aún no se ha definido un resultado global.</p>'}
+  </section>
+ </div>`;
 }
 
-function objectiveValueFlow(x){
- const r=x.globalResult||{},b=x.objectiveBehavior||{};
- const result=[resultTextClean(r.verb),resultTextClean(r.complement)].filter(Boolean).join(' ');
- return `<section class="panel hcx-value-flow" aria-label="Hipótesis de valor">
-  <h2>Hipótesis de valor</h2>
-  <div class="hcx-value-flow-stages">
-   <div class="hcx-value-flow-stage hcx-value-flow-behavior">
-    <span class="hcx-value-flow-label">SI · CONDUCTA</span>
-    <strong>El comportamiento objetivo se observa de forma sostenida</strong>
-    <small>${safe(resultTextClean(b.actor))}</small>
-   </div>
-   <span class="hcx-value-flow-arrow" aria-label="Entonces">→</span>
-   <div class="hcx-value-flow-stage hcx-value-flow-result">
-    <span class="hcx-value-flow-label">ENTONCES · RESULTADO ESPERADO</span>
-    <strong>${safe(result)}</strong>
-   </div>
-  </div>
-  <div class="hcx-value-flow-metrics">
-   <div class="hcx-value-flow-measure"><span>Indicador</span><strong>${safe(resultTextClean(r.measureType)||'No definido')}${safe(resultNarrativeUnit(r))}</strong></div>
-   <div class="hcx-value-flow-progress">
-    <div><span>Línea base</span><strong>${safe(resultNarrativeAmount(r.baseline,r.unit))}</strong></div>
-    <span class="hcx-value-flow-progress-arrow" aria-hidden="true">→</span>
-    <div><span>Meta</span><strong>${safe(resultNarrativeAmount(r.target,r.unit))}</strong></div>
-   </div>
-   <div class="hcx-value-flow-due"><span>Fecha meta</span><strong>${safe(resultDateLabel(r.dueDate))}</strong></div>
-  </div>
- </section>`;
-}
 function objectivePanel(x){
  const b=x.objectiveBehavior||{},saved=!!x.objectiveBehavior,legacy=!saved&&x.objective;
  const conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];
@@ -256,8 +241,7 @@ function objectivePanel(x){
  <details ${b.evidence?'open':''}><summary>¿Cómo sabremos que ocurrió? (opcional)</summary><label>Evidencia observable<textarea name="evidence" placeholder="Ej. acuerdos documentados">${safe(b.evidence||'')}</textarea></label></details><label>¿Desde cuándo esperamos observar este comportamiento?<input type="date" name="observeFrom" required value="${safe(b.observeFrom||'')}"></label>
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar comportamiento objetivo</button><button class="secondary" type="button" onclick="resultEditorClose('objective')">Cancelar</button></div></form>
  </div></details>
- ${saved?objectiveOverviewCard(b):resultEmptyCard('objective',legacy)}
- ${x.globalResult&&saved?objectiveValueFlow(x):'<section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2><p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p></section>'}
+ ${saved?objectiveIntegratedFlow(x):resultEmptyCard('objective',legacy)}
  </div>`;
 }
 function objectiveToggleCondition(f){const frequency=f.elements.frequency.value,conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];const label=f.querySelector('[data-condition]');label.style.display=conditional.includes(frequency)?'block':'none';label.querySelector('[data-condition-label]').textContent=({'Al iniciar una actividad':'¿Qué actividad debe iniciar?','Al finalizar una actividad':'¿Qué actividad debe finalizar?','Ante una situación específica':'¿Qué situación específica debe ocurrir?','Otra':'Especifica la frecuencia o condición'})[frequency]||'';f.elements.condition.required=conditional.includes(frequency)}
@@ -271,19 +255,24 @@ function objectiveCoreStatement(b){
 // Hipótesis resumida: evita duplicar el comportamiento largo y la fecha en la misma frase.
 function resultValueHypothesis(x){
  const r=x.globalResult||{},b=x.objectiveBehavior||{};
- const action=resultTextClean(b.action),actor=resultTextClean(b.actor)
-   .replace(/^(Los|Las|El|La|Un|Una|Todos|Todas)\b/u,word=>word.toLocaleLowerCase('es'));
- const result=[resultTextClean(r.verb).toLocaleLowerCase('es'),resultTextClean(r.complement)]
-   .filter(Boolean).join(' ');
+ const actor=resultTextClean(b.actor);
+ const action=resultTextClean(b.action);
+ const ctx=resultTextClean(b.context);
+ const cond=resultTextClean(b.condition);
+ const who=actor.charAt(0).toLocaleLowerCase('es')+actor.slice(1);
+ const what=action.charAt(0).toLocaleLowerCase('es')+action.slice(1);
+ const frequency=objectiveNarrativeFrequency(b.frequency);
+ const when=resultDateLabel(b.observeFrom);
+ const result=[resultTextClean(r.verb).toLocaleLowerCase('es'),resultTextClean(r.complement)].filter(Boolean).join(' ');
  const measure=resultTextClean(r.measureType);
- const from=resultNarrativeAmount(r.baseline,r.unit);
- const to=resultNarrativeAmount(r.target,r.unit);
- const unit=resultNarrativeUnit(r);
- const date=resultDateLabel(r.dueDate);
- return 'Si se observa de forma sostenida la conducta «'+action+'» por parte de '+actor+
-  ', esperamos '+result+'. Lo mediremos mediante '+measure+unit+
-  ', pasando de '+from+' a '+to+' para el '+date+'.';
+ return 'Si '+who+' '+what+(ctx?', '+ctx.charAt(0).toLocaleLowerCase('es')+ctx.slice(1):'')+
+  ', '+frequency+(cond?' ('+cond+')':'')+' desde el '+when+
+  ', entonces esperamos '+result+'. Mediremos el avance mediante '+measure+resultNarrativeUnit(r)+
+  ', desde una línea base de '+resultNarrativeAmount(r.baseline,r.unit)+
+  ' hasta una meta de '+resultNarrativeAmount(r.target,r.unit)+
+  ' para el '+resultDateLabel(r.dueDate)+'.';
 }
+
 function objectiveSentence(b){
  const core=objectiveCoreStatement(b);
  const context=resultTextClean(b.context);
