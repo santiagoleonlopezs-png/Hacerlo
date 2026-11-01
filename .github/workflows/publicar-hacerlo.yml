@@ -37,6 +37,17 @@ jobs:
           node --check src/core/app.js
           node --check src/modules/encuestas/encuestas.js
 
+      - name: Consultar estado de Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          echo "CONFIGURACION_PAGES"
+          gh api "repos/${GH_REPO}/pages" --jq '{status,build_type,source,html_url}' || true
+          echo "DESPLIEGUE_BLOQUEANTE"
+          gh api "repos/${GH_REPO}/pages/deployments/120fd613bb6255ada15547cbeee75e523c320951" --jq '{status,created_at,updated_at}' || true
+
       - name: Preparar sitio publico
         run: |
           set -e
