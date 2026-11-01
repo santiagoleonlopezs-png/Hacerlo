@@ -21,8 +21,8 @@ function sysVisualScope(s,c){
   return !c.behaviorId||String(c.behaviorId)===String(s.selectedBehavior||'');
 }
 function sysVisualSummary(x,s){
-  const conditions=(s.conditions||[]).filter(c=>sysVisualScope(s,c));
-  const visible=conditions.filter(c=>c.state!=='Resuelta');
+  const conditions=[...(s.conditions||[]).filter(c=>sysVisualScope(s,c)),...sysDerivedCauseConditions(x,s)];
+  const visible=conditions.filter(c=>c.state!=='Resuelta'&&c.state!=='Descartada');
   const positive=visible.filter(c=>c.orientation==='Favorece');
   const negative=visible.filter(c=>c.orientation==='Dificulta');
   const other=visible.filter(c=>c.orientation!=='Favorece'&&c.orientation!=='Dificulta');
@@ -47,13 +47,20 @@ function sysVisualCard(title,explanation,list,theme,tab,empty){
       ).join(''):'<p class="sv-empty">'+empty+'</p>')+
     '</div><button type="button" class="sv-link" onclick="sysVisualOpen(&quot;'+tab+'&quot;)">Explorar y registrar <span aria-hidden="true">↗</span></button></section>';
 }
-function sysVisualMechanismPreview(m,s){
-  const c=(s.conditions||[]).find(c=>String(c.id)===String(m.conditionId));
+function sysVisualMechanismPreview(m,conditions){
+  const c=conditions.find(c=>String(c.id)===String(m.conditionId));
   return '<div class="sv-mechanism"><div class="sv-mechanism-type">'+safe(m.type||'Por clasificar')+
     ' · '+safe(m.certainty||'Hipótesis')+'</div><strong>'+safe(m.name||'Mecanismo')+'</strong>'+
     '<p><span>'+safe(c?.name||'Condición sin vínculo')+'</span><span class="sv-dotted">····</span>'+
     '<span>'+safe(m.name||'Mecanismo')+'</span></p>'+
     '<small>Relación registrada como hipótesis o evidencia; el sentido causal debe contrastarse.</small></div>';
+}
+
+function sysVisualLinkedCauses(x,s){
+ const causes=sysDerivedCauseConditions(x,s);
+ if(!causes.length)return '';
+ const rows=causes.map(c=>'<div class="sv-source-cause"><div class="sv-source-cause-body"><strong>'+safe(c.name)+'</strong><small>'+safe(c.causeStatus)+' · '+safe(c.orientation)+'</small></div><button type="button" class="sv-source-cause-action" data-id="'+safe(c.causeId)+'" onclick="sysGoDiagnosisCause(this.dataset.id)">Revisar</button></div>').join('');
+ return '<details class="sv-source-causes"><summary><span><b>↳ '+causes.length+' '+(causes.length===1?'posible causa':'posibles causas')+' desde Diagnóstico</b><small>Se consultan para este comportamiento y se actualizan sin crear copias.</small></span><span aria-hidden="true">⌄</span></summary><div class="sv-source-cause-list">'+rows+'<p>Estas causas son interpretaciones por contrastar. Sus estados no demuestran por sí solos una relación sistémica.</p></div></details>';
 }
 function renderSystemVisualPage(x,s){
   const items=sysVisualSummary(x,s);
@@ -80,7 +87,7 @@ function renderSystemVisualPage(x,s){
       '</select></label><div><span class="sv-moment-caption">Momento del análisis</span><div class="sv-moments" role="group" aria-label="Momento del análisis">'+
       moments.map(m=>'<button type="button" aria-pressed="'+(sysMoment===m)+'" class="'+(sysMoment===m?'active':'')+
         '" onclick="sysMomentGo(&quot;'+m+'&quot;)">'+m+'</button>').join('')+'</div></div></div>'+
-      '<p class="sv-note">Antes, Durante y Después filtran los eventos que se registren con ese momento. El histórico previo sin clasificación se conserva en «Todos».</p></section>'+
+      '<p class="sv-note">Antes, Durante y Después filtran los eventos que se registren con ese momento. El histórico previo sin clasificación se conserva en «Todos».</p></section>'+sysVisualLinkedCauses(x,s)+
     '<div class="sv-metrics">'+indicators.map(([label,n],i)=>
       '<div class="sv-metric"><strong>'+n+'</strong><span>'+label+'</span><div class="sv-metric-line sv-color-'+i+'"></div></div>').join('')+'</div>'+
     '<section class="sv-reading"><div class="sv-section-title"><div><small>02 · LEER EL SISTEMA</small><h2>¿Qué empuja y qué frena el comportamiento?</h2></div>'+
@@ -94,7 +101,7 @@ function renderSystemVisualPage(x,s){
     '<section class="sv-pattern"><div class="sv-section-title"><div><small>03 · RELACIONES Y PATRONES</small>'+
       '<h2>¿Cómo se conecta lo que está ocurriendo?</h2></div>'+
       '<button type="button" class="sv-outline" onclick="sysVisualOpen(&quot;mecanismos&quot;)">Explorar mecanismos</button></div>'+
-      (items.mechanisms.length?'<div class="sv-pattern-grid">'+items.mechanisms.slice(0,4).map(m=>sysVisualMechanismPreview(m,s)).join('')+'</div>':
+      (items.mechanisms.length?'<div class="sv-pattern-grid">'+items.mechanisms.slice(0,4).map(m=>sysVisualMechanismPreview(m,items.conditions)).join('')+'</div>':
        '<div class="sv-pattern-empty"><span>⟳</span><strong>El sistema todavía no tiene mecanismos documentados</strong>'+
        '<p>Registra una condición y explora relaciones de refuerzo, compensación, dependencia o demoras. No las inferiremos sin evidencia.</p>'+
        '<button type="button" class="sv-primary" onclick="sysVisualOpen(&quot;mecanismos&quot;)">Documentar un mecanismo</button></div>')+
