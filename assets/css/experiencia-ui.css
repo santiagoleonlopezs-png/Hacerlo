@@ -398,3 +398,16 @@ button.diag-cause-evidence-opt:hover,button.diag-cause-evidence-opt.selected{bac
 #diag-cause-validation-extra small{color:#98bccd;font-size:11px}
 .diag-cause-validation [hidden]{display:none!important}
 @media(max-width:550px){.diag-factor-catalog-body{padding:9px}.diag-cause-optional-body{padding:10px}}
+
+
+/* Los factores se eligen a la vista; la clasificación permanece plegada por defecto. */
+.diag-selected-factor-details{min-width:0}
+.diag-selected-factor-details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:10px;padding:3px}
+.diag-selected-factor-details>summary::-webkit-details-marker{display:none}
+.diag-selected-factor-details>summary:focus-visible{outline:2px solid #66d9ce;outline-offset:4px}
+.diag-selected-factor-details>summary .diag-matrix-overview{flex:1;min-width:0;margin-bottom:0}
+.diag-selected-factor-chevron{flex:none;color:#83d9d0;font-size:19px;line-height:1}
+.diag-selected-factor-chevron::after{content:'⌄'}
+.diag-selected-factor-details[open] .diag-selected-factor-chevron::after{content:'⌃'}
+.diag-selected-factor-content{padding-top:17px}
+@media(max-width:520px){.diag-selected-factor-details>summary{align-items:flex-start}.diag-selected-factor-chevron{margin-top:3px}}
