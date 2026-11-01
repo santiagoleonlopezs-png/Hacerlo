@@ -179,9 +179,13 @@ function resultGlobalPanel(x){
  <div class="grid"><label>Línea base<input name="baseline" type="number" step="any" required value="${safe(r.baseline??'')}"></label><label>Meta esperada<input name="target" type="number" step="any" required value="${safe(r.target??'')}"></label><label>Fecha meta<input name="dueDate" type="date" required value="${safe(r.dueDate||'')}"></label></div>
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar resultado global</button><button class="secondary" type="button" onclick="resultEditorClose('global')">Cancelar</button></div></form>
  </div></details>
- ${saved?`<section class="panel hcx-result-read-card hcx-result-read-narrative"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">RESULTADO GLOBAL DEFINIDO</span><h2>${safe(r.verb||'')} ${safe(r.complement||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('global')">Editar resultado</button></div>
- <p class="hcx-result-narrative">Buscamos pasar de una línea base de <strong>${safe(resultNarrativeAmount(r.baseline,r.unit))}</strong> a una meta de <strong>${safe(resultNarrativeAmount(r.target,r.unit))}</strong> para el <strong>${safe(resultDateLabel(r.dueDate))}</strong>. Mediremos el avance mediante <strong>${safe(r.measureType||'el indicador definido')}</strong>${safe(resultNarrativeUnit(r))}.</p>
- </section>`:resultEmptyCard('global',legacy)}
+ ${saved?`<section class="panel hcx-result-read-card hcx-result-read-hybrid"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">RESULTADO GLOBAL DEFINIDO</span><h2>${safe(r.verb||'')} ${safe(r.complement||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('global')">Editar resultado</button></div>
+ <p class="hcx-result-hybrid-measure">Medición: <strong>${safe(r.measureType||'No definida')}${safe(resultNarrativeUnit(r))}</strong></p>
+ <div class="hcx-result-hybrid-metrics" aria-label="Línea base, meta esperada y fecha meta">
+ <div class="hcx-result-hybrid-metric"><span>Línea base</span><strong>${safe(resultNarrativeAmount(r.baseline,r.unit))}</strong></div>
+ <div class="hcx-result-hybrid-metric"><span>Meta esperada</span><strong>${safe(resultNarrativeAmount(r.target,r.unit))}</strong></div>
+ <div class="hcx-result-hybrid-metric"><span>Fecha meta</span><strong>${safe(resultDateLabel(r.dueDate))}</strong></div>
+ </div></section>`:resultEmptyCard('global',legacy)}
  </div>`;
 }
 function resultToggleScale(f){const scale=f.elements.unit.value==='Escala';f.querySelector('[data-scale-box]').style.display=scale?'block':'none';f.querySelector('[data-custom-scale]').style.display=scale&&f.elements.scale.value==='Personalizada'?'grid':'none'}
