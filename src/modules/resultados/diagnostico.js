@@ -181,7 +181,7 @@ function diagBuilderSet(field,value){
  }else if(field==='findingId'){
   if(value&&!(x.diagnosisFindings||[]).some(f=>String(f.id)===String(value)))return;d.findingId=String(value||'');d.search='';
  }else return;
- d.customText=null;render();diagBuilderFocus();
+ d.customText=null;if(typeof diagCauseFormOpen!=='undefined'){diagCauseEditId=null;diagCauseFormOpen=true;}render();diagBuilderFocus();
 }
 function diagBuilderText(x,d){
  const f=x.behaviorDiagnosis?.[d.factorKey],b=diagBuilderBehavior(x,d.behaviorId);
@@ -241,7 +241,7 @@ function diagRelationsCompact(x){
   return '<div class="diag-rel-compact-group"><div class="diag-rel-compact-heading"><h3>'+name+'</h3><small>'+withLinks.length+' de '+items.length+' con vínculos</small></div>'+
    (items.length?withLinks.map(row).join('')+(without.length?'<details class="diag-rel-hidden"><summary>'+without.length+' sin vínculos registrados</summary>'+without.map(row).join('')+'</details>':''):'<p class="muted">Aún no hay registros.</p>')+'</div>';
  };
- return '<section class="panel diag-rel-compact"><h2>Relaciones de evidencia</h2><p class="muted">Selecciona los elementos para construir tu hipótesis. No tener vínculos no significa que no exista evidencia.</p><div class="diag-rel-compact-grid">'+group('Factores',factors)+group('Comportamientos',behaviors)+'</div></section>';
+ return '<section class="panel diag-rel-compact"><h2>Relaciones de evidencia</h2><p class="muted">Selecciona un factor o comportamiento para explorar posibles causas. No tener vínculos no significa que no exista evidencia.</p><div class="diag-rel-compact-grid">'+group('Factores',factors)+group('Comportamientos',behaviors)+'</div></section>';
 }
 function diagBuilderPanel(x){
  const d=diagBuilderInit(x),factorKeys=Object.keys(x.behaviorDiagnosis||{}).filter(k=>x.behaviorDiagnosis[k]);
@@ -274,7 +274,7 @@ function diagVisual(x){
  <section class="panel diag-analytics-card"><h2>Interpretación de factores</h2>${diagFactoresApilados(factors)}</section>
  <section class="panel diag-analytics-card diag-analytics-card--radar"><h2>Mapa de hallazgos</h2>${diagHallazgosRadar(categories)}</section>
  <section class="panel diag-analytics-card diag-analytics-card--evidence"><h2>Tipo de evidencia</h2>${diagEvidenciasDonut(findings)}</section>
- </div>${diagRelationsCompact(x)}${diagBuilderPanel(x)}<p class="notice">La cantidad de hallazgos no mide por sí misma la magnitud del efecto. Las asociaciones registradas no demuestran causalidad.</p>`}
+ </div>${diagRelationsCompact(x)}${diagCausesPanel(x)}<p class="notice">La cantidad de hallazgos no mide por sí misma la magnitud del efecto. Las asociaciones registradas no demuestran causalidad.</p>`}
 function diagnosisPage(x){diagInit(x);return hcxHero('Diagnóstico',x,'Explora barreras, facilitadores y experiencias para comprender el comportamiento.','RDAIM · RESULTADOS','◈')+`<section class="panel"><div class="diag-tabs hcx-section-tabs"><button type="button" class="secondary" onclick="go('Encuestas y experiencias')">📋 Encuestas y experiencias</button>${diagTabButton('conductual','🧠 Diagnóstico conductual')}${diagTabButton('hallazgos','🔎 Hallazgos y micronarrativas')}${diagTabButton('visual','📊 Tablero integrado')}</div></section>${diagTab==='conductual'?diagConductual(x):diagTab==='hallazgos'?diagHallazgos(x):diagVisual(x)}`}
 
 function diagFindingItem(z){return `<div class="diag-item"><div class="flex"><span class="diag-pill">${diagEsc(z.evidenceType)}</span><span class="diag-pill">${diagEsc(z.role)}</span>${(z.categories||[]).map(c=>`<span class="diag-pill">${diagEsc(c)}</span>`).join('')}</div><p>${diagEsc(z.text)}</p><div class="diag-mini">${diagEsc(z.source)}${z.indicator?' · '+diagEsc(z.indicator):''}</div><div class="flex"><button class="secondary" onclick="diagEditFinding('${diagEsc(z.id)}')">Editar</button><button class="secondary" onclick="diagRemoveFinding('${diagEsc(z.id)}')">Eliminar</button></div></div>`;}
