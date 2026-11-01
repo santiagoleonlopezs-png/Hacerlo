@@ -150,6 +150,121 @@ function diagEvidenciasDonut(findings){
  const pct=n=>(n/count*100).toLocaleString('es-CO',{maximumFractionDigits:1});
  return `<div class="diag-donut-layout"><div class="diag-donut-viz"><svg viewBox="0 0 156 156" role="img" aria-label="Distribución de ${count} registros de evidencia"><circle cx="78" cy="78" r="${radius}" fill="none" stroke="#1a4357" stroke-width="19"/>${segments}<text x="78" y="74" text-anchor="middle" fill="#eefaff" font-size="28" font-weight="800">${count}</text><text x="78" y="94" text-anchor="middle" fill="#a1c4d3" font-size="10">registros</text></svg></div><div class="diag-donut-legend">${rows.map(row=>`<div class="diag-donut-legend-row ${row.quantity?'':'is-empty'}"><span class="diag-legend-dot" style="background:${row.color}"></span><span>${row.name}</span><strong>${row.quantity} <small>(${pct(row.quantity)} %)</small></strong></div>`).join('')}</div></div><p class="diag-chart-caption">Proporción de registros según su tipo de evidencia.</p>`;
 }
+
+let diagBuilderState=null;
+function diagBuilderBehavior(x,ref){return (x.behaviors||[]).find((b,i)=>String(b.id||'index:'+i)===String(ref))}
+function diagBuilderDefaultRelation(role){return role==='Barrera'?'dificultar':role==='Facilitador'?'facilitar':'influir'}
+function diagBuilderInit(x){
+ if(diagBuilderState&&diagBuilderState.initiativeId===String(x.id))return diagBuilderState;
+ const saved=(x.diagnosisHypotheses||[]).find(h=>h.kind==='guided-primary');
+ const keys=Object.keys(x.behaviorDiagnosis||{}).filter(k=>x.behaviorDiagnosis[k]);
+ const firstLinked=keys.find(k=>(x.diagnosisFindings||[]).some(f=>(f.factors||[]).includes(k)));
+ const factorKey=keys.includes(saved?.factorKey)?saved.factorKey:(firstLinked||keys[0]||'');
+ const behaviorId=diagBuilderBehavior(x,saved?.behaviorId)?String(saved.behaviorId):String(x.behaviors?.[0]?.id||(x.behaviors?.length?'index:0':''));
+ const linked=(x.diagnosisFindings||[]).find(f=>(f.factors||[]).includes(factorKey));
+ const findingId=(x.diagnosisFindings||[]).some(f=>String(f.id)===String(saved?.findingId))?String(saved.findingId):String(linked?.id||'');
+ const relation=['dificultar','facilitar','influir'].includes(saved?.relation)?saved.relation:diagBuilderDefaultRelation(x.behaviorDiagnosis?.[factorKey]?.role);
+ diagBuilderState={initiativeId:String(x.id),factorKey,behaviorId,findingId,relation,customText:saved?.text||null,search:''};
+ return diagBuilderState;
+}
+function diagBuilderFocus(){document.getElementById('diag-builder')?.scrollIntoView({behavior:'smooth',block:'start'})}
+function diagBuilderSet(field,value){
+ const x=current();if(!x)return;const d=diagBuilderInit(x);
+ if(field==='factorKey'){
+  if(!x.behaviorDiagnosis?.[value])return;
+  d.factorKey=value;d.relation=diagBuilderDefaultRelation(x.behaviorDiagnosis[value].role);
+  d.findingId=String((x.diagnosisFindings||[]).find(f=>(f.factors||[]).includes(value))?.id||'');d.search='';
+ }else if(field==='behaviorId'){
+  if(!diagBuilderBehavior(x,value))return;d.behaviorId=value;
+ }else if(field==='relation'){
+  if(!['dificultar','facilitar','influir'].includes(value))return;d.relation=value;
+ }else if(field==='findingId'){
+  if(value&&!(x.diagnosisFindings||[]).some(f=>String(f.id)===String(value)))return;d.findingId=String(value||'');d.search='';
+ }else return;
+ d.customText=null;render();diagBuilderFocus();
+}
+function diagBuilderText(x,d){
+ const f=x.behaviorDiagnosis?.[d.factorKey],b=diagBuilderBehavior(x,d.behaviorId);
+ if(!f||!b)return '';
+ const verb={dificultar:'dificultando',facilitar:'facilitando',influir:'influyendo en'}[d.relation]||'influyendo en';
+ let text='Planteamos que '+f.factor+', interpretado como '+(f.role||'Por explorar').toLowerCase()+', podría estar '+verb+' la realización del comportamiento «'+b.name+'».';
+ const finding=(x.diagnosisFindings||[]).find(z=>String(z.id)===String(d.findingId));
+ if(finding)text+=' '+((finding.factors||[]).includes(d.factorKey)?'El hallazgo vinculado indica: ':'Para contrastarlo, se seleccionó el hallazgo: ')+'«'+String(finding.text||'').trim().slice(0,260)+'».';
+ return text+' Esta explicación es provisional y no demuestra causalidad.';
+}
+function diagBuilderOptions(x,query){
+ const d=diagBuilderInit(x),term=String(query||'').trim().toLocaleLowerCase('es');
+ const all=(x.diagnosisFindings||[]).filter(f=>f.id&&String(f.text||'').trim());
+ const linked=all.filter(f=>(f.factors||[]).includes(d.factorKey));
+ let matches=term?all.filter(f=>[f.text,f.source,...(f.categories||[])].join(' ').toLocaleLowerCase('es').includes(term)).slice(0,8):linked.slice(0,5);
+ const selected=all.find(f=>String(f.id)===String(d.findingId));
+ if(selected&&!matches.includes(selected))matches=[selected,...matches].slice(0,8);
+ const button=(f)=>{
+  const linked=(f.factors||[]).includes(d.factorKey),isSelected=String(f.id)===String(d.findingId);
+  return '<button type="button" class="diag-bld-finding '+(isSelected?'is-selected':'')+'" data-value="'+diagEsc(f.id)+'" onclick="diagBuilderSet(\'findingId\',this.dataset.value)"><span>'+diagEsc(String(f.text||'').slice(0,145))+'</span><small>'+(linked?'Vinculado al factor':'No vinculado al factor')+'</small></button>';
+ };
+ return '<button type="button" class="diag-bld-finding '+(!d.findingId?'is-selected':'')+'" onclick="diagBuilderSet(\'findingId\',\'\')">Sin evidencia seleccionada</button>'+
+ (matches.length?matches.map(button).join(''):'<p class="muted">No hay resultados. Prueba otra búsqueda.</p>');
+}
+function diagBuilderSearch(value){
+ const x=current();if(!x)return;const d=diagBuilderInit(x);d.search=String(value||'');
+ const container=document.getElementById('diag-bld-results');if(container)container.innerHTML=diagBuilderOptions(x,d.search);
+}
+function diagBuilderRestore(){
+ const x=current();if(!x)return;const d=diagBuilderInit(x);d.customText=null;
+ const textarea=document.getElementById('diag-bld-text');if(textarea)textarea.value=diagBuilderText(x,d);
+}
+function diagBuilderSave(e){
+ e.preventDefault();const x=current();if(!x)return;diagInit(x);const d=diagBuilderInit(x);
+ if(!x.behaviorDiagnosis?.[d.factorKey]||!diagBuilderBehavior(x,d.behaviorId))return alert('Selecciona un factor y un comportamiento.');
+ const text=String(new FormData(e.target).get('text')||'').trim();
+ if(!text)return alert('La hipótesis no puede estar vacía.');
+ const now=new Date().toISOString();let primary=x.diagnosisHypotheses.find(h=>h.kind==='guided-primary');
+ const fields={text,factorKey:d.factorKey,behaviorId:d.behaviorId,findingId:d.findingId,relation:d.relation,updatedAt:now};
+ if(primary)Object.assign(primary,fields);
+ else x.diagnosisHypotheses.push({id:diagId(),kind:'guided-primary',createdAt:now,...fields});
+ d.customText=text;save();render();diagBuilderFocus();
+}
+function diagRelationsCompact(x){
+ const findings=x.diagnosisFindings||[],d=diagBuilderInit(x);
+ const factors=Object.entries(x.behaviorDiagnosis||{}).filter(([k,v])=>v).map(([key,v])=>({key,name:v.factor,role:v.role,kind:'factor',related:findings.filter(f=>(f.factors||[]).includes(key))}));
+ const behaviors=(x.behaviors||[]).map((b,i)=>({key:String(b.id||'index:'+i),name:b.name,role:'',kind:'behavior',related:findings.filter(f=>(f.behaviors||[]).some(ref=>String(ref)===String(i)||String(ref)===String(b.id)))}));
+ const row=item=>{
+  const chosen=item.kind==='factor'?d.factorKey===item.key:d.behaviorId===item.key;
+  const action=item.kind==='factor'?'factorKey':'behaviorId';
+  return '<div class="diag-rel-compact-row"><button type="button" class="diag-rel-use '+(chosen?'selected':'')+'" data-value="'+diagEsc(item.key)+'" onclick="diagBuilderSet(\''+action+'\',this.dataset.value)"><span>'+diagEsc(item.name)+'</span>'+(item.role?'<small>'+diagEsc(item.role)+'</small>':'')+'<em>'+(chosen?'✓':'Usar')+'</em></button>'+
+  (item.related.length?'<details class="diag-rel-evidence"><summary>'+item.related.length+' '+(item.related.length===1?'hallazgo vinculado':'hallazgos vinculados')+'</summary>'+item.related.slice(0,5).map(f=>'<p>'+diagEsc(String(f.text||'').slice(0,180))+'</p>').join('')+(item.related.length>5?'<small>Otros '+(item.related.length-5)+' disponibles en Hallazgos.</small>':'')+'</details>':'')+'</div>';
+ };
+ const group=(name,items)=>{
+  const withLinks=items.filter(z=>z.related.length).sort((a,b)=>b.related.length-a.related.length);
+  const without=items.filter(z=>!z.related.length);
+  return '<div class="diag-rel-compact-group"><div class="diag-rel-compact-heading"><h3>'+name+'</h3><small>'+withLinks.length+' de '+items.length+' con vínculos</small></div>'+
+   (items.length?withLinks.map(row).join('')+(without.length?'<details class="diag-rel-hidden"><summary>'+without.length+' sin vínculos registrados</summary>'+without.map(row).join('')+'</details>':''):'<p class="muted">Aún no hay registros.</p>')+'</div>';
+ };
+ return '<section class="panel diag-rel-compact"><h2>Relaciones de evidencia</h2><p class="muted">Selecciona los elementos para construir tu hipótesis. No tener vínculos no significa que no exista evidencia.</p><div class="diag-rel-compact-grid">'+group('Factores',factors)+group('Comportamientos',behaviors)+'</div></section>';
+}
+function diagBuilderPanel(x){
+ const d=diagBuilderInit(x),factorKeys=Object.keys(x.behaviorDiagnosis||{}).filter(k=>x.behaviorDiagnosis[k]);
+ const behaviors=x.behaviors||[],finding=(x.diagnosisFindings||[]).find(f=>String(f.id)===String(d.findingId));
+ const primary=(x.diagnosisHypotheses||[]).find(h=>h.kind==='guided-primary');
+ const previous=(x.diagnosisHypotheses||[]).filter(h=>h.kind!=='guided-primary');
+ const options=(rows,currentValue)=>rows.map(([key,title])=>'<option value="'+diagEsc(key)+'" '+(String(key)===String(currentValue)?'selected':'')+'>'+diagEsc(title)+'</option>').join('');
+ const factorOptions=factorKeys.map(key=>[key,x.behaviorDiagnosis[key].factor+' · '+(x.behaviorDiagnosis[key].role||'Por explorar')]);
+ const behaviorOptions=behaviors.map((b,i)=>[String(b.id||'index:'+i),b.name||'Sin nombre']);
+ const linked=finding&&(finding.factors||[]).includes(d.factorKey);
+ const evidence=finding?'<div class="diag-bld-selected"><span>'+diagEsc(String(finding.text||'').slice(0,230))+'</span><small>'+(linked?'Hallazgo vinculado':'Hallazgo seleccionado sin vínculo con este factor')+'</small></div>':'<p class="muted">No hay evidencia seleccionada. Puedes contrastar esta hipótesis posteriormente.</p>';
+ const preview=d.customText===null?diagBuilderText(x,d):d.customText;
+ let html='<section class="panel diag-bld" id="diag-builder"><div class="diag-bld-head"><div><h2>Hipótesis de trabajo</h2><p class="muted">Elige los elementos; HACERLO propone la explicación automáticamente.</p></div><span class="diag-bld-tag">'+(primary?'Guardada':'Por contrastar')+'</span></div>';
+ if(factorKeys.length&&behaviors.length){
+  html+='<form onsubmit="diagBuilderSave(event)"><div class="diag-bld-columns"><label>Factor conductual<select onchange="diagBuilderSet(\'factorKey\',this.value)">'+options(factorOptions,d.factorKey)+'</select></label><label>Comportamiento<select onchange="diagBuilderSet(\'behaviorId\',this.value)">'+options(behaviorOptions,d.behaviorId)+'</select></label></div>';
+  html+='<div class="diag-bld-columns"><label>Relación a explorar<select onchange="diagBuilderSet(\'relation\',this.value)">'+options([['dificultar','Podría dificultar'],['facilitar','Podría facilitar'],['influir','Podría influir en']],d.relation)+'</select></label><div class="diag-bld-evidence"><strong>Evidencia (opcional)</strong>'+evidence+'<details><summary>Buscar o cambiar el hallazgo</summary><input type="search" placeholder="Buscar hallazgos de la iniciativa" value="'+diagEsc(d.search)+'" oninput="diagBuilderSearch(this.value)"><div id="diag-bld-results">'+diagBuilderOptions(x,d.search)+'</div></details></div></div>';
+  html+='<div class="diag-bld-preview"><div class="diag-bld-preview-head"><strong>Hipótesis propuesta</strong><span>Por contrastar</span></div><textarea id="diag-bld-text" name="text" rows="5" required oninput="diagBuilderInit(current()).customText=this.value">'+diagEsc(preview)+'</textarea><small>La evidencia seleccionada no crea vínculos nuevos ni demuestra causalidad.</small></div><div class="diag-bld-actions"><button class="primary" type="submit">'+(primary?'Actualizar hipótesis principal':'Guardar hipótesis principal')+'</button><button class="secondary" type="button" onclick="diagBuilderRestore()">Restaurar propuesta</button></div></form>';
+ }else{
+  html+='<p class="muted">Para construir la hipótesis, selecciona un factor y registra un comportamiento en Diseño.</p><div class="flex"><button class="secondary" onclick="diagSwitch(\'conductual\')">Explorar factores</button><button class="secondary" onclick="go(\'Diseño de comportamientos\')">Abrir Diseño</button></div>';
+ }
+ if(previous.length)html+='<details class="diag-bld-history"><summary>Hipótesis anteriores ('+previous.length+')</summary>'+previous.map(h=>'<div class="diag-bld-history-item"><p>'+diagEsc(h.text)+'</p><button type="button" class="secondary" data-id="'+diagEsc(h.id)+'" onclick="diagRemoveHypothesis(this.dataset.id)">Eliminar</button></div>').join('')+'</details>';
+ return html+'</section>';
+}
 function diagVisual(x){
  const factors=Object.values(x.behaviorDiagnosis).filter(Boolean),findings=x.diagnosisFindings,beh=x.behaviors;
  const categories=DIAG_CATEGORIES.map(c=>[c,findings.filter(f=>(f.categories||[]).includes(c)).length]).filter(z=>z[1]).sort((a,b)=>b[1]-a[1]);
@@ -159,7 +274,7 @@ function diagVisual(x){
  <section class="panel diag-analytics-card"><h2>Interpretación de factores</h2>${diagFactoresApilados(factors)}</section>
  <section class="panel diag-analytics-card diag-analytics-card--radar"><h2>Mapa de hallazgos</h2>${diagHallazgosRadar(categories)}</section>
  <section class="panel diag-analytics-card diag-analytics-card--evidence"><h2>Tipo de evidencia</h2>${diagEvidenciasDonut(findings)}</section>
- </div><section class="panel"><h2>Tablero de comportamientos</h2><p class="muted">Se recuperan de Diseño. Los vínculos con hallazgos son opcionales y se muestran solo cuando se registran.</p>${beh.length?`<div class="diag-list">${beh.map((b,i)=>{let rel=findings.filter(z=>(z.behaviors||[]).includes(String(i)));return `<div class="diag-item"><b>◈ ${diagEsc(b.name)}</b><p class="diag-mini">${diagEsc(b.description)}</p><span class="diag-pill">${rel.length} hallazgos relacionados</span>${rel.map(z=>`<p class="diag-mini">↳ ${diagEsc(z.text).slice(0,170)}</p>`).join('')}</div>`}).join('')}</div>`:'<div class="empty">Los comportamientos aparecerán aquí cuando se registren en Diseño.</div>'}</section><section class="panel"><h2>Relaciones entre factores y hallazgos</h2>${factors.length?factors.map(f=>{let k=diagFactorKey(f.dimension,f.factor),rel=findings.filter(z=>(z.factors||[]).includes(k));return `<div class="diag-item"><b>${diagEsc(f.factor)}</b> <span class="diag-pill">${diagEsc(f.role)}</span><span class="diag-pill">${rel.length} hallazgos</span>${rel.map(z=>`<p class="diag-mini">↳ ${diagEsc(z.text).slice(0,170)}</p>`).join('')}</div>`}).join(''):'<p class="muted">Los vínculos aparecerán al seleccionar factores y relacionarlos con hallazgos.</p>'}</section><section class="panel"><h2>Hipótesis de trabajo</h2><p class="muted">Registra explicaciones provisionales. La Inteligencia integrada podrá contrastarlas con la evidencia disponible, sin tratarlas como hechos comprobados.</p><form onsubmit="diagSaveHypothesis(event)"><textarea name="text" required placeholder="Dadas [condiciones o evidencia], es posible que [factor] influya en [comportamiento o resultado]."></textarea><button class="primary">+ Guardar hipótesis</button></form>${x.diagnosisHypotheses.map(h=>`<div class="diag-item"><p>${diagEsc(h.text)}</p><button class="secondary" onclick="diagRemoveHypothesis('${h.id}')">Eliminar</button></div>`).join('')}</section><p class="notice">La cantidad de hallazgos no mide por sí misma la magnitud del efecto. Las asociaciones registradas no demuestran causalidad.</p>`}
+ </div>${diagRelationsCompact(x)}${diagBuilderPanel(x)}<p class="notice">La cantidad de hallazgos no mide por sí misma la magnitud del efecto. Las asociaciones registradas no demuestran causalidad.</p>`}
 function diagnosisPage(x){diagInit(x);return hcxHero('Diagnóstico',x,'Explora barreras, facilitadores y experiencias para comprender el comportamiento.','RDAIM · RESULTADOS','◈')+`<section class="panel"><div class="diag-tabs hcx-section-tabs"><button type="button" class="secondary" onclick="go('Encuestas y experiencias')">📋 Encuestas y experiencias</button>${diagTabButton('conductual','🧠 Diagnóstico conductual')}${diagTabButton('hallazgos','🔎 Hallazgos y micronarrativas')}${diagTabButton('visual','📊 Tablero integrado')}</div></section>${diagTab==='conductual'?diagConductual(x):diagTab==='hallazgos'?diagHallazgos(x):diagVisual(x)}`}
 
 function diagFindingItem(z){return `<div class="diag-item"><div class="flex"><span class="diag-pill">${diagEsc(z.evidenceType)}</span><span class="diag-pill">${diagEsc(z.role)}</span>${(z.categories||[]).map(c=>`<span class="diag-pill">${diagEsc(c)}</span>`).join('')}</div><p>${diagEsc(z.text)}</p><div class="diag-mini">${diagEsc(z.source)}${z.indicator?' · '+diagEsc(z.indicator):''}</div><div class="flex"><button class="secondary" onclick="diagEditFinding('${diagEsc(z.id)}')">Editar</button><button class="secondary" onclick="diagRemoveFinding('${diagEsc(z.id)}')">Eliminar</button></div></div>`;}
