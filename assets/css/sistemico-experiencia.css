@@ -87,3 +87,23 @@
 
 /* El laboratorio sistémico trae su propio encabezado y no duplica la hero global. */
 main:has(.sv-shell)>.hero{display:none}
+
+
+/* Posibles causas del Diagnóstico: lectura directa por comportamiento, sin duplicaciones. */
+.sv-source-causes{border:1px solid #35677a;border-radius:12px;background:linear-gradient(112deg,#0b303d,#0d273c);margin:13px 0 0;overflow:hidden}
+.sv-source-causes>summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 17px;list-style:none;color:#c7f0ec}
+.sv-source-causes>summary::-webkit-details-marker{display:none}
+.sv-source-causes>summary b{font-size:13px;display:block}
+.sv-source-causes>summary small{display:block;color:#99becb;font-size:11px;line-height:1.5;margin-top:4px}
+.sv-source-causes>summary>span:last-child{color:#7bded0;font-size:18px}
+.sv-source-causes[open]>summary{border-bottom:1px solid #305768}
+.sv-source-cause-list{padding:10px 15px}
+.sv-source-cause{display:flex;gap:12px;align-items:center;padding:9px 2px;border-bottom:1px solid #254d60}
+.sv-source-cause-body{display:grid;gap:4px;flex:1;min-width:0}
+.sv-source-cause strong{font-size:12px;color:#d8edf5;overflow-wrap:anywhere}
+.sv-source-cause small{font-size:11px;color:#a0c5d1}
+.sv-source-cause-action{border:1px solid #3b7880;border-radius:8px;background:#124659;padding:7px 12px;font-size:11px;cursor:pointer;color:#9de9da}
+.sv-source-cause-action:hover{background:#185a6d}
+.sv-source-cause-list>p{font-size:11px;color:#96b9c9;line-height:1.5;margin:12px 2px 3px}
+.sys-source-note{border:1px solid #315969;background:#0f3547;border-radius:9px;padding:11px 12px;margin:12px 0;font-size:12px;line-height:1.5;color:#b5d5df}
+@media(max-width:480px){.sv-source-cause{align-items:flex-start}.sv-source-causes>summary{padding:12px}}
