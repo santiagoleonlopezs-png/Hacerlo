@@ -364,3 +364,37 @@ button.diag-cause-evidence-opt:hover,button.diag-cause-evidence-opt.selected{bac
 .diag-cause-history p{padding:10px;border:1px solid #294d60;border-radius:8px;line-height:1.5}
 @media(max-width:800px){.diag-cause-grid{grid-template-columns:1fr}}
 @media(max-width:550px){.diag-cause-editor{padding:13px}.diag-causes-heading button{width:100%}.diag-cause-item-head{flex-wrap:wrap}.diag-cause-actions button{flex:1}}
+
+
+/* Diagnóstico de lectura progresiva: factores → causas → contraste. */
+.diag-step-panel{min-width:0}
+.diag-step-label{font-size:10px;color:#79d9cd;font-weight:800;letter-spacing:1px;margin-bottom:8px}
+.diag-factor-catalog{border:1px solid #31556a;border-radius:12px;background:#0b293c;margin-top:15px;overflow:hidden}
+.diag-factor-catalog>summary{cursor:pointer;list-style:none;padding:13px 15px;color:#a9e4dc;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:9px}
+.diag-factor-catalog>summary::after{content:'⌄';font-size:16px;color:#83ccca}
+.diag-factor-catalog[open]>summary::after{content:'⌃'}
+.diag-factor-catalog>summary::-webkit-details-marker{display:none}
+.diag-factor-catalog[open]>summary{border-bottom:1px solid #2e5266}
+.diag-factor-catalog-body{padding:11px 14px 14px}
+.diag-cause-optional{border:1px solid #31566a;background:#0b2839;border-radius:10px;margin:12px 0;overflow:hidden}
+.diag-cause-optional>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:12px;font-weight:700;color:#acdce0}
+.diag-cause-optional>summary::-webkit-details-marker{display:none}
+.diag-cause-optional>summary::after{content:'⌄';float:right;color:#79d9cd}
+.diag-cause-optional[open]>summary::after{content:'⌃'}
+.diag-cause-optional[open]>summary{border-bottom:1px solid #31566a}
+.diag-cause-optional-body{padding:12px 14px;display:grid;gap:13px}
+.diag-cause-optional-body>label{display:grid;gap:5px;font-size:12px;color:#c8e4ed;min-width:0}
+.diag-cause-optional-body textarea,.diag-cause-optional-body select{margin:3px 0 0}
+.diag-cause-optional-body small{font-size:11px;color:#9bbdcc}
+.diag-cause-review{min-width:0}
+.diag-cause-review>h2{margin:0 0 7px}
+.diag-cause-review>.muted{margin:0 0 10px;font-size:13px;line-height:1.5}
+.diag-cause-validation{display:grid;gap:10px}
+.diag-cause-validation-extra,.diag-cause-validation [id^="diag-cause-validation"]{min-width:0}
+#diag-cause-validation-extra:not([hidden]){display:grid;gap:10px;border-top:1px solid #2c5063;padding-top:10px}
+#diag-cause-validation-method:not([hidden]){display:block}
+#diag-cause-validation-extra label{display:block;font-size:12px;color:#bbdce7}
+#diag-cause-validation-extra textarea,#diag-cause-validation-method select{margin-top:6px}
+#diag-cause-validation-extra small{color:#98bccd;font-size:11px}
+.diag-cause-validation [hidden]{display:none!important}
+@media(max-width:550px){.diag-factor-catalog-body{padding:9px}.diag-cause-optional-body{padding:10px}}
