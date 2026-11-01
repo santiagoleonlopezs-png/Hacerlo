@@ -124,8 +124,8 @@ function resultEditorOpen(kind){
 }
 function resultEditorClose(kind){
  resultEditorsExpanded[kind]=false;
- const el=document.getElementById('result-editor-'+kind);
- if(el)el.open=false;
+ // Reconstruir desde los datos guardados para descartar cambios no enviados.
+ render();
 }
 function resultDateLabel(value){
  const date=String(value||'');
