@@ -191,6 +191,56 @@ function resultGlobalPanel(x){
 function resultToggleScale(f){const scale=f.elements.unit.value==='Escala';f.querySelector('[data-scale-box]').style.display=scale?'block':'none';f.querySelector('[data-custom-scale]').style.display=scale&&f.elements.scale.value==='Personalizada'?'grid':'none'}
 function resultSentence(r){const scale=r.unit==='Escala'?` (escala ${r.scale==='Personalizada'?r.scaleMin+' a '+r.scaleMax:r.scale.replace('-',' a ')})`:'';return `${r.verb} ${r.complement}, medido mediante ${r.measureType.toLowerCase()}, en ${r.unit.toLowerCase()}${scale}, de ${r.baseline} a ${r.target} para el ${r.dueDate}.`}
 function saveGlobalResult(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f));const baseline=Number(z.baseline),target=Number(z.target);let min=-Infinity,max=Infinity;if(z.unit==='Porcentaje (%)'){min=0;max=100}else if(z.unit==='Escala'){const b=z.scale==='Personalizada'?[Number(z.scaleMin),Number(z.scaleMax)]:z.scale.split('-').map(Number);[min,max]=b;if(!(min<max))return alert('La escala debe tener un mínimo menor al máximo.')}if(baseline<min||baseline>max||target<min||target>max)return alert('Línea base y meta deben estar dentro de la escala o rango seleccionado.');if(['Incrementar','Mejorar','Fortalecer'].includes(z.verb)&&target<baseline||z.verb==='Reducir'&&target>baseline||z.verb==='Mantener'&&target!==baseline)return alert('Revisa que la meta sea coherente con el verbo seleccionado.');const x=current();x.globalResult={...z,baseline,target,scaleMin:Number(z.scaleMin),scaleMax:Number(z.scaleMax)};x.expected=resultSentence(x.globalResult);resultEditorsExpanded.global=false;save();render()}
+// Visualización RDAIM: conducta una vez, relación esperada y medición separadas.
+function objectiveOverviewCard(b){
+ const context=resultTextClean(b.context),evidence=resultTextClean(b.evidence),condition=resultTextClean(b.condition);
+ return `<section class="panel hcx-objective-overview" aria-label="Comportamiento objetivo definido">
+  <div class="hcx-objective-overview-top"><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span></div>
+  <div class="hcx-objective-overview-content">
+   <div class="hcx-objective-overview-actor"><span>¿Quién realiza la acción?</span><strong>${safe(resultTextClean(b.actor))}</strong></div>
+   <div class="hcx-objective-overview-action"><span>¿Qué comportamiento esperamos?</span><p>${safe(resultTextClean(b.action))}</p></div>
+  </div>
+  <div class="hcx-objective-overview-footer">
+   <div class="hcx-objective-overview-meta">
+    <span><strong>Frecuencia</strong> ${safe(objectiveNarrativeFrequency(b.frequency))}${condition?' · '+safe(condition):''}</span>
+    <span><strong>Desde</strong> ${safe(resultDateLabel(b.observeFrom))}</span>
+   </div>
+   <button type="button" class="hcx-result-objective-edit" onclick="resultEditorOpen('objective')">Editar comportamiento</button>
+  </div>
+  ${context||evidence?`<details class="hcx-objective-overview-support"><summary>Contexto y evidencia <span aria-hidden="true">⌄</span></summary>
+   <div>${context?`<p><strong>Contexto</strong> ${safe(context)}</p>`:''}${evidence?`<p><strong>Evidencia observable</strong> ${safe(evidence)}</p>`:''}</div>
+  </details>`:''}
+ </section>`;
+}
+
+function objectiveValueFlow(x){
+ const r=x.globalResult||{},b=x.objectiveBehavior||{};
+ const result=[resultTextClean(r.verb),resultTextClean(r.complement)].filter(Boolean).join(' ');
+ return `<section class="panel hcx-value-flow" aria-label="Hipótesis de valor">
+  <h2>Hipótesis de valor</h2>
+  <div class="hcx-value-flow-stages">
+   <div class="hcx-value-flow-stage hcx-value-flow-behavior">
+    <span class="hcx-value-flow-label">SI · CONDUCTA</span>
+    <strong>El comportamiento objetivo se observa de forma sostenida</strong>
+    <small>${safe(resultTextClean(b.actor))}</small>
+   </div>
+   <span class="hcx-value-flow-arrow" aria-label="Entonces">→</span>
+   <div class="hcx-value-flow-stage hcx-value-flow-result">
+    <span class="hcx-value-flow-label">ENTONCES · RESULTADO ESPERADO</span>
+    <strong>${safe(result)}</strong>
+   </div>
+  </div>
+  <div class="hcx-value-flow-metrics">
+   <div class="hcx-value-flow-measure"><span>Indicador</span><strong>${safe(resultTextClean(r.measureType)||'No definido')}${safe(resultNarrativeUnit(r))}</strong></div>
+   <div class="hcx-value-flow-progress">
+    <div><span>Línea base</span><strong>${safe(resultNarrativeAmount(r.baseline,r.unit))}</strong></div>
+    <span class="hcx-value-flow-progress-arrow" aria-hidden="true">→</span>
+    <div><span>Meta</span><strong>${safe(resultNarrativeAmount(r.target,r.unit))}</strong></div>
+   </div>
+   <div class="hcx-value-flow-due"><span>Fecha meta</span><strong>${safe(resultDateLabel(r.dueDate))}</strong></div>
+  </div>
+ </section>`;
+}
 function objectivePanel(x){
  const b=x.objectiveBehavior||{},saved=!!x.objectiveBehavior,legacy=!saved&&x.objective;
  const conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];
@@ -206,13 +256,8 @@ function objectivePanel(x){
  <details ${b.evidence?'open':''}><summary>¿Cómo sabremos que ocurrió? (opcional)</summary><label>Evidencia observable<textarea name="evidence" placeholder="Ej. acuerdos documentados">${safe(b.evidence||'')}</textarea></label></details><label>¿Desde cuándo esperamos observar este comportamiento?<input type="date" name="observeFrom" required value="${safe(b.observeFrom||'')}"></label>
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar comportamiento objetivo</button><button class="secondary" type="button" onclick="resultEditorClose('objective')">Cancelar</button></div></form>
  </div></details>
- ${saved?`<section class="panel hcx-result-read-card hcx-result-read-narrative"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span></div></div>
- <p class="hcx-result-objective-statement">${safe(objectiveCoreStatement(b))}.</p>
- <div class="hcx-result-objective-inline-row"><p class="hcx-result-objective-meta">Frecuencia esperada: <strong>${safe(objectiveNarrativeFrequency(b.frequency))}</strong>${b.condition?' · '+safe(b.condition):''}. Desde el <strong>${safe(resultDateLabel(b.observeFrom))}</strong>.</p><button type="button" class="hcx-result-objective-edit" onclick="resultEditorOpen('objective')">Editar comportamiento</button></div>
- ${b.context?'<p class="hcx-result-narrative-evidence"><strong>Contexto:</strong> '+safe(b.context)+'</p>':''}
- ${b.evidence?'<p class="hcx-result-narrative-evidence"><strong>Evidencia observable:</strong> '+safe(b.evidence)+'</p>':''}
- </section>`:resultEmptyCard('objective',legacy)}
- <section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2>${x.globalResult&&saved?`<p>${safe(resultValueHypothesis(x))}</p>`:'<p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p>'}</section>
+ ${saved?objectiveOverviewCard(b):resultEmptyCard('objective',legacy)}
+ ${x.globalResult&&saved?objectiveValueFlow(x):'<section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2><p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p></section>'}
  </div>`;
 }
 function objectiveToggleCondition(f){const frequency=f.elements.frequency.value,conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];const label=f.querySelector('[data-condition]');label.style.display=conditional.includes(frequency)?'block':'none';label.querySelector('[data-condition-label]').textContent=({'Al iniciar una actividad':'¿Qué actividad debe iniciar?','Al finalizar una actividad':'¿Qué actividad debe finalizar?','Ante una situación específica':'¿Qué situación específica debe ocurrir?','Otra':'Especifica la frecuencia o condición'})[frequency]||'';f.elements.condition.required=conditional.includes(frequency)}
