@@ -208,10 +208,9 @@ function objectivePanel(x){
  </div></details>
  ${saved?`<section class="panel hcx-result-read-card hcx-result-read-narrative"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span></div></div>
  <p class="hcx-result-objective-statement">${safe(objectiveCoreStatement(b))}.</p>
- <p class="hcx-result-objective-meta">Frecuencia esperada: <strong>${safe(objectiveNarrativeFrequency(b.frequency))}</strong>${b.condition?' · '+safe(b.condition):''}. Desde el <strong>${safe(resultDateLabel(b.observeFrom))}</strong>.</p>
+ <div class="hcx-result-objective-inline-row"><p class="hcx-result-objective-meta">Frecuencia esperada: <strong>${safe(objectiveNarrativeFrequency(b.frequency))}</strong>${b.condition?' · '+safe(b.condition):''}. Desde el <strong>${safe(resultDateLabel(b.observeFrom))}</strong>.</p><button type="button" class="hcx-result-objective-edit" onclick="resultEditorOpen('objective')">Editar comportamiento</button></div>
  ${b.context?'<p class="hcx-result-narrative-evidence"><strong>Contexto:</strong> '+safe(b.context)+'</p>':''}
  ${b.evidence?'<p class="hcx-result-narrative-evidence"><strong>Evidencia observable:</strong> '+safe(b.evidence)+'</p>':''}
- <div class="hcx-result-objective-actions"><button type="button" class="hcx-result-objective-edit" onclick="resultEditorOpen('objective')">Editar comportamiento</button></div>
  </section>`:resultEmptyCard('objective',legacy)}
  <section class="panel hcx-result-hypothesis"><h2>Hipótesis de valor</h2>${x.globalResult&&saved?`<p>${safe(resultValueHypothesis(x))}</p>`:'<p class="muted">Se generará automáticamente cuando registres el resultado global y el comportamiento objetivo.</p>'}</section>
  </div>`;
