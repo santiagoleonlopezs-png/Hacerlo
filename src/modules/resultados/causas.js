@@ -124,7 +124,7 @@ function diagCauseItem(x,c){
  '</div></details><div class="diag-cause-item-actions"><button type="button" class="secondary" data-id="'+diagEsc(c.id)+'" onclick="diagCauseOpen(this.dataset.id)">Editar</button><button type="button" class="secondary" data-id="'+diagEsc(c.id)+'" onclick="diagCauseRemove(this.dataset.id)">Eliminar</button></div></article>';
 }
 function diagCausesPanel(x){
- const all=diagCausesInit(x),editing=all.find(c=>String(c.id)===String(diagCauseEditId)),open=diagCauseFormOpen||(!all.length&&(x.behaviors||[]).length>0);
+ const all=diagCausesInit(x),editing=all.find(c=>String(c.id)===String(diagCauseEditId)),open=diagCauseFormOpen;
  const prefill=diagBuilderInit(x),values=editing||{behaviorId:prefill.behaviorId,factorKey:prefill.factorKey,patternId:'',relation:prefill.relation,findingId:'',status:'Por comprobar',application:'',validationMethod:'',validationNote:''};
  const behaviors=(x.behaviors||[]).map((b,i)=>[String(b.id||'index:'+i),b.name||'Comportamiento sin nombre']);
  const factors=Object.entries(x.behaviorDiagnosis||{}).filter(([key,v])=>v).map(([key,v])=>[key,v.factor+' · '+(v.role||'Por explorar')]);
