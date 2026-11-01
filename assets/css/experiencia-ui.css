@@ -698,8 +698,11 @@ button.behavior-explore-entry:focus-visible{outline:2px solid #80eadc;outline-of
 @media(max-width:540px){.hcx-result-objective-statement{font-size:14px;line-height:1.55}.hcx-result-read-hybrid{padding:16px 15px}.hcx-result-read-narrative{padding:16px 15px}}
 
 
-/* Edición secundaria de comportamiento: botón pequeño en la esquina inferior derecha. */
-.hcx-result-objective-actions{display:flex;justify-content:flex-end;align-items:center;margin-top:10px}
+/* Edición secundaria sobre el mismo renglón de frecuencia: sin altura añadida. */
+.hcx-result-objective-inline-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.hcx-result-objective-inline-row .hcx-result-objective-meta{flex:1;min-width:0}
+.hcx-result-objective-inline-row .hcx-result-objective-edit{flex:none}
+@media(max-width:490px){.hcx-result-objective-inline-row{flex-wrap:wrap;gap:6px}.hcx-result-objective-inline-row .hcx-result-objective-edit{margin-left:auto}}
 .hcx-result-objective-edit{width:auto;min-height:27px;padding:5px 9px;border:1px solid #376278;border-radius:7px;background:transparent;color:#a5cdd7;font-size:11px;font-weight:500;line-height:1.3;white-space:nowrap;cursor:pointer}
 .hcx-result-objective-edit:hover{color:#e0f6f5;border-color:#55a6aa;background:#123c4d}
 .hcx-result-objective-edit:focus-visible{outline:2px solid #74e2d4;outline-offset:2px}
