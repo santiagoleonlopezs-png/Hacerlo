@@ -223,7 +223,7 @@ function behaviorDesignPage(x){
  const visible=behaviorExploreVisible(x),selected=behaviorExploreSelectedRecord(x,visible);
  return `<div class="behavior-design-layout">
  <details class="panel behavior-create-panel" id="behavior-design-creator" ${expanded?'open':''}>
-  <summary onclick="behaviorDesignFormToggle(this.parentElement)"><span class="behavior-create-icon" aria-hidden="true">＋</span><span class="behavior-create-summary-text"><strong>${count?'Crear otro comportamiento':'Crear primer comportamiento'}</strong><small>Empieza por una acción observable. Las demás opciones son voluntarias.</small></span><span class="behavior-design-chevron" aria-hidden="true">⌄</span></summary>
+  <summary onclick="behaviorDesignFormToggle(this.parentElement)"><span class="behavior-create-icon" aria-hidden="true">＋</span><span class="behavior-create-summary-text"><strong>Crear comportamiento</strong><small>Empieza por una acción observable. Las demás opciones son voluntarias.</small></span><span class="behavior-design-chevron" aria-hidden="true">⌄</span></summary>
   <div class="behavior-create-content">
    <form class="behavior-create-form" onsubmit="addBehavior(event)">
     <label class="behavior-create-main-label">¿Qué comportamiento queremos observar?<input name="name" required maxlength="260" placeholder="Ej. Registrar correctamente cada solicitud"></label>
