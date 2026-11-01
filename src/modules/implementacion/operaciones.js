@@ -7,7 +7,7 @@ function recordCoreMetric(e){e.preventDefault();let f=e.target,x=current(),k=f.e
 function toggleMetricHistory(k){let el=$('metric-history-'+k);if(el)el.classList.toggle('hide')}
 function metricHistoryView(x,k){let h=((x.metricHistory||{})[k]||[]);if(!h.length)return '<p class="muted">Aún no hay mediciones.</p>';let nums=h.map(v=>Number(v.value)),min=Math.min(...nums),max=Math.max(...nums),points=h.map((v,i)=>`${18+i*440/Math.max(1,h.length-1)},${112-(v.value-min)*85/(max-min||1)}`).join(' ');return `<div style="overflow:auto"><svg viewBox="0 0 480 135" aria-label="Tendencia de ${coreMetricNames[k]}"><line x1="18" y1="117" x2="460" y2="117" stroke="#42677c"/><polyline fill="none" stroke="#23c9c1" stroke-width="3" points="${points}"/>${h.map((v,i)=>`<circle cx="${18+i*440/Math.max(1,h.length-1)}" cy="${112-(v.value-min)*85/(max-min||1)}" r="4" fill="#e4f9ff"/>`).join('')}</svg><table><thead><tr><th>Fecha</th><th>Valor</th><th>Período</th><th>Observaciones</th></tr></thead><tbody>${h.slice().reverse().map(v=>`<tr><td>${safe(v.date)}</td><td>${safe(v.value)}</td><td>${safe(v.period||'—')}</td><td>${safe(v.notes||'—')}</td></tr>`).join('')}</tbody></table></div>`}
 function setObjective(v){current().objective=v;save()}function setField(k,v){current()[k]=v;save()}function setMetric(k,v){current().metrics[k]=v;save()}
-function addBehavior(e){e.preventDefault();let fd=new FormData(e.target),z=Object.fromEntries(fd);z.audienceIds=fd.getAll('audienceIds');z.id='beh-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);if(z.scope==='specific'&&!z.audienceIds.length)return alert('Selecciona al menos una audiencia o utiliza Todas las audiencias');const selected=fd.getAll('existingIndicators');delete z.existingIndicators;current().behaviors.push(z);linkBehaviorIndicators(current(),z,selected);if(z.kind&&z.indicator){current().indicators.push({name:z.indicator,type:z.kind,behavior:z.name,behaviorIds:[z.id],definition:'',baseline:'',target:z.target||'',value:'',history:[]})}save();render()}
+function addBehavior(e){e.preventDefault();let fd=new FormData(e.target),z=Object.fromEntries(fd);z.audienceIds=fd.getAll('audienceIds');z.id='beh-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);if(z.scope==='specific'&&!z.audienceIds.length)return alert('Selecciona al menos una audiencia o utiliza Todas las audiencias');const selected=fd.getAll('existingIndicators');delete z.existingIndicators;current().behaviors.push(z);linkBehaviorIndicators(current(),z,selected);if(z.kind&&z.indicator){current().indicators.push({name:z.indicator,type:z.kind,behavior:z.name,behaviorIds:[z.id],definition:'',baseline:'',target:z.target||'',value:'',history:[]})}behaviorDesignFormOpen=false;save();render()}
 function removeBehavior(i){if(confirm('¿Eliminar este comportamiento? Los indicadores ya creados se conservarán.')){let x=current(),b=x.behaviors[i];linkBehaviorIndicators(x,b,[]);x.behaviors.splice(i,1);save();render()}}
 function addSystemVariable(e){e.preventDefault();current().systemVariables.push(Object.fromEntries(new FormData(e.target)));save();render()}
 function addSystemLink(e){e.preventDefault();let z=Object.fromEntries(new FormData(e.target));if(z.from===z.to)return alert('Elige dos variables diferentes');current().systemLinks.push({from:Number(z.from),to:Number(z.to),sign:Number(z.sign),delay:!!z.delay,evidence:z.evidence});save();render()}
@@ -87,4 +87,63 @@ function cancelBehaviorEdit(i){const el=document.getElementById('behavior-edit-'
 function saveBehaviorEdit(e,i){e.preventDefault();const x=current(),b=x.behaviors[i];if(!b)return;const fd=new FormData(e.target),name=String(fd.get('name')||'').trim(),scope=fd.get('scope'),audiences=fd.getAll('audienceIds');if(!name)return alert('Indica el comportamiento observable');if(scope==='specific'&&!audiences.length)return alert('Selecciona al menos una audiencia o utiliza Todas las audiencias');ensureBehaviorIds(x);x.indicators.forEach(r=>writeIndicatorBehaviorIds(x,r,indicatorBehaviorIds(x,r)));b.name=name;b.description=String(fd.get('description')||'');b.scope=scope;b.audienceIds=audiences;b.updatedAt=new Date().toISOString();linkBehaviorIndicators(x,b,fd.getAll('existingIndicators'));save();render();}
 
 // Detalle de comportamiento cerrado inicialmente; conserva edición y eliminación.
-function behaviorRegisteredCard(x,b,i){return `<details class="panel behavior-registered"><summary style="cursor:pointer;overflow-wrap:anywhere"><strong>${safe(b.name)}</strong></summary><div style="margin-top:14px"><p class="muted">${safe(b.description)}</p><p>Aplica a: ${behaviorAudienceLabel(x,b)}</p>${behaviorEditForm(x,b,i)}<p class="muted">Indicadores asociados: ${safe(x.indicators.filter(r=>indicatorHasBehavior(x,r,b)).map(r=>r.name).join(', ')||'Ninguno')}</p><div style="margin-top:10px"><button class="secondary" type="button" onclick="editBehavior(${i})">Editar</button> <button class="secondary" type="button" onclick="removeBehavior(${i})">Eliminar</button></div></div></details>`;}
+function behaviorRegisteredCard(x,b,i){
+ const indicators=(x.indicators||[]).filter(r=>indicatorHasBehavior(x,r,b));
+ const number=indicators.length, plural=number===1?'indicador':'indicadores';
+ return `<details class="behavior-registered behavior-design-row"><summary class="behavior-design-row-summary"><span class="behavior-design-row-copy"><strong>${safe(b.name)}</strong><small>${safe(behaviorAudienceLabel(x,b))} · ${number} ${plural}</small></span><span class="behavior-design-chevron" aria-hidden="true">⌄</span></summary><div class="behavior-design-row-details">${b.description?`<p class="muted">${safe(b.description)}</p>`:''}<p class="behavior-design-linked"><strong>Indicadores:</strong> ${safe(indicators.map(r=>r.name).join(', ')||'Sin asociar')}</p>${behaviorEditForm(x,b,i)}<div class="behavior-design-row-actions"><button class="secondary" type="button" onclick="editBehavior(${i})">Editar comportamiento</button><button class="secondary" type="button" onclick="removeBehavior(${i})">Eliminar</button></div></div></details>`;
+}
+let behaviorDesignFormOpen=false,behaviorDesignFormInitiative=null;
+function behaviorDesignFormState(x){
+ const currentId=String(x.id);
+ if(behaviorDesignFormInitiative!==currentId){
+  behaviorDesignFormInitiative=currentId;
+  behaviorDesignFormOpen=!(x.behaviors||[]).length;
+ }
+ return behaviorDesignFormOpen;
+}
+function behaviorDesignFormToggle(el){behaviorDesignFormOpen=!el.open}
+function behaviorDesignFormShow(){
+ behaviorDesignFormOpen=true;
+ const el=document.getElementById('behavior-design-creator');
+ if(el){el.open=true;el.scrollIntoView({behavior:'smooth',block:'start'});el.querySelector('input[name="name"]')?.focus()}
+}
+function behaviorDesignPage(x){
+ const expanded=behaviorDesignFormState(x),count=(x.behaviors||[]).length;
+ return `<div class="behavior-design-layout">
+ <details class="panel behavior-create-panel" id="behavior-design-creator" ${expanded?'open':''}>
+  <summary onclick="behaviorDesignFormToggle(this.parentElement)"><span class="behavior-create-icon" aria-hidden="true">＋</span><span class="behavior-create-summary-text"><strong>${count?'Crear otro comportamiento':'Crear primer comportamiento'}</strong><small>Empieza por una acción observable. Las demás opciones son voluntarias.</small></span><span class="behavior-design-chevron" aria-hidden="true">⌄</span></summary>
+  <div class="behavior-create-content">
+   <form class="behavior-create-form" onsubmit="addBehavior(event)">
+    <label class="behavior-create-main-label">¿Qué comportamiento queremos observar?<input name="name" required maxlength="260" placeholder="Ej. Registrar correctamente cada solicitud"></label>
+    <details class="behavior-create-optional">
+     <summary>Descripción y contexto <small>Opcional</small></summary>
+     <label>¿En qué situación debe ocurrir?<textarea name="description" rows="2" placeholder="Contexto, actividad y observaciones"></textarea></label>
+    </details>
+    <details class="behavior-create-optional">
+     <summary>Audiencias e indicadores <small>Opcional</small></summary>
+     <div class="behavior-create-settings">
+      <label>Alcance<select name="scope" onchange="document.getElementById('audienceChoices').hidden=this.value!=='specific'"><option value="all">Todas las audiencias (incluidas las futuras)</option><option value="specific">Audiencias específicas</option></select></label>
+      <div id="audienceChoices" hidden><strong>Seleccionar audiencias</strong><div class="behavior-create-audience-list">${audienceChecks(x)}</div></div>
+      <div class="behavior-create-extra-actions"><button type="button" class="secondary" onclick="showAudienceForm('designAudience')">+ Crear audiencia</button></div>
+      <div id="designAudience" class="hide">${audienceForm()}</div>
+      <div class="behavior-create-indicators"><h3>Indicadores existentes</h3>${behaviorIndicatorChoices(x)}</div>
+      <details class="behavior-create-optional behavior-create-indicator-new">
+       <summary>Crear un indicador nuevo <small>Opcional</small></summary>
+       <div class="behavior-create-indicator-fields">
+        <label>Tipo de indicador<select name="kind"><option value="">Sin indicador nuevo</option><option>Predictivo</option><option>Gestión</option></select></label>
+        <label>Nombre del indicador<input name="indicator" placeholder="Nombre del indicador"></label>
+        <label>Meta<input name="target" placeholder="Meta" type="number" step="any"></label>
+       </div>
+      </details>
+     </div>
+    </details>
+    <div class="behavior-create-actions"><button class="primary" type="submit">Guardar comportamiento</button><span>Solo el nombre es obligatorio.</span></div>
+   </form>
+  </div>
+ </details>
+ <section class="panel behavior-design-list">
+  <div class="behavior-design-list-header"><div><h2>Comportamientos registrados <span class="behavior-design-count">${count}</span></h2><p class="muted">Selecciona un comportamiento para ver sus detalles o editarlo.</p></div><button type="button" class="secondary" onclick="go('Gestión de audiencias')">Gestionar audiencias</button></div>
+  <div class="behavior-design-rows">${count?x.behaviors.map((b,i)=>behaviorRegisteredCard(x,b,i)).join(''):'<div class="behavior-design-empty"><strong>Aún no hay comportamientos.</strong><p>Registra una acción observable para comenzar.</p></div>'}</div>
+ </section>
+ </div>`;
+}
