@@ -187,8 +187,7 @@ function behaviorExploreEntries(x,visible,selected){
   const quality=behaviorDesignQuality(x,b);
   return `<button type="button" class="behavior-explore-entry ${selected&&selected.ref===ref?'is-active':''}" data-ref="${safe(ref)}" aria-pressed="${!!selected&&selected.ref===ref}" onclick="behaviorExploreSelect(this.dataset.ref)">
     <span class="behavior-explore-entry-title">${safe(b.name||"Sin título")}</span>
-    <span class="behavior-explore-entry-foot">${behaviorAudienceLabel(x,b)}<span aria-hidden="true">·</span>${n} ${n===1?'indicador':'indicadores'}</span>
-    ${behaviorDesignQualityBadge(quality)}
+    <span class="behavior-explore-entry-foot">${behaviorAudienceLabel(x,b)}<span aria-hidden="true">·</span>${n} ${n===1?'indicador':'indicadores'}${behaviorDesignQualityBadge(quality)}</span>
   </button>`;
  }).join(""):`<div class="behavior-explore-no-results">No se encontraron comportamientos. Prueba otra audiencia o búsqueda.</div>`;
 }
