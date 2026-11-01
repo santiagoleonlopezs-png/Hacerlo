@@ -565,3 +565,31 @@ button.behavior-explore-entry:focus-visible{outline:2px solid #80eadc;outline-of
 @media(max-width:710px){.behavior-explorer-grid{grid-template-columns:1fr}.behavior-explore-entries{max-height:230px}.behavior-explorer-controls{grid-template-columns:1fr 1fr}.behavior-explore-detail-meta{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.behavior-explorer{padding:13px}.behavior-explorer-controls,.behavior-explore-detail-meta{grid-template-columns:1fr}.behavior-explore-inspector{padding:13px}.behavior-matrix-body{padding:11px}.behavior-matrix-panel>summary{padding:14px}.behavior-explore-detail-actions button{flex:1}}
 @media(prefers-reduced-motion:reduce){button.behavior-explore-entry{transition:none}}
+
+
+/* Explorador: ficha lateral contráctil; la lista ocupa todo el ancho al ocultarla. */
+.behavior-explorer-grid.is-detail-collapsed{grid-template-columns:minmax(0,1fr);min-height:0}
+.behavior-explorer-grid.is-detail-collapsed .behavior-explore-inspector{display:none}
+.behavior-explore-backdrop{display:none}
+.behavior-explore-list-tools{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.behavior-explore-hide,.behavior-explore-show{font-size:11px;line-height:1.35;display:inline-flex;align-items:center;gap:6px;color:#a6e8df;background:#11475a;border:1px solid #3a7281;border-radius:8px;padding:7px 10px;cursor:pointer;white-space:nowrap}
+.behavior-explore-hide:hover,.behavior-explore-show:hover{background:#17576a;border-color:#62b8af}
+.behavior-explore-hide:focus-visible,.behavior-explore-show:focus-visible{outline:2px solid #83e9dc;outline-offset:2px}
+.behavior-explorer-grid:not(.is-detail-collapsed) .behavior-explore-show{display:none}
+.behavior-explore-detail-tools{display:flex;align-items:center;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.behavior-explore-detail-top{align-items:center}
+.behavior-explore-detail .behavior-edit:not([open]){display:none}
+.behavior-explore-detail .behavior-edit>summary{display:none}
+.behavior-explore-detail:has(.behavior-edit[open]) .behavior-explore-detail-actions>.primary{display:none}
+.behavior-explore-inspector-empty .behavior-explore-hide{margin-top:5px}
+/* En pantallas pequeñas, la ficha se abre desde la derecha con botón de cierre. */
+@media(max-width:710px){
+ .behavior-explorer-grid,.behavior-explorer-grid.is-detail-collapsed{display:block;min-height:0}
+ .behavior-explorer-grid .behavior-explorer-list-panel{min-width:0}
+ .behavior-explorer-grid:not(.is-detail-collapsed) .behavior-explore-backdrop{display:block;position:fixed;inset:0;z-index:1090;background:rgba(2,14,25,.72)}
+ .behavior-explorer-grid:not(.is-detail-collapsed) .behavior-explore-inspector{display:block;position:fixed;right:0;top:0;bottom:0;z-index:1091;width:min(100%,460px);min-height:100dvh;max-height:100dvh;overflow-y:auto;overscroll-behavior:contain;box-shadow:-18px 0 48px rgba(0,10,19,.58);border-radius:15px 0 0 15px;animation:behavior-detail-from-right .22s ease-out}
+ .behavior-explorer-grid.is-detail-collapsed .behavior-explore-inspector{display:none}
+ .behavior-explore-inspector{scrollbar-gutter:stable}
+}
+@keyframes behavior-detail-from-right{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@media(prefers-reduced-motion:reduce){.behavior-explorer-grid:not(.is-detail-collapsed) .behavior-explore-inspector{animation:none}}
