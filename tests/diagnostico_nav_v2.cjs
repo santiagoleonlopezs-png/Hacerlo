@@ -26,7 +26,7 @@ assert.match(tabs,/active" aria-current="page" onclick="go\('Encuestas y experie
 assert.match(c.eePage(x),/diag-module-menu/);
 assert.match(c.eePage(x),/ee-single-column/);
 assert.match(c.eePage(x),/RDAIM · RESULTADOS · DIAGNÓSTICO/);
-assert.match(ee,/eeSetTab\(&quot;resultados&quot;\)/);
+assert.match(ee,/\['diseño','responder','importar','resultados','compartir'\]/,'La pestaña Resultados permanece dentro de Encuestas');
 c.diagSwitch('hallazgos');
 assert.equal(c.page,'Diagnóstico');
 assert.equal(vm.runInContext('diagTab',c),'hallazgos');
