@@ -147,6 +147,24 @@ function resultEmptyCard(kind,legacy){
  `<p class="muted">Completa el formulario desplegable de arriba para mostrar aquí el ${kind==='global'?'resultado que buscamos':'comportamiento que esperamos observar'}.</p>`}
  </section>`;
 }
+function resultNarrativeAmount(value,unit){
+ const text=String(value??'—');
+ const suffix={'Porcentaje (%)':' %','Número de personas':' personas','Tiempo (minutos)':' minutos','Frecuencia (veces)':' veces','Valor monetario (COP)':' COP'}[unit]||'';
+ return text+suffix;
+}
+function resultNarrativeUnit(r){
+ if(r.unit==='Escala')return ' en la escala '+(r.scale==='Personalizada'?String(r.scaleMin)+' a '+String(r.scaleMax):String(r.scale||'').replace('-',' a '));
+ const explained=['Porcentaje (%)','Número de personas','Tiempo (minutos)','Frecuencia (veces)','Valor monetario (COP)'];
+ return r.unit&&!explained.includes(r.unit)?' (unidad: '+r.unit+')':'';
+}
+function objectiveNarrativeFrequency(frequency){
+ return ({
+  'Diaria':'diariamente','Semanal':'cada semana','Quincenal':'cada quince días',
+  'Mensual':'cada mes','Trimestral':'cada trimestre','Semestral':'cada semestre','Anual':'cada año',
+  'Al iniciar una actividad':'al iniciar una actividad','Al finalizar una actividad':'al finalizar una actividad',
+  'Ante una situación específica':'ante una situación específica','Otra':'según la condición definida'
+ })[frequency]||String(frequency||'con la frecuencia definida').toLowerCase();
+}
 function resultGlobalPanel(x){
  const r=x.globalResult||{},saved=!!x.globalResult,legacy=!saved&&x.expected;
  const expanded=resultEditorIsOpen(x,'global',saved);
@@ -162,7 +180,7 @@ function resultGlobalPanel(x){
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar resultado global</button><button class="secondary" type="button" onclick="resultEditorClose('global')">Cancelar</button></div></form>
  </div></details>
  ${saved?`<section class="panel hcx-result-read-card hcx-result-read-narrative"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">RESULTADO GLOBAL DEFINIDO</span><h2>${safe(r.verb||'')} ${safe(r.complement||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('global')">Editar resultado</button></div>
- <p class="hcx-result-narrative">Mediremos el avance mediante <strong>${safe(r.measureType||'el indicador definido')}</strong>. Partimos de <strong>${safe(r.baseline??'—')}</strong> y buscamos alcanzar <strong>${safe(r.target??'—')}</strong>, expresados en <strong>${safe(r.unit||'la unidad definida')}</strong>${r.unit==='Escala'?' (escala '+safe(r.scale==='Personalizada'?r.scaleMin+' a '+r.scaleMax:(r.scale||'').replace('-',' a '))+')':''}, para el <strong>${safe(resultDateLabel(r.dueDate))}</strong>.</p>
+ <p class="hcx-result-narrative">Buscamos pasar de una línea base de <strong>${safe(resultNarrativeAmount(r.baseline,r.unit))}</strong> a una meta de <strong>${safe(resultNarrativeAmount(r.target,r.unit))}</strong> para el <strong>${safe(resultDateLabel(r.dueDate))}</strong>. Mediremos el avance mediante <strong>${safe(r.measureType||'el indicador definido')}</strong>${safe(resultNarrativeUnit(r))}.</p>
  </section>`:resultEmptyCard('global',legacy)}
  </div>`;
 }
@@ -185,7 +203,7 @@ function objectivePanel(x){
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar comportamiento objetivo</button><button class="secondary" type="button" onclick="resultEditorClose('objective')">Cancelar</button></div></form>
  </div></details>
  ${saved?`<section class="panel hcx-result-read-card hcx-result-read-narrative"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">COMPORTAMIENTO OBJETIVO DEFINIDO</span><h2>${safe(b.action||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('objective')">Editar comportamiento</button></div>
- <p class="hcx-result-narrative">Este comportamiento corresponde a <strong>${safe(b.actor||'las personas definidas')}</strong>. Se espera observarlo <strong>${safe((b.frequency||'con la frecuencia definida').toLowerCase())}</strong>${b.condition?' ('+safe(b.condition)+')':''}, desde el <strong>${safe(resultDateLabel(b.observeFrom))}</strong>.</p>
+ <p class="hcx-result-narrative">Este comportamiento corresponde a <strong>${safe(b.actor||'las personas definidas')}</strong>. Se espera observarlo <strong>${safe(objectiveNarrativeFrequency(b.frequency))}</strong>${b.condition?' ('+safe(b.condition)+')':''}, desde el <strong>${safe(resultDateLabel(b.observeFrom))}</strong>.</p>
  ${b.context?'<p class="hcx-result-narrative-evidence"><strong>Contexto:</strong> '+safe(b.context)+'</p>':''}
  ${b.evidence?'<p class="hcx-result-narrative-evidence"><strong>Evidencia observable:</strong> '+safe(b.evidence)+'</p>':''}
  </section>`:resultEmptyCard('objective',legacy)}
