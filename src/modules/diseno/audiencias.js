@@ -54,7 +54,30 @@ function audienceForm(){return `<div class="panel"><h3>Nueva audiencia</h3><div 
 function audienceList(x){return x.audiences.length?x.audiences.map(a=>`<div class="panel"><strong>${safe(a.name)}</strong><p class="muted">${safe(a.population||'—')} personas · Impacto: ${safe(a.impact||'Sin evaluar')}</p></div>`).join(''):'<div class="empty">No hay audiencias registradas.</div>'}
 function behaviorAudienceLabel(x,b){return b.scope!=='specific'?'Todas las audiencias':(b.audienceIds||[]).map(id=>x.audiences.find(a=>a.id===id)?.name||'Audiencia eliminada').map(safe).join(', ')||'Sin audiencia seleccionada'}
 function showAudienceForm(id){$(id).classList.toggle('hide')}
-function addAudienceFromButton(button){let fields=button.closest(".audience-fields");let a=Object.fromEntries([...fields.querySelectorAll("[data-field]")].map(el=>[el.dataset.field,el.value]));if(!a.name.trim())return alert("Indica el nombre de la audiencia");a.id='aud-'+Date.now();current().audiences.push(a);save();render()}
+function addAudienceFromButton(button){
+ const fields=button.closest('.audience-fields');
+ if(!fields)return;
+ const a=Object.fromEntries([...fields.querySelectorAll('[data-field]')].map(el=>[el.dataset.field,el.value]));
+ if(!String(a.name||'').trim())return alert('Indica el nombre de la audiencia');
+ a.id='aud-'+Date.now();
+ current().audiences.push(a);
+ save();
+ // Al crear una audiencia desde Diseño, conservar el comportamiento que ya se está redactando.
+ const design=button.closest('#behavior-design-creator');
+ const target=design?.querySelector('.behavior-create-audience-list');
+ if(target){
+  const placeholder=target.querySelector('p.muted');
+  if(placeholder)placeholder.remove();
+  const label=document.createElement('label'),checkbox=document.createElement('input'),text=document.createElement('span');
+  label.style.display='flex';label.style.alignItems='center';label.style.gap='8px';
+  checkbox.type='checkbox';checkbox.name='audienceIds';checkbox.value=a.id;checkbox.style.width='auto';
+  checkbox.checked=design.querySelector('[name="scope"]')?.value==='specific';
+  text.textContent=a.name;label.append(checkbox,text);target.append(label);
+  button.closest('#designAudience')?.classList.add('hide');
+  return;
+ }
+ render();
+}
 
 // HACERLO V2.2: clasificación configurable, con reglas explícitas (no inferencias sobre personas).
 const AUD_AUTH={'Decisor':10,'Influenciador Directo':9,'Influenciador Indirecto':8,'Espectador':5};
