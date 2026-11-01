@@ -28,9 +28,7 @@ jobs:
             exit 1
           fi
           echo "Estado: ${response}"
-          if [[ "${response}" == "succeed" || "${response}" == "cancelled" || "${response}" == "canceled" || "${response}" == "failed" ]]; then
-            echo "El despliegue ya terminó; no se cancela nada."
-          else
-            gh api -X POST "repos/${GH_REPO}/pages/deployments/${deployment}/cancel"
-            echo "Se solicitó cancelar el despliegue bloqueado."
-          fi
+          # La API de estado informa "succeed", pero el backend bloquea nuevas publicaciones.
+          # Se cancela este identificador concreto, sin tocar otros despliegues.
+          gh api -X POST "repos/${GH_REPO}/pages/deployments/${deployment}/cancel"
+          echo "GitHub aceptó la cancelación del despliegue bloqueado."
