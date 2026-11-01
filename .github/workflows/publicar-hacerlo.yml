@@ -1,0 +1,59 @@
+name: HACERLO - Publicacion controlada
+
+on:
+  push:
+    branches:
+      - hacerlo-v2-modular
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+# Evitar publicaciones simultaneas: una activa y la siguiente pendiente.
+concurrency:
+  group: hacerlo-pages-produccion
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Obtener codigo
+        uses: actions/checkout@v4
+
+      - name: Validar archivos
+        run: |
+          set -e
+          test -f index.html
+          test -f responder.html
+          test -f src/core/app.js
+          test -f src/modules/encuestas/encuestas.js
+          node --check src/core/app.js
+          node --check src/modules/encuestas/encuestas.js
+
+      - name: Preparar sitio publico
+        run: |
+          set -e
+          mkdir -p _site
+          cp index.html responder.html _site/
+          cp -R assets src _site/
+          touch _site/.nojekyll
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir artefacto
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+          include-hidden-files: true
+
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v5

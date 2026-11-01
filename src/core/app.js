@@ -31,13 +31,13 @@ const current=()=>db.initiatives.find(x=>x.id===db.selected);
 // Navegación jerárquica: RDAIM es un marco integrado, no una pantalla superpuesta.
 const HACERLO_NAV_GROUPS=[
  {title:'Espacio de trabajo',items:[['Inicio','⌂'],['Iniciativas','▦']]},
- {title:'Resultados',step:0,items:[['Resultado global','◉'],['Comportamiento objetivo','◎'],['Diagnóstico','◈'],['Indicadores','▤']]},
+ {title:'Resultados',step:0,items:[['Resultado global','◉'],['Comportamiento objetivo','◎'],['Diagnóstico','◈'],['Encuestas y experiencias','▤'],['Indicadores','▤']]},
  {title:'Diseño',step:1,items:[['Diseño de comportamientos','◈'],['Gestión de audiencias','♧']]},
  {title:'Análisis',step:2,items:[['Grafo de adopción','◎'],['Pensamiento sistémico','⟲'],['Simulación de agentes','♧'],['Inteligencia integrada','✧']]},
  {title:'Implementación',step:3,items:[['Intervenciones','▥']]},
- {title:'Medición',step:4,items:[['Encuestas y experiencias','▤'],['Analítica','▥']]}
+ {title:'Medición',step:4,items:[['Analítica','▥']]}
 ];
-const HACERLO_PAGE_PHASE={'Inicio de Resultados':0,'Resultado global':0,'Comportamiento objetivo':0,'Encuestas y experiencias':4,'Diseño de comportamientos':1,'Gestión de audiencias':1,'Diagnóstico':0,'Indicadores':0,'Grafo de adopción':2,'Pensamiento sistémico':2,'Simulación de agentes':2,'Inteligencia integrada':2,'Intervenciones':3,'Analítica':4};
+const HACERLO_PAGE_PHASE={'Inicio de Resultados':0,'Resultado global':0,'Comportamiento objetivo':0,'Encuestas y experiencias':0,'Diseño de comportamientos':1,'Gestión de audiencias':1,'Diagnóstico':0,'Indicadores':0,'Grafo de adopción':2,'Pensamiento sistémico':2,'Simulación de agentes':2,'Inteligencia integrada':2,'Intervenciones':3,'Analítica':4};
 // Solo una etapa desplegada. null permite cerrar todas sin cambiar la pantalla.
 let expandedNavStep=null;
 function toggleNavStep(step){
