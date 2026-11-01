@@ -174,3 +174,29 @@ button.results-home-card-action:focus-visible,.results-home-bottom-actions butto
 @media(max-width:980px){.results-home-main{grid-template-columns:repeat(2,minmax(0,1fr))}.results-home-card:last-child{grid-column:1/-1;min-height:180px}.results-home-hero{gap:18px;padding:23px}.results-home-progress{flex-basis:180px;padding-left:20px}}
 @media(max-width:680px){.results-home-hero{display:block;min-height:0;padding:22px 19px}.results-home-hero:before{display:none}.results-home-progress{padding:14px 0 0;margin-top:17px;border-left:0;border-top:1px solid rgba(131,187,199,.22)}.results-home-progress-number{font-size:31px;margin:3px 0 8px}.results-home-main{grid-template-columns:1fr}.results-home-card:last-child{grid-column:auto}.results-home-card{min-height:188px}.results-home-card-body{margin:15px 0 12px}.results-home-bottom{align-items:flex-start}.results-home-bottom-actions{width:100%}.results-home-bottom-actions button{flex:1}.results-home-bottom-label{flex-basis:100%}}
 @media(prefers-reduced-motion:reduce){.results-home-card,.results-home-progress-track span{transition:none}.results-home-card:hover{transform:none}}
+
+
+/* Diagnóstico conductual · matriz compacta en tres columnas */
+.diag-matrix-panel{min-width:0}
+.diag-matrix-overview{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.diag-matrix-overview h2{margin:0 0 4px}
+.diag-matrix-overview p{margin:0;font-size:12px}
+.diag-matrix-total{font-size:.8em;color:#8fb6c7;font-weight:600}
+.diag-matrix-progress{color:#a9d1d9;border:1px solid #2d5b6c;border-radius:20px;padding:6px 11px;font-size:12px;white-space:nowrap}
+.diag-matrix-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+.diag-matrix-column{min-width:0;overflow:hidden;background:#0a2436;border:1px solid #27536a;border-radius:13px}
+.diag-matrix-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:13px 15px;background:linear-gradient(90deg,color-mix(in srgb,var(--diag-column-accent) 12%,#0b2a3d),#0b2a3d 88%);border-bottom:1px solid #2a5369;border-top:3px solid var(--diag-column-accent)}
+.diag-matrix-heading-title{color:#e9f8ff;font-size:14px;font-weight:780}
+.diag-matrix-count{display:grid;place-items:center;min-width:25px;height:25px;border-radius:9px;background:#173e51;color:#bfdfec;font-size:12px;font-weight:700}
+.diag-matrix-factors{display:grid;gap:0}
+.diag-matrix-factor{padding:12px 14px}
+.diag-matrix-factor+.diag-matrix-factor{border-top:1px solid rgba(97,143,163,.19)}
+.diag-matrix-factor-title{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;margin-bottom:7px}
+.diag-matrix-factor-title b{font-size:13px;color:#e8f5fa;font-weight:690;line-height:1.35;overflow-wrap:anywhere}
+.diag-matrix-state{flex:0 0 7px;width:7px;height:7px;border-radius:50%;background:#597a8e}
+.diag-matrix-state.is-valued{background:#66dcca}
+.diag-matrix-factor select{width:100%;margin:0;min-height:35px;padding:7px 10px;font-size:12px;background:#071e30;border:1px solid #315c72;border-radius:8px;color:#cce5f0}
+.diag-matrix-factor select:focus-visible{outline:2px solid #6fe3d5;outline-offset:2px}
+.diag-matrix-empty{margin:0;padding:18px 14px;font-size:12px;color:#8caebf;line-height:1.5}
+@media(max-width:1050px){.diag-matrix-columns{grid-template-columns:repeat(2,minmax(0,1fr))}.diag-matrix-column:last-child{grid-column:1/-1}}
+@media(max-width:700px){.diag-matrix-columns{grid-template-columns:1fr}.diag-matrix-column:last-child{grid-column:auto}.diag-matrix-overview{gap:8px}.diag-matrix-progress{font-size:11px}}
