@@ -675,3 +675,16 @@ button.behavior-explore-entry:focus-visible{outline:2px solid #80eadc;outline-of
 @media(prefers-reduced-motion:reduce){.hcx-result-editor-chevron{transition:none}}
 
 @media(max-width:540px){.hcx-result-read-narrative{padding:17px 15px}.hcx-result-narrative{font-size:13px;line-height:1.7}}
+
+
+/* Resultado global: síntesis híbrida, tres métricas destacadas y sin repetir campos. */
+.hcx-result-read-hybrid{padding:21px 23px 23px}
+.hcx-result-read-hybrid .hcx-result-read-head{margin-bottom:12px}
+.hcx-result-hybrid-measure{font-size:13px;line-height:1.6;color:#a9c9d7;margin:0 0 16px;overflow-wrap:anywhere}
+.hcx-result-hybrid-measure strong{font-weight:750;color:#dbf0f3}
+.hcx-result-hybrid-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hcx-result-hybrid-metric{min-width:0;min-height:81px;padding:13px 15px;border:1px solid #31566a;background:#0d3044;border-radius:10px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.hcx-result-hybrid-metric span{color:#9dbdcb;font-size:11px;line-height:1.25}
+.hcx-result-hybrid-metric strong{color:#e8f7fa;font-size:19px;line-height:1.2;font-weight:750;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+@media(max-width:650px){.hcx-result-hybrid-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.hcx-result-hybrid-metric{padding:11px 9px}.hcx-result-hybrid-metric strong{font-size:16px}}
+@media(max-width:400px){.hcx-result-hybrid-metrics{grid-template-columns:1fr}.hcx-result-hybrid-metric{min-height:0;flex-direction:row;align-items:center;justify-content:space-between;padding:11px 13px}.hcx-result-hybrid-metric strong{font-size:16px}}
