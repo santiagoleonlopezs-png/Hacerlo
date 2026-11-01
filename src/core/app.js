@@ -267,7 +267,7 @@ function resultValueHypothesis(x){
  const measure=resultTextClean(r.measureType);
  return 'Si '+who+' '+what+(ctx?', '+ctx.charAt(0).toLocaleLowerCase('es')+ctx.slice(1):'')+
   ', '+frequency+(cond?' ('+cond+')':'')+' desde el '+when+
-  ', entonces esperamos '+result+'. Mediremos el avance mediante '+measure+resultNarrativeUnit(r)+
+  ', entonces esperamos '+result+'. Mediremos el avance con el indicador «'+measure+'»'+resultNarrativeUnit(r)+
   ', desde una línea base de '+resultNarrativeAmount(r.baseline,r.unit)+
   ' hasta una meta de '+resultNarrativeAmount(r.target,r.unit)+
   ' para el '+resultDateLabel(r.dueDate)+'.';
