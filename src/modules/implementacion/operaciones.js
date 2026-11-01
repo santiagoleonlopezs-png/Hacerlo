@@ -107,7 +107,7 @@ function behaviorDesignFormShow(){
  const el=document.getElementById('behavior-design-creator');
  if(el){el.open=true;el.scrollIntoView({behavior:'smooth',block:'start'});el.querySelector('input[name="name"]')?.focus()}
 }
-let behaviorExploreInitiative=null,behaviorExploreAudience='__all__',behaviorExploreSearch='',behaviorExploreSelected=null,behaviorExploreMatrixOpen=false;
+let behaviorExploreInitiative=null,behaviorExploreAudience='__all__',behaviorExploreSearch='',behaviorExploreSelected=null,behaviorExploreMatrixOpen=false,behaviorExploreDetailOpen=true;
 
 function behaviorExploreRef(b,i){return String(b.id||"index:"+i)}
 
@@ -119,6 +119,7 @@ function behaviorExploreEnsure(x){
   behaviorExploreSearch="";
   behaviorExploreSelected=null;
   behaviorExploreMatrixOpen=false;
+  behaviorExploreDetailOpen=!(typeof window!=='undefined'&&typeof window.matchMedia==='function'&&window.matchMedia('(max-width: 710px)').matches);
  }
  if(behaviorExploreAudience!=="__all__"&&!(x.audiences||[]).some(a=>String(a.id)===String(behaviorExploreAudience)))behaviorExploreAudience="__all__";
 }
@@ -158,7 +159,7 @@ function behaviorExploreInspector(x,selection){
  const {b,i}=selection;
  const linked=(x.indicators||[]).filter(ind=>indicatorHasBehavior(x,ind,b));
  return `<div class="behavior-registered behavior-explore-detail">
- <div class="behavior-explore-detail-top"><span class="behavior-explore-kicker">COMPORTAMIENTO SELECCIONADO</span><span class="behavior-explore-detail-number">${i+1} de ${(x.behaviors||[]).length}</span></div>
+ <div class="behavior-explore-detail-top"><span class="behavior-explore-kicker">COMPORTAMIENTO SELECCIONADO</span><div class="behavior-explore-detail-tools"><span class="behavior-explore-detail-number">${i+1} de ${(x.behaviors||[]).length}</span><button type="button" class="behavior-explore-hide" id="behavior-explore-hide" aria-label="Ocultar ficha del comportamiento" title="Ocultar ficha y ampliar lista" onclick="behaviorExploreSetDetailOpen(false)">Ocultar ficha <span aria-hidden="true">→</span></button></div></div>
  <h3>${safe(b.name||"Sin título")}</h3>
  ${b.description?`<p class="behavior-explore-description">${safe(b.description)}</p>`:""}
  <div class="behavior-explore-detail-meta">
@@ -171,6 +172,23 @@ function behaviorExploreInspector(x,selection){
  </div>`;
 }
 
+function behaviorExploreApplyDetailVisibility(){
+ const grid=document.getElementById('behavior-explore-grid');
+ const panel=document.getElementById('behavior-explore-inspector');
+ const show=document.getElementById('behavior-explore-show');
+ if(grid)grid.classList.toggle('is-detail-collapsed',!behaviorExploreDetailOpen);
+ if(panel)panel.setAttribute('aria-hidden',String(!behaviorExploreDetailOpen));
+ if(show)show.setAttribute('aria-expanded',String(behaviorExploreDetailOpen));
+}
+function behaviorExploreSetDetailOpen(open){
+ behaviorExploreDetailOpen=!!open;
+ behaviorExploreApplyDetailVisibility();
+ if(behaviorExploreDetailOpen&&typeof window!=='undefined'&&window.matchMedia?.('(max-width: 710px)').matches){
+  document.getElementById('behavior-explore-hide')?.focus({preventScroll:true});
+ }else if(!behaviorExploreDetailOpen&&typeof window!=='undefined'&&window.matchMedia?.('(max-width: 710px)').matches){
+  document.getElementById('behavior-explore-show')?.focus({preventScroll:true});
+ }
+}
 function behaviorExploreRefresh(){
  const x=current();if(!x)return;
  const visible=behaviorExploreVisible(x),selected=behaviorExploreSelectedRecord(x,visible);
@@ -180,9 +198,10 @@ function behaviorExploreRefresh(){
  if(list)list.innerHTML=behaviorExploreEntries(x,visible,selected);
  if(inspector)inspector.innerHTML=behaviorExploreInspector(x,selected);
  if(count)count.textContent=visible.length+" de "+(x.behaviors||[]).length;
+ behaviorExploreApplyDetailVisibility();
 }
 
-function behaviorExploreSelect(ref){behaviorExploreSelected=String(ref);behaviorExploreRefresh()}
+function behaviorExploreSelect(ref){behaviorExploreSelected=String(ref);behaviorExploreDetailOpen=true;behaviorExploreRefresh()}
 
 function behaviorExploreSetAudience(ref){behaviorExploreAudience=String(ref);behaviorExploreRefresh()}
 
@@ -192,6 +211,7 @@ function behaviorExploreFromMatrix(ref){
  behaviorExploreAudience="__all__";
  behaviorExploreSearch="";
  behaviorExploreSelected=String(ref);
+ behaviorExploreDetailOpen=true;
  const audience=document.getElementById("behavior-explore-audience");
  const search=document.getElementById("behavior-explore-search");
  if(audience)audience.value="__all__";
@@ -255,15 +275,16 @@ function behaviorDesignPage(x){
   </div>
  </details>
  <section class="panel behavior-explorer" id="behavior-explore-browser">
-  <div class="behavior-explorer-header"><div><h2>Explorar comportamientos <span class="behavior-design-count">${count}</span></h2><p class="muted">Selecciona una audiencia y abre la ficha de cada comportamiento.</p></div><button type="button" class="secondary" onclick="go('Gestión de audiencias')">Gestionar audiencias</button></div>
+  <div class="behavior-explorer-header"><div><h2>Explorar comportamientos <span class="behavior-design-count">${count}</span></h2><p class="muted">Selecciona una audiencia y abre la ficha de cada comportamiento.</p></div></div>
   <div class="behavior-explorer-controls"><label>Audiencia<select id="behavior-explore-audience" aria-label="Filtrar por audiencia" onchange="behaviorExploreSetAudience(this.value)">
    <option value="__all__" ${behaviorExploreAudience==='__all__'?'selected':''}>Todas las audiencias</option>
    ${(x.audiences||[]).map(a=>`<option value="${safe(a.id)}" ${String(a.id)===behaviorExploreAudience?'selected':''}>${safe(a.name)}</option>`).join("")}
   </select></label>
   <label>Buscar comportamiento<input id="behavior-explore-search" type="search" autocomplete="off" value="${safe(behaviorExploreSearch)}" placeholder="Buscar por nombre o descripción" oninput="behaviorExploreSetSearch(this.value)"></label></div>
-  <div class="behavior-explorer-grid">
-   <div class="behavior-explorer-list-panel"><div class="behavior-explorer-list-head"><strong>Comportamientos</strong><small id="behavior-explore-count">${visible.length} de ${count}</small></div><div id="behavior-explore-entries" class="behavior-explore-entries">${behaviorExploreEntries(x,visible,selected)}</div></div>
-   <div id="behavior-explore-inspector" class="behavior-explore-inspector">${behaviorExploreInspector(x,selected)}</div>
+  <div class="behavior-explorer-grid ${behaviorExploreDetailOpen?'':'is-detail-collapsed'}" id="behavior-explore-grid">
+   <div class="behavior-explorer-list-panel"><div class="behavior-explorer-list-head"><strong>Comportamientos</strong><div class="behavior-explore-list-tools"><small id="behavior-explore-count">${visible.length} de ${count}</small><button type="button" class="behavior-explore-show" id="behavior-explore-show" aria-controls="behavior-explore-inspector" aria-expanded="${behaviorExploreDetailOpen}" onclick="behaviorExploreSetDetailOpen(true)">Mostrar ficha <span aria-hidden="true">←</span></button></div></div><div id="behavior-explore-entries" class="behavior-explore-entries">${behaviorExploreEntries(x,visible,selected)}</div></div>
+   <div class="behavior-explore-backdrop" aria-hidden="true" onclick="behaviorExploreSetDetailOpen(false)"></div>
+   <div id="behavior-explore-inspector" class="behavior-explore-inspector" aria-hidden="${!behaviorExploreDetailOpen}">${behaviorExploreInspector(x,selected)}</div>
   </div>
  </section>
  ${behaviorExploreMatrix(x)}
