@@ -107,8 +107,120 @@ function behaviorDesignFormShow(){
  const el=document.getElementById('behavior-design-creator');
  if(el){el.open=true;el.scrollIntoView({behavior:'smooth',block:'start'});el.querySelector('input[name="name"]')?.focus()}
 }
+let behaviorExploreInitiative=null,behaviorExploreAudience='__all__',behaviorExploreSearch='',behaviorExploreSelected=null,behaviorExploreMatrixOpen=false;
+
+function behaviorExploreRef(b,i){return String(b.id||"index:"+i)}
+
+function behaviorExploreEnsure(x){
+ if(behaviorExploreInitiative!==String(x.id)){
+  behaviorExploreInitiative=String(x.id);
+  behaviorExploreAudience="__all__";
+  behaviorExploreSearch="";
+  behaviorExploreSelected=null;
+  behaviorExploreMatrixOpen=false;
+ }
+ if(behaviorExploreAudience!=="__all__"&&!(x.audiences||[]).some(a=>String(a.id)===String(behaviorExploreAudience)))behaviorExploreAudience="__all__";
+}
+
+function behaviorExploreMatchesAudience(b,audience){
+ return audience==="__all__"||b.scope!=="specific"||(b.audienceIds||[]).some(id=>String(id)===String(audience));
+}
+
+function behaviorExploreVisible(x){
+ behaviorExploreEnsure(x);
+ const term=behaviorExploreSearch.trim().toLocaleLowerCase("es");
+ return (x.behaviors||[]).map((b,i)=>({b,i,ref:behaviorExploreRef(b,i)})).filter(({b})=>
+  behaviorExploreMatchesAudience(b,behaviorExploreAudience)&&
+  (!term||[b.name,b.description].some(v=>String(v||"").toLocaleLowerCase("es").includes(term)))
+ );
+}
+
+function behaviorExploreSelectedRecord(x,visible){
+ if(!visible.length){behaviorExploreSelected=null;return null}
+ const selection=visible.find(row=>row.ref===behaviorExploreSelected)||visible[0];
+ behaviorExploreSelected=selection.ref;
+ return selection;
+}
+
+function behaviorExploreEntries(x,visible,selected){
+ return visible.length?visible.map(({b,i,ref})=>{
+  const n=(x.indicators||[]).filter(ind=>indicatorHasBehavior(x,ind,b)).length;
+  return `<button type="button" class="behavior-explore-entry ${selected&&selected.ref===ref?'is-active':''}" data-ref="${safe(ref)}" aria-pressed="${!!selected&&selected.ref===ref}" onclick="behaviorExploreSelect(this.dataset.ref)">
+    <span class="behavior-explore-entry-title">${safe(b.name||"Sin título")}</span>
+    <span class="behavior-explore-entry-foot">${behaviorAudienceLabel(x,b)}<span aria-hidden="true">·</span>${n} ${n===1?'indicador':'indicadores'}</span>
+  </button>`;
+ }).join(""):`<div class="behavior-explore-no-results">No se encontraron comportamientos. Prueba otra audiencia o búsqueda.</div>`;
+}
+
+function behaviorExploreInspector(x,selection){
+ if(!selection)return `<div class="behavior-explore-inspector-empty"><span aria-hidden="true">◎</span><strong>Selecciona un comportamiento</strong><p>Cuando elijas uno, verás sus audiencias, indicadores y opciones de edición.</p></div>`;
+ const {b,i}=selection;
+ const linked=(x.indicators||[]).filter(ind=>indicatorHasBehavior(x,ind,b));
+ return `<div class="behavior-registered behavior-explore-detail">
+ <div class="behavior-explore-detail-top"><span class="behavior-explore-kicker">COMPORTAMIENTO SELECCIONADO</span><span class="behavior-explore-detail-number">${i+1} de ${(x.behaviors||[]).length}</span></div>
+ <h3>${safe(b.name||"Sin título")}</h3>
+ ${b.description?`<p class="behavior-explore-description">${safe(b.description)}</p>`:""}
+ <div class="behavior-explore-detail-meta">
+  <div><span>Audiencias</span><strong>${behaviorAudienceLabel(x,b)}</strong></div>
+  <div><span>Indicadores asociados</span><strong>${linked.length}</strong></div>
+ </div>
+ <div class="behavior-explore-indicators"><strong>Indicadores vinculados</strong>${linked.length?`<div class="behavior-explore-indicator-tags">${linked.map(ind=>`<span title="${safe(ind.type||'Sin tipo')}">${safe(ind.name)}</span>`).join("")}</div>`:`<p class="muted">Sin indicadores vinculados por ahora.</p>`}</div>
+ ${behaviorEditForm(x,b,i)}
+ <div class="behavior-explore-detail-actions"><button type="button" class="primary" onclick="editBehavior(${i})">Editar comportamiento</button><button type="button" class="secondary" onclick="removeBehavior(${i})">Eliminar</button></div>
+ </div>`;
+}
+
+function behaviorExploreRefresh(){
+ const x=current();if(!x)return;
+ const visible=behaviorExploreVisible(x),selected=behaviorExploreSelectedRecord(x,visible);
+ const list=document.getElementById("behavior-explore-entries");
+ const inspector=document.getElementById("behavior-explore-inspector");
+ const count=document.getElementById("behavior-explore-count");
+ if(list)list.innerHTML=behaviorExploreEntries(x,visible,selected);
+ if(inspector)inspector.innerHTML=behaviorExploreInspector(x,selected);
+ if(count)count.textContent=visible.length+" de "+(x.behaviors||[]).length;
+}
+
+function behaviorExploreSelect(ref){behaviorExploreSelected=String(ref);behaviorExploreRefresh()}
+
+function behaviorExploreSetAudience(ref){behaviorExploreAudience=String(ref);behaviorExploreRefresh()}
+
+function behaviorExploreSetSearch(value){behaviorExploreSearch=String(value||"");behaviorExploreRefresh()}
+
+function behaviorExploreFromMatrix(ref){
+ behaviorExploreAudience="__all__";
+ behaviorExploreSearch="";
+ behaviorExploreSelected=String(ref);
+ const audience=document.getElementById("behavior-explore-audience");
+ const search=document.getElementById("behavior-explore-search");
+ if(audience)audience.value="__all__";
+ if(search)search.value="";
+ behaviorExploreRefresh();
+ document.getElementById("behavior-explore-browser")?.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function behaviorExploreMatrix(x){
+ const audiences=x.audiences||[],rows=x.behaviors||[];
+ const tableRows=rows.map((b,i)=>{
+  const general=b.scope!=="specific";
+  const ref=behaviorExploreRef(b,i);
+  const cell=(on,label)=>`<td class="${on?'behavior-matrix-yes':'behavior-matrix-no'}"><span aria-label="${safe(label)}">${on?'✓':'—'}</span></td>`;
+  return `<tr><th scope="row"><button type="button" title="${safe(b.name||'Comportamiento')}" data-ref="${safe(ref)}" onclick="behaviorExploreFromMatrix(this.dataset.ref)">${safe(b.name||'Sin título')}</button></th>
+   ${cell(general,general?'Aplica a todas las audiencias':'Solo a las audiencias seleccionadas')}
+   ${audiences.map(a=>{const applies=general||(b.audienceIds||[]).some(id=>String(id)===String(a.id));return cell(applies,applies?'Aplica a '+a.name:'No asignado a '+a.name)}).join("")}
+  </tr>`;
+ }).join("");
+ return `<details class="panel behavior-matrix-panel" id="behavior-design-matrix" ${behaviorExploreMatrixOpen?'open':''}>
+ <summary onclick="behaviorExploreMatrixOpen=!this.parentElement.open"><span class="behavior-matrix-glyph" aria-hidden="true">▦</span><span class="behavior-matrix-summary-text"><strong>Matriz de cobertura</strong><small>Consulta qué comportamientos corresponden a cada audiencia. Despliega solo cuando la necesites.</small></span><span class="behavior-design-chevron" aria-hidden="true">⌄</span></summary>
+ <div class="behavior-matrix-body">${rows.length?`<div class="behavior-matrix-scroll"><table><thead><tr><th scope="col">Comportamiento</th><th scope="col">General</th>${audiences.map(a=>`<th scope="col" title="${safe(a.name)}">${safe(a.name)}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></div>`:`<p class="muted">No hay comportamientos registrados.</p>`}
+ <p class="behavior-matrix-footnote">✓ indica que el comportamiento aplica a esa audiencia, no que ya haya sido adoptado. «General» significa todas las audiencias, incluidas las futuras. Un comportamiento compartido sigue siendo un único registro.</p>
+ </div></details>`;
+}
+
 function behaviorDesignPage(x){
  const expanded=behaviorDesignFormState(x),count=(x.behaviors||[]).length;
+ behaviorExploreEnsure(x);
+ const visible=behaviorExploreVisible(x),selected=behaviorExploreSelectedRecord(x,visible);
  return `<div class="behavior-design-layout">
  <details class="panel behavior-create-panel" id="behavior-design-creator" ${expanded?'open':''}>
   <summary onclick="behaviorDesignFormToggle(this.parentElement)"><span class="behavior-create-icon" aria-hidden="true">＋</span><span class="behavior-create-summary-text"><strong>${count?'Crear otro comportamiento':'Crear primer comportamiento'}</strong><small>Empieza por una acción observable. Las demás opciones son voluntarias.</small></span><span class="behavior-design-chevron" aria-hidden="true">⌄</span></summary>
@@ -141,9 +253,18 @@ function behaviorDesignPage(x){
    </form>
   </div>
  </details>
- <section class="panel behavior-design-list">
-  <div class="behavior-design-list-header"><div><h2>Comportamientos registrados <span class="behavior-design-count">${count}</span></h2><p class="muted">Selecciona un comportamiento para ver sus detalles o editarlo.</p></div><button type="button" class="secondary" onclick="go('Gestión de audiencias')">Gestionar audiencias</button></div>
-  <div class="behavior-design-rows">${count?x.behaviors.map((b,i)=>behaviorRegisteredCard(x,b,i)).join(''):'<div class="behavior-design-empty"><strong>Aún no hay comportamientos.</strong><p>Registra una acción observable para comenzar.</p></div>'}</div>
+ <section class="panel behavior-explorer" id="behavior-explore-browser">
+  <div class="behavior-explorer-header"><div><h2>Explorar comportamientos <span class="behavior-design-count">${count}</span></h2><p class="muted">Selecciona una audiencia y abre la ficha de cada comportamiento.</p></div><button type="button" class="secondary" onclick="go('Gestión de audiencias')">Gestionar audiencias</button></div>
+  <div class="behavior-explorer-controls"><label>Audiencia<select id="behavior-explore-audience" aria-label="Filtrar por audiencia" onchange="behaviorExploreSetAudience(this.value)">
+   <option value="__all__" ${behaviorExploreAudience==='__all__'?'selected':''}>Todas las audiencias</option>
+   ${(x.audiences||[]).map(a=>`<option value="${safe(a.id)}" ${String(a.id)===behaviorExploreAudience?'selected':''}>${safe(a.name)}</option>`).join("")}
+  </select></label>
+  <label>Buscar comportamiento<input id="behavior-explore-search" type="search" autocomplete="off" value="${safe(behaviorExploreSearch)}" placeholder="Buscar por nombre o descripción" oninput="behaviorExploreSetSearch(this.value)"></label></div>
+  <div class="behavior-explorer-grid">
+   <div class="behavior-explorer-list-panel"><div class="behavior-explorer-list-head"><strong>Comportamientos</strong><small id="behavior-explore-count">${visible.length} de ${count}</small></div><div id="behavior-explore-entries" class="behavior-explore-entries">${behaviorExploreEntries(x,visible,selected)}</div></div>
+   <div id="behavior-explore-inspector" class="behavior-explore-inspector">${behaviorExploreInspector(x,selected)}</div>
+  </div>
  </section>
+ ${behaviorExploreMatrix(x)}
  </div>`;
 }
