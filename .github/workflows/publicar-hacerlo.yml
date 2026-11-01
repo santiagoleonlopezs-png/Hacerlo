@@ -53,7 +53,10 @@ jobs:
         with:
           path: _site
           include-hidden-files: true
+          name: github-pages-${{ github.run_attempt }}
 
       - name: Publicar
         id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
