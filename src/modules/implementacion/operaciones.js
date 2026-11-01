@@ -112,6 +112,7 @@ let behaviorExploreInitiative=null,behaviorExploreAudience='__all__',behaviorExp
 function behaviorExploreRef(b,i){return String(b.id||"index:"+i)}
 
 function behaviorExploreEnsure(x){
+ ensureBehaviorIds(x);
  if(behaviorExploreInitiative!==String(x.id)){
   behaviorExploreInitiative=String(x.id);
   behaviorExploreAudience="__all__";
