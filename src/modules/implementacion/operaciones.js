@@ -155,7 +155,7 @@ function behaviorExploreEntries(x,visible,selected){
 }
 
 function behaviorExploreInspector(x,selection){
- if(!selection)return `<div class="behavior-explore-inspector-empty"><span aria-hidden="true">◎</span><strong>Selecciona un comportamiento</strong><p>Cuando elijas uno, verás sus audiencias, indicadores y opciones de edición.</p></div>`;
+ if(!selection)return `<div class="behavior-explore-inspector-empty"><span aria-hidden="true">◎</span><strong>Selecciona un comportamiento</strong><p>Cuando elijas uno, verás sus audiencias, indicadores y opciones de edición.</p><button type="button" class="behavior-explore-hide" id="behavior-explore-hide" onclick="behaviorExploreSetDetailOpen(false)">Ocultar ficha <span aria-hidden="true">→</span></button></div>`;
  const {b,i}=selection;
  const linked=(x.indicators||[]).filter(ind=>indicatorHasBehavior(x,ind,b));
  return `<div class="behavior-registered behavior-explore-detail">
@@ -183,11 +183,8 @@ function behaviorExploreApplyDetailVisibility(){
 function behaviorExploreSetDetailOpen(open){
  behaviorExploreDetailOpen=!!open;
  behaviorExploreApplyDetailVisibility();
- if(behaviorExploreDetailOpen&&typeof window!=='undefined'&&window.matchMedia?.('(max-width: 710px)').matches){
-  document.getElementById('behavior-explore-hide')?.focus({preventScroll:true});
- }else if(!behaviorExploreDetailOpen&&typeof window!=='undefined'&&window.matchMedia?.('(max-width: 710px)').matches){
-  document.getElementById('behavior-explore-show')?.focus({preventScroll:true});
- }
+ if(!behaviorExploreDetailOpen)document.getElementById('behavior-explore-show')?.focus({preventScroll:true});
+ else document.getElementById('behavior-explore-hide')?.focus({preventScroll:true});
 }
 function behaviorExploreRefresh(){
  const x=current();if(!x)return;
@@ -201,7 +198,13 @@ function behaviorExploreRefresh(){
  behaviorExploreApplyDetailVisibility();
 }
 
-function behaviorExploreSelect(ref){behaviorExploreSelected=String(ref);behaviorExploreDetailOpen=true;behaviorExploreRefresh()}
+function behaviorExploreSelect(ref){
+ behaviorExploreSelected=String(ref);
+ behaviorExploreDetailOpen=true;
+ behaviorExploreRefresh();
+ if(typeof window!=='undefined'&&window.matchMedia?.('(max-width: 710px)').matches)
+  document.getElementById('behavior-explore-hide')?.focus({preventScroll:true});
+}
 
 function behaviorExploreSetAudience(ref){behaviorExploreAudience=String(ref);behaviorExploreRefresh()}
 
@@ -217,7 +220,9 @@ function behaviorExploreFromMatrix(ref){
  if(audience)audience.value="__all__";
  if(search)search.value="";
  behaviorExploreRefresh();
- document.getElementById("behavior-explore-browser")?.scrollIntoView({behavior:"smooth",block:"start"});
+ if(typeof window!=='undefined'&&window.matchMedia?.('(max-width: 710px)').matches)
+  document.getElementById('behavior-explore-hide')?.focus({preventScroll:true});
+ else document.getElementById("behavior-explore-browser")?.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function behaviorExploreMatrix(x){
