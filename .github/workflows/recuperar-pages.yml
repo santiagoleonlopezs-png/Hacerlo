@@ -1,0 +1,36 @@
+name: Recuperar despliegue bloqueado de HACERLO
+on:
+  push:
+    branches: [hacerlo-v2-modular]
+    paths:
+      - '.github/workflows/recuperar-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+
+jobs:
+  recuperar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar y cancelar únicamente el despliegue atascado
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployment="a3523eacffc25972f9c3e7d8a883217d2a230323"
+          echo "Revisando despliegue específico ${deployment}..."
+          if ! response=$(gh api "repos/${GH_REPO}/pages/deployments/${deployment}" --jq '.status' 2>&1); then
+            echo "No fue posible consultar el despliegue: ${response}"
+            exit 1
+          fi
+          echo "Estado: ${response}"
+          if [[ "${response}" == "succeed" || "${response}" == "cancelled" || "${response}" == "canceled" || "${response}" == "failed" ]]; then
+            echo "El despliegue ya terminó; no se cancela nada."
+          else
+            gh api -X POST "repos/${GH_REPO}/pages/deployments/${deployment}/cancel"
+            echo "Se solicitó cancelar el despliegue bloqueado."
+          fi
