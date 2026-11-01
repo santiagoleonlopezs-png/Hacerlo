@@ -2,7 +2,7 @@
 const eeBaseRender=render;
 render=function(){
  eeBaseRender();const x=current();if(!x)return;
- if(['Diagnóstico','Indicadores','Analítica','Inteligencia integrada'].includes(page))$('app').insertAdjacentHTML('beforeend',eeSummaryPanel(x));
+ if(['Indicadores','Analítica','Inteligencia integrada'].includes(page))$('app').insertAdjacentHTML('beforeend',eeSummaryPanel(x));
  if(page==='Inicio'&&db.initiatives.some(i=>(i.surveyPriorities||[]).length))$('app').insertAdjacentHTML('beforeend',`<section class="panel"><h2>Señales de encuestas para priorización</h2>${db.initiatives.filter(i=>(i.surveyPriorities||[]).length).map(i=>`<p><b>${safe(i.name)}</b>: ${i.surveyPriorities.map(s=>safe(s.label)+' · '+safe(s.reason)+' (n='+s.n+')').join('; ')}</p>`).join('')}<p class="muted">Las señales complementan la matriz de impacto y esfuerzo; no cambian las evaluaciones manuales.</p></section>`);
 };
 const eeBaseAIPayload=initiativeAIPayload;
