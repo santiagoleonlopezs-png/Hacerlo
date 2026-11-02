@@ -53,3 +53,30 @@
 .pf-create-toggle:focus-visible{outline:2px solid #62f2df;outline-offset:5px}
 @media(max-width:1190px){.pf-layout.pf-compact{grid-template-columns:1fr}.pf-create:not(.is-open){position:static}}
 @media(max-width:540px){.pf-create:not(.is-open){padding:13px 14px}.pf-create-toggle-label{font-size:9px;padding:5px 7px}}
+
+/* HACERLO V2.18 · Vistas de portafolio y consolidado sin duplicar Inicio. */
+.pf-main-tabs{display:inline-flex;flex-wrap:wrap;gap:5px;margin:3px 0 20px;padding:5px;border:1px solid #315e70;border-radius:12px;background:rgba(5,27,44,.66)}
+.pf-main-tabs button{font-size:12px;font-weight:750;border:1px solid transparent;padding:11px 18px;border-radius:9px;color:#a9c9d7;background:transparent}
+.pf-main-tabs button.active{background:linear-gradient(120deg,#126d76,#0a5865);color:#ebffff;border-color:#2bacae;box-shadow:0 2px 13px rgba(22,199,181,.16)}
+.pf-list-modes{display:flex;gap:5px;margin:0 0 12px}
+.pf-list-modes button{border:1px solid #30596e;border-radius:8px;padding:8px 12px;background:#0b2b40;color:#a6c4d1;font-size:10px;font-weight:700}
+.pf-list-modes button.active{background:#184b59;color:#b6fff0;border-color:#38afa9}
+.pf-table-wrap{width:100%;overflow:auto;border:1px solid #2a6071;border-radius:15px;background:linear-gradient(140deg,#0f2d43,#082034)}
+.pf-table{border-collapse:collapse;min-width:865px;width:100%;font-size:11px;line-height:1.5}
+.pf-table thead{background:#102f45}.pf-table th,.pf-table td{padding:13px 10px;text-align:left;border-bottom:1px solid #254b60;white-space:nowrap}
+.pf-table th{font-size:10px;color:#8ed8d5;font-weight:750}
+.pf-table tbody th{color:#e8f5fb;white-space:normal;min-width:150px}.pf-table tbody th small{display:block;font-size:9px;color:#8eaebe;margin-top:4px;font-weight:450}
+.pf-table tbody tr:last-child th,.pf-table tbody tr:last-child td{border-bottom:0}
+.pf-table tbody tr:hover{background:rgba(31,111,132,.13)}.pf-table tbody tr[hidden]{display:none!important}
+.pf-table-priority{font-size:10px;color:#b8dcea;white-space:normal;display:inline-block;min-width:105px}
+.pf-table-open{background:rgba(11,107,118,.3);border:1px solid #31b3b1;border-radius:8px;color:#d9fbf7;font-size:10px;font-weight:750;padding:8px 10px}
+.pf-priority-view{max-width:100%}.pf-priority-view>.panel{background:linear-gradient(128deg,#0e3047,#082236);border-color:#316b7f;padding:22px;border-radius:16px}
+.pf-priority-view>.panel>div.flex{margin-bottom:18px}.pf-priority-view>.panel h2{font-size:18px;margin-bottom:7px}
+.pf-priority-view>.panel p{font-size:11px;line-height:1.6;max-width:800px}
+.pf-priority-view .priority-grid{gap:12px}
+.pf-priority-view .priority-cell{background:linear-gradient(140deg,#12384b,#0a273d);padding:19px;border-color:#336d81;min-height:185px}
+.pf-priority-view .priority-cell>strong{font-size:14px;color:#edfaff}
+.pf-priority-view .priority-item{background:#17465b;border:1px solid rgba(99,167,177,.22);border-radius:9px;padding:11px}
+.pf-priority-view .priority-item b{font-size:12px}.pf-priority-view .priority-item small{font-size:10px;color:#b6d1df}
+.pf-priority-view .priority-item:focus-visible{outline:2px solid #64ebdc;outline-offset:2px}
+@media(max-width:740px){.pf-main-tabs{display:flex;width:100%}.pf-main-tabs button{flex:1;padding:10px 8px}.pf-priority-view>.panel{padding:14px}.pf-priority-view .priority-cell{padding:14px}}

@@ -1,6 +1,7 @@
 /* HACERLO 2.17 — Centro de iniciativas
    Una nueva experiencia visual sin alterar el modelo de datos, los banners o RDAIM. */
 let portfolioFilter='all',portfolioQuery='';
+let portfolioView='initiatives',portfolioListMode='cards';
 let portfolioCreateOpen=false;
 const pfShapes={
  flag:'<path d="M4 22V4m0 1c5-4 10 4 16 0v12c-6 4-11-4-16 0"/>',
@@ -98,6 +99,30 @@ function pfCard(i,idx){
     (actions.length?'<div class="pf-actions-track" role="progressbar" aria-label="Acciones completadas" aria-valuenow="'+done+'" aria-valuemin="0" aria-valuemax="'+actions.length+'"><i style="width:'+ratio+'%"></i></div>':'')+
    '</div><details class="pf-edit"><summary>Editar prioridad <b aria-hidden="true">···</b></summary><div class="pf-edit-inner">'+priorityEditor(i)+'</div></details></div></article>';
 }
+
+function pfSwitchView(next){
+ if(!['initiatives','priority'].includes(next))return;
+ portfolioView=next;render();
+}
+function pfSwitchListMode(next){
+ if(!['cards','table'].includes(next))return;
+ portfolioListMode=next;render();
+}
+function pfConsolidatedTable(items){
+ return '<div class="pf-table-wrap"><table class="pf-table"><thead><tr>'+
+ ['Iniciativa','Etapa RDAIM','Prioridad / ruta','Audiencias','Comportamientos','Indicadores','Pendientes','En ejecución','Completadas','Abrir'].map(h=>'<th scope="col">'+h+'</th>').join('')+
+ '</tr></thead><tbody>'+
+ items.map(i=>{
+  const status=(i.actions||[]),stage=Math.min(4,Math.max(0,Number.isFinite(Number(i.phase))?Math.trunc(Number(i.phase)):0)),p=priority(i);
+  const value=s=>status.filter(x=>normalizedStatus(x.status)===s).length;
+  return '<tr data-pf-id="'+safe(String(i.id))+'"'+(pfMatches(i)?'':' hidden')+'>'+
+   '<th scope="row"><strong>'+safe(i.name)+'</strong><small>'+safe(i.scope==='outside'?'Outside':'Inside')+'</small></th>'+
+   '<td>'+safe(phases[stage][1])+'</td><td><span class="pf-table-priority">'+safe(p.label)+'</span></td>'+
+   '<td>'+((i.audiences||[]).length)+'</td><td>'+((i.behaviors||[]).length)+'</td><td>'+((i.indicators||[]).length)+'</td>'+
+   ['Pendiente','En ejecución','Completada'].map(s=>'<td>'+value(s)+'</td>').join('')+
+   '<td><button type="button" class="pf-table-open" onclick="pfOpen(this)" aria-label="Abrir '+safe(i.name)+'">Abrir ↗</button></td></tr>';
+ }).join('')+'</tbody></table></div>';
+}
 function renderInitiativesHome(){
  const initiatives=db.initiatives||[],running=initiatives.filter(pfRunning).length,strategic=initiatives.filter(pfStrategic).length;
  const pending=initiatives.filter(pfPending).length;
@@ -115,14 +140,22 @@ function renderInitiativesHome(){
   '<p>Diseña, prioriza y acompaña iniciativas que transforman comportamientos.</p></div>'+
   '<div class="pf-heading-aside">'+pfIcon('target')+'<div><strong>Del comportamiento al resultado</strong><small>Una vista clara para decidir y actuar.</small></div></div></div>'+
   '<div class="pf-metrics">'+metrics.map(([icon,label,value,hint])=>'<div class="pf-metric"><div class="pf-metric-icon">'+pfIcon(icon)+'</div><div><span>'+label+'</span><strong>'+value+'</strong><small>'+hint+'</small></div></div>').join('')+'</div>'+
-  '<div class="pf-layout'+(portfolioCreateOpen?'':' pf-compact')+'" id="pf-layout"><section class="pf-initiatives" aria-label="Mis iniciativas">'+
+  '<nav class="pf-main-tabs" aria-label="Vistas de Iniciativas">'+
+  '<button type="button" class="'+(portfolioView==='initiatives'?'active':'')+'" aria-current="'+(portfolioView==='initiatives'?'page':'false')+'" onclick="pfSwitchView(\'initiatives\')">Mis iniciativas</button>'+
+  '<button type="button" class="'+(portfolioView==='priority'?'active':'')+'" aria-current="'+(portfolioView==='priority'?'page':'false')+'" onclick="pfSwitchView(\'priority\')">Priorización</button></nav>'+
+ (portfolioView==='priority'?'<section class="pf-priority-view" aria-label="Matriz de priorización">'+portfolioPriority(true)+'</section>':
+ '<div class="pf-layout'+(portfolioCreateOpen?'':' pf-compact')+'" id="pf-layout"><section class="pf-initiatives" aria-label="Mis iniciativas">'+
    '<div class="pf-section-heading"><div><h2>Mis iniciativas</h2><p>Accede a tus proyectos y revisa su priorización.</p></div><button type="button" class="pf-jump" onclick="pfToggleCreate(true)">'+pfIcon('plus')+'Nueva iniciativa</button></div>'+
-   '<div class="pf-toolbar"><div class="pf-filters" role="group" aria-label="Filtrar iniciativas">'+
+   '<div class="pf-list-modes" role="group" aria-label="Vista de iniciativas">'+
+  '<button type="button" aria-pressed="'+(portfolioListMode==='cards')+'" class="'+(portfolioListMode==='cards'?'active':'')+'" onclick="pfSwitchListMode(\'cards\')">Tarjetas</button>'+
+  '<button type="button" aria-pressed="'+(portfolioListMode==='table')+'" class="'+(portfolioListMode==='table'?'active':'')+'" onclick="pfSwitchListMode(\'table\')">Consolidado</button></div>'+
+ '<div class="pf-toolbar"><div class="pf-filters" role="group" aria-label="Filtrar iniciativas">'+
     categories.map(([key,label,n])=>'<button type="button" data-pf-filter="'+key+'" aria-pressed="'+(key===portfolioFilter)+'" class="'+(key===portfolioFilter?'active':'')+'" onclick="pfSetFilter(\''+key+'\')">'+label+' <span>'+n+'</span></button>').join('')+'</div>'+
     '<label class="pf-search">'+pfIcon('search')+'<span class="pf-sr-only">Buscar iniciativa</span>'+
     '<input type="search" id="pf-search" value="'+safe(portfolioQuery)+'" placeholder="Buscar iniciativa…" oninput="pfApply()" autocomplete="off"></label></div>'+
    '<p class="pf-count" id="pf-count" role="status">'+showing+' '+(showing===1?'iniciativa':'iniciativas')+'</p>'+
-   '<div class="pf-cards" id="pf-list">'+initiatives.map(pfCard).join('')+'</div>'+
+   (portfolioListMode==='cards'?'<div class="pf-cards" id="pf-list">'+initiatives.map(pfCard).join('')+'</div>':
+ '<div id="pf-list">'+pfConsolidatedTable(initiatives)+'</div>')+
    '<div class="pf-empty" id="pf-empty"'+(showing?' hidden':'')+'>'+pfIcon('search')+
     '<strong>'+(initiatives.length?'No hay iniciativas con ese criterio.':'Aún no hay iniciativas.')+'</strong>'+
     '<p>'+(initiatives.length?'Prueba con otra búsqueda o filtro.':'Empieza creando tu primera iniciativa.')+'</p>'+
@@ -141,5 +174,5 @@ function renderInitiativesHome(){
     '<div class="pf-form-pair"><label>Impacto (1–5)<select name="impact"><option value="">Sin evaluar</option>'+[1,2,3,4,5].map(n=>'<option value="'+n+'">'+n+'</option>').join('')+'</select></label>'+
     '<label>Esfuerzo (1–5)<select name="effort"><option value="">Sin evaluar</option>'+[1,2,3,4,5].map(n=>'<option value="'+n+'">'+n+'</option>').join('')+'</select></label></div>'+
     '<p class="pf-form-helper">La prioridad puede definirse o editarse después.</p>'+
-    '<button class="pf-submit" type="submit">Crear iniciativa '+pfIcon('arrow')+'</button></form></section></div></section>';
+    '<button class="pf-submit" type="submit">Crear iniciativa '+pfIcon('arrow')+'</button></form></section></div>')+'</section>';
 }

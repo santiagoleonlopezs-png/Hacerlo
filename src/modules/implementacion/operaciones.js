@@ -1,4 +1,30 @@
-function portfolioMetricSummary(){if(!db.initiatives.length)return '';return `<section class="panel"><h2>Seguimiento de indicadores · Portafolio</h2><p class="muted">Últimas mediciones por iniciativa. No se promedian indicadores con escalas distintas.</p><div style="overflow:auto"><table><thead><tr><th>Iniciativa</th><th>INS personas</th><th>INS proceso</th><th>CNPS</th></tr></thead><tbody>${db.initiatives.map(i=>`<tr><td>${safe(i.name)}</td>${['ins_personas','ins_proceso','cnps'].map(k=>{let h=((i.metricHistory||{})[k]||[]),v=typeof eeHomeMetric==='function'?eeHomeMetric(i,k):null;v=v||(h.length?h[h.length-1]:null);return `<td>${v?(v.value===null?'—':safe(v.value))+'<br><small class="muted">'+safe(v.note||v.date||'')+'</small>':'—'}</td>`}).join('')}</tr>`).join('')}</tbody></table></div></section>`}
+/* Seguimiento del portafolio: fuente única de mediciones dentro de Medición. */
+function openPortfolioMetric(button){
+ const row=button.closest('[data-portfolio-metric-id]');
+ const item=db.initiatives.find(i=>String(i.id)===row?.getAttribute('data-portfolio-metric-id'));
+ if(!item)return;
+ db.selected=item.id;save();go('Analítica');
+}
+function portfolioMetricSummary(){
+ const all=db.initiatives||[];
+ if(!all.length)return '<section class="panel hcx-portfolio-metrics"><h2>Seguimiento de indicadores · Portafolio</h2><p class="muted">Aún no hay iniciativas con mediciones.</p><button class="secondary" type="button" onclick="go(\'Iniciativas\')">Ir a iniciativas</button></section>';
+ const labels=[['ins_personas','INS personas'],['ins_proceso','INS proceso'],['cnps','CNPS']];
+ const value=(i,k)=>{
+   const h=((i.metricHistory||{})[k]||[]);
+   let v=typeof eeHomeMetric==='function'?eeHomeMetric(i,k):null;
+   v=v||(h.length?h[h.length-1]:null);
+   if(!v||v.value===null||v.value===undefined||v.value==='')return '<span class="hcx-metric-missing">Sin registro</span>';
+   return '<strong>'+safe(v.value)+'</strong>'+(v.note||v.date?'<small>'+safe(v.note||v.date)+'</small>':'');
+ };
+ return '<section class="panel hcx-portfolio-metrics"><div class="hcx-portfolio-metric-head"><div><span class="ci-eyebrow">MEDICIÓN · PORTAFOLIO</span>'+
+  '<h2>Seguimiento de indicadores</h2><p class="muted">Última medición disponible por iniciativa. Abre una iniciativa para ver su historial y tendencias.</p></div></div>'+
+  '<div class="hcx-portfolio-metric-table"><table><thead><tr><th scope="col">Iniciativa</th>'+
+   labels.map(([,label])=>'<th scope="col">'+label+'</th>').join('')+'<th scope="col">Acción</th></tr></thead><tbody>'+
+  all.map(i=>'<tr data-portfolio-metric-id="'+safe(String(i.id))+'"><th scope="row">'+safe(i.name)+'</th>'+
+   labels.map(([k])=>'<td>'+value(i,k)+'</td>').join('')+
+   '<td><button type="button" class="secondary" onclick="openPortfolioMetric(this)">Ver detalle ↗</button></td></tr>').join('')+
+  '</tbody></table></div><p class="notice">Los valores mantienen sus escalas originales; no se calcula un promedio entre INS y CNPS.</p></section>';
+}
 const coreMetricNames={ins_personas:'INS personas',ins_proceso:'INS proceso',cnps:'CNPS'};
 function metricCard(x,label,key){let history=(x.metricHistory||{})[key]||[],latest=(typeof eeHomeMetric==='function'?eeHomeMetric(x,key):null)||(history.length?history[history.length-1]:null);return `<section class="panel"><h3>${label}</h3><div class="metric">${safe(latest?(latest.value??'—'):(x.metrics[key]??'—'))}</div><small class="muted">${safe(x.metrics[key+'_definition']||'Escala por definir')}</small><p class="subtle">${latest?safe(latest.note||('Última medición: '+latest.date)):'Sin historial de mediciones'}</p><button class="primary" onclick="openMetricEntry('${key}')">+ Registrar medición</button><button class="secondary" onclick="toggleMetricHistory('${key}')">Ver historial y tendencia</button><div id="metric-history-${key}" class="hide">${metricHistoryView(x,key)}</div></section>`}
 function openMetricEntry(key){let x=current(),form=$('metric-entry');if(!form){document.body.insertAdjacentHTML('beforeend',`<div id="metric-entry" class="metric-overlay"><form class="metric-dialog" onsubmit="recordCoreMetric(event)"><div class="flex" style="justify-content:space-between"><h2 id="metric-title">Registrar medición</h2><button type="button" class="secondary" onclick="closeMetricEntry()">Cerrar ×</button></div><input name="key" type="hidden"><label>Fecha<input name="date" type="date" required></label><label>Valor<input name="value" type="number" step="any" required></label><label>Período (opcional)<input name="period" placeholder="Ej. Octubre 2026"></label><label>Definición y escala<input name="definition" placeholder="Ej. Porcentaje, escala de -100 a 100"></label><label>Observaciones<textarea name="notes" placeholder="Contexto de esta medición"></textarea></label><button class="primary" type="submit">Guardar medición</button></form></div>`);form=$('metric-entry')}let f=form.querySelector('form');f.elements.key.value=key;f.elements.date.value=new Date().toISOString().slice(0,10);f.elements.value.value='';f.elements.period.value='';f.elements.notes.value='';f.elements.definition.value=x.metrics[key+'_definition']||'';$('metric-title').textContent='Registrar · '+coreMetricNames[key];form.style.display='flex'}
