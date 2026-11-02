@@ -35,6 +35,8 @@ jobs:
           test -f src/core/app.js
           test -f src/modules/encuestas/encuestas.js
           node --check src/core/app.js
+          node --check src/core/iniciativas-home.js
+          node tests/portfolio_home_v2.cjs
           node --check src/modules/encuestas/encuestas.js
           node --check src/modules/resultados/diagnostico.js
           node tests/ee_v2_compact_selector.cjs
