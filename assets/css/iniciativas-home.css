@@ -36,3 +36,20 @@
 @media(max-width:790px){.pf-heading{align-items:stretch;flex-direction:column;padding:20px}.pf-heading-aside{min-width:0;max-width:none}.pf-card-info{grid-template-columns:1fr 1fr}.pf-open{grid-column:1/-1;justify-self:stretch}.pf-search{max-width:none;flex-basis:100%}}
 @media(max-width:540px){.pf-metrics{gap:8px}.pf-metric{min-height:100px;align-items:flex-start;flex-direction:column;gap:8px;padding:12px}.pf-metric-icon{width:31px;height:31px}.pf-metric-icon svg{width:18px;height:18px}.pf-metric strong{font-size:22px}.pf-heading{padding:17px}.pf-card{padding:13px}.pf-card-top{flex-wrap:wrap}.pf-card-badges{max-width:none;width:100%;flex-direction:row;margin-left:54px;flex-wrap:wrap}.pf-card-info{grid-template-columns:1fr}.pf-stage{border-left:0;border-top:1px solid #2a546a;padding:11px 0 0}.pf-open{grid-column:auto}.pf-section-heading{flex-wrap:wrap}.pf-filters button{padding:8px;font-size:10px}.pf-create{padding:17px}.pf-edit-inner .triple{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.pf-card{transition:none}.pf-card:hover{transform:none}}
+
+/* HACERLO V2.17.1 · Creación plegable para mantener el portafolio despejado. */
+.pf-layout.pf-compact{grid-template-columns:minmax(0,1fr) minmax(255px,320px)}
+.pf-create:not(.is-open){padding:15px 16px;box-shadow:inset 0 1px rgba(206,255,254,.045)}
+.pf-create-toggle{display:flex;width:100%;align-items:center;gap:12px;text-align:left;padding:0;margin:0;border:0;background:transparent;color:#ecfbff;border-radius:12px}
+.pf-create-toggle .pf-create-icon{transition:background .15s ease,transform .15s ease}
+.pf-create-toggle:hover .pf-create-icon{background:rgba(36,219,199,.3);transform:scale(1.04)}
+.pf-create-copy{display:grid;gap:4px;flex:1;min-width:0}
+.pf-create-copy strong{font-size:16px;letter-spacing:-.3px;line-height:1.25}
+.pf-create-copy small{color:#a9c9d5;font-size:10px;line-height:1.45}
+.pf-create-toggle-label{font-size:10px;color:#78dfd4;border:1px solid #367a82;border-radius:999px;padding:5px 9px;white-space:nowrap}
+.pf-create.is-open .pf-create-toggle{margin-bottom:20px}
+.pf-create.is-open .pf-create-copy strong{font-size:19px}
+.pf-form[hidden]{display:none!important}
+.pf-create-toggle:focus-visible{outline:2px solid #62f2df;outline-offset:5px}
+@media(max-width:1190px){.pf-layout.pf-compact{grid-template-columns:1fr}.pf-create:not(.is-open){position:static}}
+@media(max-width:540px){.pf-create:not(.is-open){padding:13px 14px}.pf-create-toggle-label{font-size:9px;padding:5px 7px}}

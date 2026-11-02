@@ -22,21 +22,43 @@ const markup=c.renderInitiativesHome();
 for(const word of ['Centro de iniciativas','Conectados para crecer','Cámara Contrata','End to end','310 personas','350 personas','660','En ejecución','Proyecto estratégico','Por evaluar','Abrir iniciativa','Editar prioridad','pf-create','pf-search','Sin evaluar'])assert.ok(markup.includes(word),'Falta '+word);
 for(const field of ['name','description','scope','population','createdAt','impact','effort'])assert.ok(markup.includes('name="'+field+'"'),'Campo existente '+field);
 assert.match(markup,/onsubmit="createInitiative\(event\)"/);
+assert.match(markup,/id="pf-create-form"[^>]* hidden/,'Formulario oculto por defecto');
+assert.match(markup,/id="pf-create-toggle"[^>]*aria-expanded="false"/,'Botón + plegado por defecto');
+assert.match(markup,/id="pf-layout"/);
+assert.match(markup,/class="pf-layout pf-compact"/,'Listado más amplio mientras el formulario está plegado');
+assert.match(markup,/onclick="pfToggleCreate\(true\)"/,'Nueva iniciativa abre el formulario');
+assert.match(css,/\.pf-form\[hidden\]\{display:none!important\}/,'El formulario oculto no ocupa espacio');
 assert.match(markup,/onclick="pfOpen\(this\)"/);
 assert.match(markup,/1 de 2 acciones completadas/,'Progreso de acciones basado en registros reales');
 assert.match(markup,/Sin acciones registradas/);
 assert.equal((markup.match(/class="pf-card"/g)||[]).length,3);
 assert.match(app,/if\(page==='Iniciativas'\)\{a.innerHTML=renderInitiativesHome\(\);return\}/);
-assert.match(html,/src\/core\/iniciativas-home\.js\?v=2\.17\.0/);
-assert.match(html,/assets\/css\/iniciativas-home\.css\?v=2\.17\.0/);
+assert.match(html,/src\/core\/iniciativas-home\.js\?v=2\.17\.1/);
+assert.match(html,/assets\/css\/iniciativas-home\.css\?v=2\.17\.1/);
 assert.ok(css.includes('.pf-layout')&&css.includes('.pf-card')&&css.includes('@media'));
 const cards=list.map(i=>({hidden:false,getAttribute:()=>String(i.id)}));
 const filterButtons=['all','running','strategic','pending'].map(k=>({key:k,attrs:{'data-pf-filter':k},classList:{toggle(){}},setAttribute(k,v){this.attrs[k]=v},getAttribute(k){return this.attrs[k]}}));
 const input={value:'',focus(){}},count={textContent:''},empty={hidden:false};
+let formFocused=false;
+const form={hidden:true,querySelector:()=>({focus(){formFocused=true}})};
+const layout={values:new Set(['pf-compact']),classList:{toggle(key,value){value?layout.values.add(key):layout.values.delete(key)}}};
+const panel={values:new Set(),scrollIntoView(){},classList:{toggle(key,value){value?panel.values.add(key):panel.values.delete(key)}}};
+const toggle={attrs:{},setAttribute(key,value){this.attrs[key]=value}};
+const formIcon={innerHTML:''},formHint={textContent:''};
 c.document={
- getElementById:id=>({'pf-search':input,'pf-count':count,'pf-empty':empty})[id]||null,
+ getElementById:id=>({'pf-search':input,'pf-count':count,'pf-empty':empty,'pf-create-form':form,'pf-create':panel,'pf-layout':layout,'pf-create-toggle':toggle,'pf-create-icon':formIcon,'pf-create-hint':formHint})[id]||null,
  querySelectorAll:sel=>sel.includes('[data-pf-id]')?cards:sel.includes('[data-pf-filter]')?filterButtons:[]
 };
+c.pfToggleCreate(true);
+assert.equal(form.hidden,false,'El + revela el formulario');
+assert.equal(toggle.attrs['aria-expanded'],'true');
+assert.ok(panel.values.has('is-open'));
+assert.ok(!layout.values.has('pf-compact'));
+assert.equal(formFocused,true,'El foco va al nombre');
+c.pfToggleCreate();
+assert.equal(form.hidden,true,'El botón puede ocultar el formulario');
+assert.equal(toggle.attrs['aria-expanded'],'false');
+assert.ok(layout.values.has('pf-compact'));
 c.pfSetFilter('strategic');
 assert.deepEqual(cards.map(i=>i.hidden),[false,true,false]);
 c.pfSetFilter('pending');

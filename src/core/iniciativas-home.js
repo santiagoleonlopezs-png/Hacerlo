@@ -1,6 +1,7 @@
 /* HACERLO 2.17 — Centro de iniciativas
    Una nueva experiencia visual sin alterar el modelo de datos, los banners o RDAIM. */
 let portfolioFilter='all',portfolioQuery='';
+let portfolioCreateOpen=false;
 const pfShapes={
  flag:'<path d="M4 22V4m0 1c5-4 10 4 16 0v12c-6 4-11-4-16 0"/>',
  activity:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
@@ -12,6 +13,7 @@ const pfShapes={
  pencil:'<path d="M4 21h16M6 17l10-10 3 3-10 10H6v-3ZM14 9l3 3"/>',
  search:'<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
  plus:'<path d="M12 5v14M5 12h14"/>',
+ minus:'<path d="M5 12h14"/>',
  arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
  check:'<path d="m4 12 5 5L20 6"/>',
  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
@@ -47,6 +49,23 @@ function pfSetFilter(filter){
    btn.classList.toggle('active',yes);btn.setAttribute('aria-pressed',String(yes));
  });
  pfApply();
+}
+function pfToggleCreate(force){
+ const next=typeof force==='boolean'?force:!portfolioCreateOpen;
+ portfolioCreateOpen=next;
+ const form=document.getElementById('pf-create-form'),container=document.getElementById('pf-create');
+ const layout=document.getElementById('pf-layout'),trigger=document.getElementById('pf-create-toggle');
+ const icon=document.getElementById('pf-create-icon'),hint=document.getElementById('pf-create-hint');
+ if(form)form.hidden=!next;
+ if(container)container.classList.toggle('is-open',next);
+ if(layout)layout.classList.toggle('pf-compact',!next);
+ if(trigger){trigger.setAttribute('aria-expanded',String(next));trigger.setAttribute('aria-label',next?'Ocultar formulario para nueva iniciativa':'Crear nueva iniciativa');}
+ if(icon)icon.innerHTML=pfIcon(next?'minus':'plus');
+ if(hint)hint.textContent=next?'Completa los datos para crearla.':'Pulsa + para añadir una iniciativa.';
+ if(next){
+   if(container&&typeof container.scrollIntoView==='function')container.scrollIntoView({behavior:'smooth',block:'nearest'});
+   const name=form?.querySelector('[name="name"]');if(name&&typeof name.focus==='function')name.focus({preventScroll:true});
+ }
 }
 function pfClear(){
  portfolioFilter='all';portfolioQuery='';
@@ -96,8 +115,8 @@ function renderInitiativesHome(){
   '<p>Diseña, prioriza y acompaña iniciativas que transforman comportamientos.</p></div>'+
   '<div class="pf-heading-aside">'+pfIcon('target')+'<div><strong>Del comportamiento al resultado</strong><small>Una vista clara para decidir y actuar.</small></div></div></div>'+
   '<div class="pf-metrics">'+metrics.map(([icon,label,value,hint])=>'<div class="pf-metric"><div class="pf-metric-icon">'+pfIcon(icon)+'</div><div><span>'+label+'</span><strong>'+value+'</strong><small>'+hint+'</small></div></div>').join('')+'</div>'+
-  '<div class="pf-layout"><section class="pf-initiatives" aria-label="Mis iniciativas">'+
-   '<div class="pf-section-heading"><div><h2>Mis iniciativas</h2><p>Accede a tus proyectos y revisa su priorización.</p></div><a href="#pf-create" class="pf-jump">'+pfIcon('plus')+'Nueva iniciativa</a></div>'+
+  '<div class="pf-layout'+(portfolioCreateOpen?'':' pf-compact')+'" id="pf-layout"><section class="pf-initiatives" aria-label="Mis iniciativas">'+
+   '<div class="pf-section-heading"><div><h2>Mis iniciativas</h2><p>Accede a tus proyectos y revisa su priorización.</p></div><button type="button" class="pf-jump" onclick="pfToggleCreate(true)">'+pfIcon('plus')+'Nueva iniciativa</button></div>'+
    '<div class="pf-toolbar"><div class="pf-filters" role="group" aria-label="Filtrar iniciativas">'+
     categories.map(([key,label,n])=>'<button type="button" data-pf-filter="'+key+'" aria-pressed="'+(key===portfolioFilter)+'" class="'+(key===portfolioFilter?'active':'')+'" onclick="pfSetFilter(\''+key+'\')">'+label+' <span>'+n+'</span></button>').join('')+'</div>'+
     '<label class="pf-search">'+pfIcon('search')+'<span class="pf-sr-only">Buscar iniciativa</span>'+
@@ -107,10 +126,13 @@ function renderInitiativesHome(){
    '<div class="pf-empty" id="pf-empty"'+(showing?' hidden':'')+'>'+pfIcon('search')+
     '<strong>'+(initiatives.length?'No hay iniciativas con ese criterio.':'Aún no hay iniciativas.')+'</strong>'+
     '<p>'+(initiatives.length?'Prueba con otra búsqueda o filtro.':'Empieza creando tu primera iniciativa.')+'</p>'+
-    (initiatives.length?'<button type="button" onclick="pfClear()">Limpiar filtros</button>':'<a href="#pf-create">Crear iniciativa</a>')+'</div></section>'+
-   '<section class="pf-create" id="pf-create" aria-labelledby="pf-create-title"><header><span class="pf-create-icon">'+pfIcon('plus')+'</span>'+
-    '<div><h2 id="pf-create-title">Nueva iniciativa</h2><p>Crea una iniciativa y comienza a generar impacto.</p></div></header>'+
-   '<form class="pf-form" onsubmit="createInitiative(event)">'+
+    (initiatives.length?'<button type="button" onclick="pfClear()">Limpiar filtros</button>':'<button type="button" onclick="pfToggleCreate(true)">Crear iniciativa</button>')+'</div></section>'+
+   '<section class="pf-create'+(portfolioCreateOpen?' is-open':'')+'" id="pf-create" aria-labelledby="pf-create-title">'+
+    '<button class="pf-create-toggle" type="button" id="pf-create-toggle" onclick="pfToggleCreate()" aria-expanded="'+portfolioCreateOpen+'" aria-controls="pf-create-form" aria-label="'+(portfolioCreateOpen?'Ocultar formulario para nueva iniciativa':'Crear nueva iniciativa')+'">'+
+      '<span class="pf-create-icon" id="pf-create-icon">'+pfIcon(portfolioCreateOpen?'minus':'plus')+'</span>'+
+      '<span class="pf-create-copy"><strong id="pf-create-title">Nueva iniciativa</strong><small id="pf-create-hint">'+(portfolioCreateOpen?'Completa los datos para crearla.':'Pulsa + para añadir una iniciativa.')+'</small></span>'+
+      '<span class="pf-create-toggle-label" aria-hidden="true">'+(portfolioCreateOpen?'Ocultar':'Abrir')+'</span></button>'+
+   '<form class="pf-form" id="pf-create-form" onsubmit="createInitiative(event)"'+(portfolioCreateOpen?'':' hidden')+'>'+
     '<label>Nombre de la iniciativa <em>*</em><input name="name" required placeholder="Ej. Adopción de CRM" maxlength="180" autocomplete="off"></label>'+
     '<label>Objetivo y contexto <em>*</em><textarea name="description" rows="3" required placeholder="¿Qué quieres transformar y por qué?"></textarea></label>'+
     '<div class="pf-form-pair"><label>Ámbito<select name="scope"><option value="inside">Inside · Interno</option><option value="outside">Outside · Externo</option></select></label>'+
