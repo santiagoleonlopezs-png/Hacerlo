@@ -32,7 +32,7 @@ assert.match(html,/assets\/css\/iniciativas-home\.css\?v=2\.17\.0/);
 assert.ok(css.includes('.pf-layout')&&css.includes('.pf-card')&&css.includes('@media'));
 const cards=list.map(i=>({hidden:false,getAttribute:()=>String(i.id)}));
 const filterButtons=['all','running','strategic','pending'].map(k=>({key:k,attrs:{'data-pf-filter':k},classList:{toggle(){}},setAttribute(k,v){this.attrs[k]=v},getAttribute(k){return this.attrs[k]}}));
-const input={value:''},count={textContent:''},empty={hidden:false};
+const input={value:'',focus(){}},count={textContent:''},empty={hidden:false};
 c.document={
  getElementById:id=>({'pf-search':input,'pf-count':count,'pf-empty':empty})[id]||null,
  querySelectorAll:sel=>sel.includes('[data-pf-id]')?cards:sel.includes('[data-pf-filter]')?filterButtons:[]
