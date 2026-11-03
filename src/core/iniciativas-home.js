@@ -167,7 +167,7 @@ function renderInitiativesHome(){
       '<span class="pf-create-toggle-label" aria-hidden="true">'+(portfolioCreateOpen?'Ocultar':'Abrir')+'</span></button>'+
    '<form class="pf-form" id="pf-create-form" onsubmit="createInitiative(event)"'+(portfolioCreateOpen?'':' hidden')+'>'+
     '<label>Nombre de la iniciativa <em>*</em><input name="name" required placeholder="Ej. Adopción de CRM" maxlength="180" autocomplete="off"></label>'+
-    '<label>Objetivo y contexto <span class="pf-optional">(automático)</span><textarea name="description" rows="3" placeholder="Se completará con tu hipótesis de valor. Si quieres, añade aquí el contexto inicial."></textarea><small class="pf-field-hint">Al definir el resultado y el comportamiento objetivo, este texto se actualizará con la hipótesis de valor.</small></label>'+
+    '<label>Objetivo y contexto <span class="pf-optional">(automático · solo lectura)</span><textarea name="description" rows="3" readonly aria-readonly="true" tabindex="-1" placeholder="Se completará automáticamente al formular la hipótesis de valor en Resultados."></textarea><small class="pf-field-hint">Este campo no se diligencia aquí. HACERLO lo completa cuando guardas el resultado global y el comportamiento objetivo.</small></label>'+
     '<div class="pf-form-pair"><label>Ámbito<select name="scope"><option value="inside">Inside · Interno</option><option value="outside">Outside · Externo</option></select></label>'+
     '<label>Población estimada<input type="number" name="population" min="0" step="1" placeholder="Ej. 310"></label></div>'+
     '<label>Fecha de ingreso <em>*</em><input type="date" name="createdAt" required></label>'+
