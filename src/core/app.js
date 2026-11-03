@@ -7,7 +7,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const HACERLO_ENGINE_URL='https://hacerlo-engine.onrender.com';
 let cloudOrgId=null, cloudReady=false, syncTimer=null, syncing=false;
 const $=id=>document.getElementById(id),safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function localBackup(){localStorage.setItem('hacerlo_v15_backup',JSON.stringify(db))}
+function localBackup(){if(!cloudOrgId)return;sb.auth.getUser().then(({data:{user}})=>{if(user&&cloudOrgId)localStorage.setItem('hacerlo_v15_backup_'+user.id+'_'+cloudOrgId,JSON.stringify(db))}).catch(()=>{})}
 function save(){localBackup(); if(!cloudReady)return; clearTimeout(syncTimer); syncTimer=setTimeout(syncAll,450)}
 function evidenceToDb(v){return ({'Registrada':'registered','Observada':'observed','Declarada':'declared','Estimada':'estimated','Hipotética':'hypothesis','Hipotesis':'hypothesis','Hipótesis':'hypothesis'})[v]||'declared'}
 async function syncGraphForInitiative(i){if(!i._cloudId)return;i.nodes=i.nodes||[];i.edges=i.edges||[];
