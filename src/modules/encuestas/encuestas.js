@@ -45,21 +45,21 @@ function eePage(x){
           '<label>Nombre<input name="title" required maxlength="160" placeholder="Ej. Experiencia inicial"></label></div>'+
           '<button class="primary" type="submit">Crear instrumento</button></form></div>'+
       '<div class="ee-manager-option"><h3>Plantilla · Impacto y esfuerzo</h3><p class="muted">Cuatro preguntas con anclajes descriptivos. Puedes personalizarla, distribuirla o utilizarla desde Iniciativas.</p><button class="secondary" type="button" onclick="eeCreatePriority()">'+((x.surveys||[]).some(z=>eeIsPriority(z))?'Abrir instrumento':'Instalar instrumento')+'</button></div>'+
+      (x.surveyTrash?.length?'<div class="ee-manager-trash">'+eeTrashPanel(x)+'</div>':'')+
      '</div>':'')+
-   '</section>'+
-   (x.surveyTrash?.length?'<div class="ee-manager-trash ee-trash-overview">'+eeTrashPanel(x)+'</div>':'');
+   '</section>';
  const active=s?'<section class="panel ee-active-toolbar">'+
    '<div class="ee-active-row"><div class="ee-current-instrument">'+
      '<span class="ee-current-label">Gestiona el diseño y los resultados del instrumento seleccionado</span></div>'+
-     '<div class="ee-active-actions"><button class="ee-delete-survey" type="button" onclick="eeDeleteSurvey()" aria-label="Eliminar la encuesta seleccionada: '+safe(s.title)+'">Eliminar encuesta</button>'+
      '<details class="ee-instrument-options"><summary>Opciones del instrumento</summary>'+
        '<div class="ee-options-content"><div class="ee-options-actions">'+
          '<button class="secondary" type="button" onclick="eeClone()">Duplicar / nueva versión</button>'+
+         '<button class="secondary" type="button" onclick="eeDeleteSurvey()">Eliminar encuesta</button>'+
        '</div>'+eeMomentEditor(s)+eeImportHistory(s)+
        '<details><summary>Cambiar nombre</summary><form onsubmit="eeRenameSurvey(event)">'+
          '<label>Nombre<input name="title" value="'+safe(s.title)+'" required maxlength="160"></label>'+
          '<button class="primary" type="submit">Guardar nombre</button></form></details>'+
-       '</div></details></div></div>'+
+       '</div></details></div>'+
    '<div class="flex ee-tabs" role="group" aria-label="Secciones del instrumento">'+
       ['diseño','responder','importar','resultados','compartir'].map(t=>
        '<button class="secondary '+(eeTab===t?'active':'')+'" type="button" onclick="eeSetTab(&quot;'+t+'&quot;)">'+
