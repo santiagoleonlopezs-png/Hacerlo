@@ -129,24 +129,60 @@ function priorityCardForm(x){
  '<div class="pf-priority-card-body">'+priorityOverview(x)+
  '<p class="pf-priority-intro">Responde en este mismo lugar o comparte el instrumento desde Encuestas. Las opciones no muestran puntajes y su orden cambia para cada pregunta.</p>'+
  (priorityScoreReady(s)?'<form onsubmit="prioritySubmitOnCard(event)" data-priority-initiative="'+safe(String(x.id))+'">'+priorityQuestionMarkup(s)+
- '<div class="pf-priority-actions"><button type="submit" class="primary">Guardar valoración</button><button type="button" class="secondary" onclick="priorityGoToSurvey(this)">Abrir instrumento en Encuestas ↗</button></div></form>':
+ '<div class="pf-priority-actions"><button type="submit" class="primary">Guardar valoración</button><button type="button" class="secondary" onclick="priorityGoToSurvey(this)">Abrir instrumento en Encuestas ↗</button></div><p class="pf-priority-feedback" data-priority-feedback role="status" aria-live="polite"></p></form>':
  '<button type="button" class="secondary" onclick="priorityGoToSurvey(this)">Configurar instrumento en Encuestas ↗</button>')+
  '</div></details>';
 }
 function priorityGoToSurvey(button){
  const card=button.closest('[data-pf-id]'),id=card?.getAttribute('data-pf-id');
- if(id){const x=db.initiatives.find(i=>String(i.id)===id);if(x){db.selected=x.id;const s=priorityEnsureSurvey(x);if(s&&typeof eeSelected!=='undefined')eeSelected=s.id;save();}}
- if(typeof go==='function')go('Encuestas');
+ const x=db.initiatives.find(i=>String(i.id)===String(id));
+ if(!x)return alert('No se encontró la iniciativa asociada al instrumento.');
+ const surveys=prioritySurveys(x);
+ const s=surveys.length?priorityEnsureSurvey(x):priorityEnsureSurvey(x);
+ if(!s)return alert('No se pudo abrir el instrumento. Revisa que Encuestas esté disponible.');
+ db.selected=x.id;
+ if(typeof eeSelected!=='undefined')eeSelected=s.id;
+ if(typeof eePickerOpen!=='undefined')eePickerOpen=false;
+ if(typeof eeTab!=='undefined')eeTab='diseño';
+ if(typeof eeFilter!=='undefined')eeFilter={wave:'',audienceId:''};
+ save();
+ if(typeof go==='function')go('Encuestas y experiencias');
 }
-function prioritySubmitOnCard(e){
+async function prioritySubmitOnCard(e){
  e.preventDefault();
- const form=e.target, x=db.initiatives.find(i=>String(i.id)===form.dataset.priorityInitiative);
- if(!x)return;
+ const form=e.target, id=String(form.dataset.priorityInitiative||'');
+ const x=db.initiatives.find(i=>String(i.id)===id);
+ if(!x)return alert('No se encontró la iniciativa. Vuelve a abrir el instrumento.');
+ if(form.dataset.saving==='true')return;
  const s=priorityEnsureSurvey(x);
  if(!priorityScoreReady(s))return alert('Configura el instrumento en Encuestas antes de valorar.');
  const selected=priorityAnswers(form,s);
- if(selected.mode!=='complete')return alert(selected.mode==='skip'?'Responde todas las preguntas o utiliza el instrumento desde Encuestas.':selected.error||'Responde todas las preguntas de las dos dimensiones.');
- try{priorityStoreResponse(x,s,selected.answers);save();render();}catch(error){alert(error.message);}
+ if(selected.mode!=='complete')return alert(selected.mode==='skip'?'Responde las cuatro preguntas antes de guardar.':selected.error||'Completa las dos dimensiones de la valoración.');
+ const submit=form.querySelector('button[type="submit"]');
+ form.dataset.saving='true';if(submit)submit.disabled=true;
+ try{
+  priorityStoreResponse(x,s,selected.answers);
+  save();
+  render();
+  // Al reconstruir la tarjeta, conservar abierta la sección y mostrar los promedios.
+  const card=[...document.querySelectorAll('[data-pf-id]')].find(el=>el.getAttribute('data-pf-id')===id);
+  const details=card?.querySelector('.pf-priority-card-detail');
+  if(details)details.open=true;
+  const notice=details?.querySelector('[data-priority-feedback]');
+  if(notice)notice.textContent='Valoración registrada. Confirmando guardado en la nube…';
+  const hasCloud=typeof cloudReady!=='undefined'&&cloudReady&&typeof syncAll==='function';
+  if(hasCloud){
+   if(typeof syncTimer!=='undefined')clearTimeout(syncTimer);
+   const persisted=await syncAll();
+   if(notice)notice.textContent=persisted===true?'Valoración guardada en Supabase. Los promedios ya están actualizados.':'Valoración registrada localmente. No se confirmó el guardado en Supabase; revisa el aviso de sincronización.';
+  }else if(notice){
+   notice.textContent='Valoración registrada localmente. Se sincronizará cuando haya conexión con Supabase.';
+  }
+ }catch(error){
+  alert('No se pudo registrar la valoración: '+(error?.message||'Error desconocido'));
+  form.dataset.saving='false';
+  if(submit&&submit.isConnected)submit.disabled=false;
+ }
 }
 function priorityOpenCard(button){
  const card=button.closest('[data-pf-id]'),details=card?.querySelector('.pf-priority-card-detail');
