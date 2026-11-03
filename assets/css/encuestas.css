@@ -65,13 +65,3 @@
 .ee-single-column fieldset{min-width:0}
 .ee-single-column textarea{min-height:75px}
 .ee-single-column summary{cursor:pointer}
-
-/* Encuestas: acción de borrado visible, con recuperación independiente en Papelera. */
-.ee-active-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;min-width:0}
-.ee-delete-survey{width:auto;min-height:39px;padding:9px 14px;border:1px solid rgba(239,128,139,.50);border-radius:9px;background:rgba(122,48,65,.12);color:#ffc3c9;font-size:12px;font-weight:680;cursor:pointer}
-.ee-delete-survey:hover{border-color:#fc9ca6;background:rgba(139,48,65,.28);color:#ffe6e9}
-.ee-delete-survey:focus-visible{outline:2px solid #ffd0d3;outline-offset:2px}
-.ee-trash-overview{margin:10px 0 0;padding:10px 13px;border:1px solid #31576b;border-radius:10px;background:#0a2a3c}
-.ee-trash-overview>details>summary{cursor:pointer;font-size:12px;font-weight:700;color:#b9d9e4}
-.ee-trash-overview>details>.panel{margin:10px 0 0;padding:13px}
-@media(max-width:600px){.ee-active-actions{width:100%;justify-content:flex-start}.ee-delete-survey{flex:0 0 auto}.ee-active-actions .ee-instrument-options{flex:1;min-width:160px}}
