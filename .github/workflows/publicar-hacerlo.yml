@@ -48,6 +48,7 @@ jobs:
           node --check src/modules/encuestas/priorizacion.js
           node --check src/modules/encuestas/responder.js
           node tests/priority_instrument_v2.cjs
+          node tests/priority_ui_v2.cjs
           node tests/diagnostico_nav_v2.cjs
           node --check src/modules/analisis/capacidad-adaptativa.js
           node --check src/modules/analisis/capacidad-adaptativa-lectura.js
