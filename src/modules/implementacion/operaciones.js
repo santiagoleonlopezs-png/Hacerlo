@@ -226,15 +226,14 @@ function behaviorIndicatorChoices(x,b){
 }
 function behaviorRefreshIndicatorChoices(form,b){
  const holder=form?.querySelector('[data-behavior-indicator-holder]');if(!holder)return;
- const checked=new Set([...holder.querySelectorAll('input[name="existingIndicators"]:checked')].map(el=>el.value));
- const open=!!holder.querySelector('.behavior-indicator-picker')?.open;
+ const priorSelection=new Map([...holder.querySelectorAll('input[name="existingIndicators"]')].map(el=>[el.value,el.checked]));
  const wrapper=document.createElement('div');wrapper.innerHTML=behaviorIndicatorChoices(current(),b);
  const replacement=wrapper.firstElementChild;
  holder.replaceWith(replacement);
  const picker=replacement.querySelector('.behavior-indicator-picker');
- if(picker)picker.open=open||true;
+ if(picker)picker.open=true;
  replacement.querySelectorAll('input[name="existingIndicators"]').forEach(input=>{
-  if(checked.has(input.value))input.checked=true;
+  if(priorSelection.has(input.value))input.checked=priorSelection.get(input.value);
  });
  const input=replacement.querySelector('input[name="existingIndicators"]');
  if(input)updateAssociationCount(input);
