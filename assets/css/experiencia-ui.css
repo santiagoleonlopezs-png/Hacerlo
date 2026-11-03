@@ -869,3 +869,32 @@ button.behavior-explore-entry:focus-visible{outline:2px solid #80eadc;outline-of
 .hcx-result-measure-grid small{color:#9cc3ce;font-size:11px}
 .hcx-result-measure-grid strong{color:#e6f4f6;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 @media(max-width:650px){.indicator-board-form-method,.hcx-result-measure-grid{grid-template-columns:1fr}}
+
+/* Comportamientos: editar indicadores directamente sin crear registros duplicados. */
+.behavior-indicator-picker{min-width:0}
+.behavior-indicator-options{display:grid;gap:9px;min-width:0;max-width:100%;padding:10px 0}
+.behavior-indicator-option{min-width:0;background:rgba(9,39,57,.85);border:1px solid #315b6f;border-radius:10px;padding:11px 12px}
+.behavior-indicator-option-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.behavior-indicator-option-head>label{display:flex;flex:1;min-width:170px;align-items:flex-start;gap:9px;margin:0}
+.behavior-indicator-option-head>label input{flex:none;width:16px;height:16px;margin:2px 0 0}
+.behavior-indicator-option-head>label span{min-width:0;overflow-wrap:anywhere;line-height:1.5}
+.behavior-indicator-option-name{font-size:12px;color:#ddf4f3}
+.behavior-indicator-option-meta{font-size:10px;line-height:1.55;display:block}
+.behavior-indicator-edit-button{font-size:11px;padding:7px 10px;flex:none}
+.behavior-indicator-edit{margin:12px 0 0;padding:12px;border-top:1px solid #325d72;min-width:0}
+.behavior-indicator-edit[hidden],.behavior-indicator-scale[hidden],.behavior-indicator-scale [hidden]{display:none!important}
+.behavior-indicator-help{display:block;font-size:11px;line-height:1.55;color:#9bbfc9;margin:6px 0 12px}
+.behavior-indicator-fields{display:grid;gap:12px;min-width:0}
+.behavior-indicator-fields>label,.behavior-indicator-fields .behavior-indicator-form-grid>label,.behavior-indicator-scale>label{display:grid;gap:6px;font-size:11px;color:#bad7df;min-width:0}
+.behavior-indicator-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.behavior-indicator-values{grid-template-columns:repeat(3,minmax(0,1fr))}
+.behavior-indicator-fields input,.behavior-indicator-fields select{margin:0;min-width:0;width:100%;font-size:12px;border-radius:8px}
+.behavior-indicator-scale{display:grid;gap:10px;background:rgba(11,53,67,.55);border:1px solid #31586a;border-radius:9px;padding:12px}
+.behavior-indicator-inline-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:13px}
+.behavior-indicator-inline-actions button{width:auto;font-size:12px}
+.behavior-indicator-inline-actions [data-indicator-status]{font-size:11px;color:#89e1ce;line-height:1.5}
+.behavior-create-indicator-new>.behavior-indicator-fields,.behavior-create-indicator-new>.behavior-indicator-help,.behavior-create-indicator-new>button{margin:12px}
+.behavior-create-indicator-new>.behavior-indicator-fields{margin:12px;width:calc(100% - 24px)}
+.behavior-create-indicator-new>button{width:auto}
+.behavior-create-indicator-new .behavior-indicator-form-grid input,.behavior-create-indicator-new .behavior-indicator-form-grid select{width:100%}
+@media(max-width:680px){.behavior-indicator-form-grid,.behavior-indicator-values{grid-template-columns:1fr}.behavior-indicator-option-head{align-items:stretch}.behavior-indicator-edit-button{width:auto}}
