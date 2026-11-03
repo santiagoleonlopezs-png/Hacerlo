@@ -44,5 +44,4 @@ function caObservedView(x){
  <p class="notice" style="margin-top:10px">Lectura descriptiva: CNPS/NPS (−100 a 100) no se promedia con escalas (0 a 100). Desgaste no se interpreta automáticamente como Energía. El modelo dinámico de AnyLogic aún no está conectado.</p>
  </section>`;
 }
-const caMarkupBeforeObserved=caMarkup;
-caMarkup=function(x){return caMarkupBeforeObserved(x)+(caExpanded?caObservedView(x):'');};
+// La ruta de Capacidad Adaptativa compone esta lectura en su propia pantalla.
