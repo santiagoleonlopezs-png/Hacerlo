@@ -4,7 +4,7 @@ function caReadObserved(x,wave='Base',audienceId=''){
  const surveys=x.surveys||[],candidates=caCandidates(x),cache=new Map(),dimensions={};
  for(const dim of CA_DIMENSIONS){
   const details=[];
-  for(const key of caSelection(x,dim,candidates)){
+  for(const key of (Array.isArray(x.capacityAdaptive?.mappings?.[dim.id])?x.capacityAdaptive.mappings[dim.id]:[])){
    const item=candidates.find(q=>q.key===key);
    if(!item)continue;
    const survey=surveys.find(s=>String(s.id)===String(item.surveyId));
