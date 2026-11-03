@@ -20,7 +20,7 @@ async function syncGraphForInitiative(i){if(!i._cloudId)return;i.nodes=i.nodes||
 }
 async function syncAll(){if(!cloudReady||!cloudOrgId)return false;if(syncing||initiativeDeleteBusy){syncPending=true;return false;}syncing=true;syncPending=false;setCloudStatus('Guardando…');try{for(const i of db.initiatives){for(const n of (i.nodes||[])){if(!n._cloudNodeId)n._cloudNodeId=crypto.randomUUID()}for(const e of (i.edges||[])){if(!e._cloudEdgeId)e._cloudEdgeId=crypto.randomUUID()}const payload={organization_id:cloudOrgId,name:i.name||'Sin nombre',description:i.description||null,population:Number(i.population)||0,entry_date:i.createdAt||new Date().toISOString().slice(0,10),impact:i.impact||null,effort:i.effort||null,phase:phases[i.phase||0]?.[0]||'R',scope:i.scope||'inside',app_state:i};if(i._cloudId){let {error}=await sb.from('initiatives').update(payload).eq('id',i._cloudId);if(error)throw error}else{let {data,error}=await sb.from('initiatives').insert(payload).select('id').single();if(error)throw error;i._cloudId=data.id}await syncGraphForInitiative(i)}setCloudStatus('Guardado en Supabase ✓');return true}catch(e){console.error(e);setCloudStatus('Error de sincronización: '+e.message,true);return false}finally{syncing=false;localBackup();if(syncPending&&!initiativeDeleteBusy){clearTimeout(syncTimer);syncTimer=setTimeout(syncAll,450)}}}
 function setCloudStatus(t,err=false,allowRetry=err){const el=document.getElementById('cloud-status');if(el){el.textContent='Centro de Inteligencia · '+t;el.style.color=err?'#f2a2a2':'';el.classList.toggle('hcx-visually-hidden',!err);el.classList.toggle('hcx-cloud-sync-error',err)}const retry=document.getElementById('sync-retry');if(retry)retry.hidden=!allowRetry;}
-async function loadCloud(){let {data:m,error:me}=await sb.from('memberships').select('organization_id,role').limit(1);if(me)throw me;if(!m?.length)throw Error('Tu usuario no tiene una organización asignada.');cloudOrgId=m[0].organization_id;let {data,error}=await sb.from('initiatives').select('*').eq('organization_id',cloudOrgId).order('created_at');if(error)throw error;db={initiatives:(data||[]).map(r=>{let x=r.app_state||{};x.id=x.id||Date.now()+Math.random();x._cloudId=r.id;x.name=r.name;x.description=r.description||'';x.population=r.population||0;x.createdAt=r.entry_date;x.impact=r.impact;x.effort=r.effort;x.scope=r.scope||'inside';x.phase=Math.max(0,phases.findIndex(p=>p[0]===r.phase));return x}),selected:null};db.selected=db.initiatives[0]?.id||null;cloudReady=true;localBackup();setCloudStatus('Supabase conectado ✓');nav();render()}
+async function loadCloud(){let {data:m,error:me}=await sb.from('memberships').select('organization_id,role').limit(1);if(me)throw me;if(!m?.length)throw Error('Tu usuario no tiene una organización asignada.');cloudOrgId=m[0].organization_id;let {data,error}=await sb.from('initiatives').select('*').eq('organization_id',cloudOrgId).order('created_at');if(error)throw error;db={initiatives:(data||[]).map(r=>{let x=r.app_state||{};x.id=x.id||Date.now()+Math.random();x._cloudId=r.id;x.name=r.name;x.description=r.description||'';x.population=r.population||0;x.createdAt=r.entry_date;x.impact=r.impact;x.effort=r.effort;x.scope=r.scope||'inside';x.phase=Math.max(0,phases.findIndex(p=>p[0]===r.phase));return x}),selected:null};db.selected=db.initiatives[0]?.id||null;cloudReady=true;localBackup();setCloudStatus('Supabase conectado ✓');nav();render();trackPlatformUsage('General','login')}
 /* La eliminación se confirma también en Supabase ANTES de quitar la tarjeta.
    Un rechazo de permisos o restricciones deja intacta la iniciativa local. */
 async function deleteInitiative(id){
@@ -73,8 +73,14 @@ const HACERLO_NAV_GROUPS=[
 const HACERLO_PAGE_PHASE={'Inicio de Resultados':0,'Resultado global':0,'Comportamiento objetivo':0,'Encuestas y experiencias':0,'Diseño de comportamientos':1,'Gestión de audiencias':1,'Diagnóstico':0,'Indicadores':0,'Grafo de adopción':2,'Pensamiento sistémico':2,'Simulación de agentes':2,'Inteligencia integrada':2,'Intervenciones':3,'Analítica':4};
 // Solo una etapa desplegada. null permite cerrar todas sin cambiar la pantalla.
 let expandedNavStep=null;
+function trackPlatformUsage(moduleName,eventType='view'){
+ if(!cloudReady||!cloudOrgId)return;
+ void sb.rpc('platform_record_activity',{p_org:cloudOrgId,p_module:moduleName,p_event:eventType})
+   .then(()=>{}).catch(()=>{});
+}
 function toggleNavStep(step){
  phase=step; expandedNavStep=step; page='RDAIM'; nav();render();
+ if(phases[step])trackPlatformUsage(phases[step][1]);
 }
 function openNavStep(step){
  phase=step;
@@ -100,6 +106,10 @@ function go(n){
   phase=HACERLO_PAGE_PHASE[n];expandedNavStep=phase;
  }
  page=n;nav();render();
+ if(n==='RDAIM'||Object.prototype.hasOwnProperty.call(HACERLO_PAGE_PHASE,n)){
+   const stage=n==='RDAIM'?phase:HACERLO_PAGE_PHASE[n];
+   if(phases[stage])trackPlatformUsage(phases[stage][1]);
+ }
  if(n==='Iniciativas'&&typeof prioritySyncPublic==='function')void prioritySyncPublic();
 }
 function choose(id){db.selected=id;save();go('RDAIM')}
