@@ -898,3 +898,21 @@ button.behavior-explore-entry:focus-visible{outline:2px solid #80eadc;outline-of
 .behavior-create-indicator-new>button{width:auto}
 .behavior-create-indicator-new .behavior-indicator-form-grid input,.behavior-create-indicator-new .behavior-indicator-form-grid select{width:100%}
 @media(max-width:680px){.behavior-indicator-form-grid,.behavior-indicator-values{grid-template-columns:1fr}.behavior-indicator-option-head{align-items:stretch}.behavior-indicator-edit-button{width:auto}}
+
+/* Resultado / Comportamiento objetivo: selector de frecuencia adaptable, sin popup nativo gigante. */
+.hcx-frequency-field{display:grid;gap:7px;min-width:0}
+.hcx-frequency-label{color:#c7e2ec;font-size:13px;line-height:1.45}
+.hcx-frequency-field>input[type="hidden"]{display:none}
+.hcx-result-editor-content .hcx-frequency-picker{display:block;width:100%;max-width:550px;margin:0;min-width:0;border:1px solid #356078;border-radius:9px;background:#071a2a;color:#ecf8ff;overflow:hidden}
+.hcx-frequency-picker>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:43px;padding:10px 13px;cursor:pointer;list-style:none;font-size:13px;font-weight:580;line-height:1.35;color:#f2fbff}
+.hcx-frequency-picker>summary::-webkit-details-marker{display:none}
+.hcx-frequency-picker>summary:focus-visible,.hcx-frequency-option:focus-visible{outline:2px solid #76e4db;outline-offset:-3px}
+.hcx-frequency-picker[open]>summary{background:#103b50;border-bottom:1px solid #2c5d74}
+.hcx-frequency-arrow{flex:none;font-size:18px;color:#84d9d1;transition:transform .15s}
+.hcx-frequency-picker[open] .hcx-frequency-arrow{transform:rotate(180deg)}
+.hcx-frequency-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;max-height:228px;overflow-y:auto;overscroll-behavior:contain;padding:9px}
+.hcx-frequency-option{display:block;width:100%;min-width:0;margin:0;padding:10px 11px;border:1px solid transparent;border-radius:7px;background:#10344a;color:#d3e8f1;text-align:left;font-size:12px;line-height:1.35;white-space:normal;cursor:pointer}
+.hcx-frequency-option:hover{background:#175269;border-color:#36788b}
+.hcx-frequency-option.is-selected{border-color:#41b9b6;background:#12545b;color:#baf8e8;font-weight:720}
+@media(max-width:520px){.hcx-frequency-options{grid-template-columns:1fr;max-height:220px}.hcx-result-editor-content .hcx-frequency-picker{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.hcx-frequency-arrow{transition:none}}
