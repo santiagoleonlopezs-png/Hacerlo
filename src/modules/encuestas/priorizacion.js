@@ -182,3 +182,37 @@ function priorityNavigateAssessment(id){
  const details=card?.querySelector('.pf-priority-card-detail');
  if(details){details.open=true;details.scrollIntoView?.({behavior:'smooth',block:'start'});}
 }
+
+/* Al abrir el portafolio se incorporan respuestas públicas nuevas de las
+   encuestas vinculadas, sin requerir un segundo instrumento. */
+let priorityPublicSyncing=false;
+async function prioritySyncPublic(){
+ if(priorityPublicSyncing||typeof sb==='undefined'||typeof db==='undefined')return;
+ priorityPublicSyncing=true;let changed=false;
+ try{
+  for(const x of db.initiatives||[]){
+   for(const s of prioritySurveys(x).filter(s=>s.publication?.id)){
+    const seen=new Set((s.responses||[]).map(r=>String(r.id)));
+    let start=0,added=0;
+    while(true){
+     const {data,error}=await sb.from('ee_submissions').select('id,answers,respondent,created_at')
+      .eq('publication_id',s.publication.id).order('created_at').order('id').range(start,start+499);
+     if(error)throw error;
+     for(const item of data||[]){
+      if(seen.has(String(item.id)))continue;
+      const valid=EE.validateResponse(s,item.answers||{});
+      if(valid.errors.length)continue;
+      s.responses.push({id:item.id,date:item.created_at,respondent:item.respondent||'',audienceId:s.audienceId||'',
+       wave:s.wave||'Valoración',answers:valid.answers,source:'public'});
+      seen.add(String(item.id));added++;
+     }
+     if((data||[]).length<500)break;
+     start+=500;if(start>=100000)throw Error('Límite de respuestas superado; revisa la encuesta directamente.');
+    }
+    if(added){priorityApplySummary(x);changed=true;}
+   }
+  }
+  if(changed){save();if(typeof page==='string'&&page==='Iniciativas')render();}
+ }catch(e){console.warn('No se pudieron sincronizar las valoraciones públicas:',e);}
+ finally{priorityPublicSyncing=false;}
+}
