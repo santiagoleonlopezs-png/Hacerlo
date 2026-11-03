@@ -13,8 +13,9 @@ function caDynTab(id){
  caDynSession(current()).tab=id;render();
 }
 function caDynSource(v){
- if(!['observed','model'].includes(v))return;
- caDynSession(current()).source=v;render();
+ // Se impide usar valores de ejemplo como datos de la iniciativa.
+ if(v!=='observed')return;
+ caDynSession(current()).source='observed';render();
 }
 function caDynInvert(checked){caDynSession(current()).invertDesgaste=!!checked;render();}
 function caDynWeeks(value){
@@ -27,37 +28,41 @@ function caDynInput(id,value){
  if(counter)counter.textContent=String(d.inputs[id]);
 }
 function caDynToggleEvidence(){caDynSession(current()).evidenceOpen=!caDynSession(current()).evidenceOpen;}
+function caDynOpenEvidence(){caDynSession(current()).evidenceOpen=true;caExpanded=true;render();}
 function caDynResetScenario(){caDynSession(current()).inputs=CA_DYN.inputs({});render();}
 function caDynInitial(x){
  const draft=caDynSession(x),observed=caReadObserved(x,caObservedWave,caObservedAudience);
- const initial={...CA_DYN.defaults},sources={};
+ const initial={},sources={};
  for(const dim of CA_DIMENSIONS){
-  const d=observed.dimensions[dim.id],modelValue=CA_DYN.defaults[dim.id];
-  if(draft.source==='model'){
-   sources[dim.id]={value:modelValue,kind:'model',label:'Modelo AnyLogic · valor original'};
-   continue;
-  }
-  if(d.needsOrientation){
+  const d=observed.dimensions[dim.id],configured=Array.isArray(x.capacityAdaptive?.mappings?.[dim.id])&&x.capacityAdaptive.mappings[dim.id].length>0;
+  const n=d.sources.filter(q=>q.type==='scale'&&q.n>0).length;
+  if(!configured){
+   sources[dim.id]={value:null,kind:'missing',label:'Sin configurar: selecciona preguntas de esta dimensión'};
+  }else if(d.needsOrientation){
    if(draft.invertDesgaste&&Number.isFinite(d.rawValue)){
     initial[dim.id]=100-d.rawValue;
-    sources[dim.id]={value:initial[dim.id],kind:'proxy',
-     label:'Encuesta · inversión explícita de Desgaste',n:d.sources.reduce((n,q)=>Math.max(n,q.n||0),0)};
+    sources[dim.id]={value:initial[dim.id],kind:'proxy',label:'Encuesta · Desgaste invertido explícitamente',n};
    }else{
-    sources[dim.id]={value:modelValue,kind:'model',label:'Modelo AnyLogic · requiere validar inversión de Desgaste'};
+    sources[dim.id]={value:null,kind:'missing',label:'Pendiente: confirmar orientación de Desgaste'};
    }
-   continue;
-  }
-  if(Number.isFinite(d.value)){
+  }else if(Number.isFinite(d.value)&&n>0){
    initial[dim.id]=d.value;
-   sources[dim.id]={value:d.value,kind:'observed',label:'Encuesta · '+caObservedWave,n:d.sources.reduce((n,q)=>Math.max(n,q.n||0),0)};
+   sources[dim.id]={value:d.value,kind:'observed',label:'Encuesta real · '+caObservedWave,n};
   }else{
-   sources[dim.id]={value:modelValue,kind:'model',label:'Modelo AnyLogic · sin evidencia compatible'};
+   sources[dim.id]={value:null,kind:'missing',label:'Sin respuestas válidas para el momento y audiencia seleccionados'};
   }
  }
- return {initial,sources,observed,wave:caObservedWave,audienceId:caObservedAudience};
+ const ready=CA_DIMENSIONS.every(dim=>Number.isFinite(initial[dim.id])&&['observed','proxy'].includes(sources[dim.id].kind));
+ return {initial,sources,ready,missing:CA_DIMENSIONS.filter(dim=>sources[dim.id].kind==='missing').map(dim=>dim.name),
+  observed,wave:caObservedWave,audienceId:caObservedAudience};
+}
+function caDynLastRun(x){
+ return (x.capacityAdaptive?.simulationRuns||[]).filter(run=>run.source==='observed'
+  &&run.evidenceOnly===true
+  &&CA_DIMENSIONS.every(d=>Number.isFinite(run.initial?.[d.id])&&['observed','proxy'].includes(run.provenance?.[d.id]?.kind))).at(-1)||null;
 }
 function caDynView(x){
- const d=caDynSession(x),last=x.capacityAdaptive?.simulationRuns?.at(-1);
+ const d=caDynSession(x),last=caDynLastRun(x);
  const labels=[['medicion','01','Medición inicial'],['escenarios','02','Simulación de escenarios'],['comparar','03','Comparar resultados']];
  return `<div class="ca-dyn-root">
   <nav class="ca-dyn-steps" aria-label="Pasos de Capacidad Adaptativa">
@@ -68,23 +73,26 @@ function caDynView(x){
 }
 function caDynMeasurement(x,d){
  const init=caDynInitial(x),sources=init.sources;
+ const configured=CA_DIMENSIONS.some(dim=>sources[dim.id].kind!=='missing');
  return `<div class="ca-dyn-workspace">
   <section class="ca-dyn-panel">
    <div class="ca-dyn-section-heading"><div><small>01 · PUNTO DE PARTIDA</small><h2>Medición inicial</h2>
-   <p>Define desde dónde comienza la simulación, utilizando la evidencia disponible o los valores originales del modelo.</p></div></div>
-   <div class="ca-dyn-source-row">
-    <label>Fuente de valores iniciales<select onchange="caDynSource(this.value)">
-     <option value="observed" ${d.source==='observed'?'selected':''}>Encuestas (usar donde haya datos)</option>
-     <option value="model" ${d.source==='model'?'selected':''}>Modelo AnyLogic original</option>
-    </select></label>
-   </div>
-   <div class="ca-dyn-stocks">${CA_DIMENSIONS.map(dim=>{const s=sources[dim.id];
-    return `<article class="ca-dyn-stock"><span>${safe(dim.name)}</span><b>${s.value.toFixed(2)}</b>
-     <small>${safe(s.label)}</small></article>`}).join('')}</div>
-   ${d.source==='observed'&&init.observed.dimensions.energia.needsOrientation?
+   <p>Los valores se calculan exclusivamente con respuestas reales de las encuestas que configures para esta iniciativa.</p></div></div>
+   ${configured?`<div class="ca-dyn-stocks">${CA_DIMENSIONS.map(dim=>{const source=sources[dim.id];
+    return `<article class="ca-dyn-stock"><span>${safe(dim.name)}</span>
+     <b>${Number.isFinite(source.value)?source.value.toFixed(2):'—'}</b>
+     <small>${safe(source.label)}</small></article>`}).join('')}</div>`:
+    `<div class="ca-dyn-empty-state"><strong>Sin mediciones configuradas</strong>
+     <p>Aún no hay valores que mostrar. Vincula las preguntas de SENTIR/CNPS y confirma sus fuentes para comenzar.</p>
+     <button type="button" class="secondary" onclick="caDynOpenEvidence()">Configurar preguntas →</button></div>`}
+   ${init.observed.dimensions.energia.needsOrientation&&Array.isArray(x.capacityAdaptive?.mappings?.energia)?
     `<label class="ca-dyn-assumption"><input type="checkbox" style="width:auto" ${d.invertDesgaste?'checked':''} onchange="caDynInvert(this.checked)">
-     <span><strong>Utilizar Desgaste como aproximación inversa de Energía</strong><small>Supuesto explícito: Energía = 100 − Desgaste. No es equivalencia validada entre constructos.</small></span></label>`:''}
-   <div class="ca-dyn-footer-actions"><button type="button" class="primary" onclick="caDynTab('escenarios')">Continuar a escenarios →</button></div>
+     <span><strong>Usar Desgaste como aproximación inversa de Energía</strong>
+     <small>Requiere tu confirmación expresa: Energía = 100 − Desgaste. Es una transformación de encuesta, no una equivalencia validada.</small></span></label>`:''}
+   ${!init.ready&&configured?
+    `<p class="notice">Para iniciar una simulación con evidencia real, faltan: ${safe(init.missing.join(', '))}.</p>`:''}
+   <div class="ca-dyn-footer-actions"><button type="button" class="primary" onclick="caDynTab('escenarios')" ${!init.ready?'disabled':''}>
+    Continuar a escenarios →</button></div>
   </section>
   <details class="ca-dyn-panel ca-dyn-evidence" ${d.evidenceOpen?'open':''}>
    <summary onclick="caDynToggleEvidence()">
@@ -92,21 +100,23 @@ function caDynMeasurement(x,d){
     <em>Filtra por audiencia y momento o cambia las preguntas que alimentan el modelo.</em></span>
     <span class="ca-dyn-disclosure-arrow" aria-hidden="true">⌄</span>
    </summary>
-   <div class="ca-dyn-evidence-body">
-    ${caObservedView(x)}
-    ${caMarkup(x)}
-   </div>
+   <div class="ca-dyn-evidence-body">${caObservedView(x)}${caMarkup(x)}</div>
   </details>
  </div>`;
 }
 function caDynScenario(x,d){
- const init=caDynInitial(x),last=x.capacityAdaptive?.simulationRuns?.at(-1);
+ const init=caDynInitial(x),last=caDynLastRun(x);
+ if(!init.ready)return `<section class="ca-dyn-panel ca-dyn-empty">
+  <h2>Configura primero la medición real</h2>
+  <p>La simulación requiere valores observados para las cuatro dimensiones. Faltan: ${safe(init.missing.join(', '))}.</p>
+  <button type="button" class="primary" onclick="caDynTab('medicion');caDynOpenEvidence()">Revisar fuentes →</button>
+ </section>`;
  return `<section class="ca-dyn-panel">
   <div class="ca-dyn-section-heading"><div><small>02 · HIPÓTESIS DE CAMBIO</small><h2>Simulación de escenarios</h2>
    <p>Ajusta seis variables del modelo y contrasta su evolución frente a un escenario de referencia con entradas en cero.</p></div></div>
   <div class="ca-dyn-settings">
    <label>Horizonte (semanas)<select onchange="caDynWeeks(this.value)">${[4,12,26,52,78,104].map(n=>`<option value="${n}" ${n===d.weeks?'selected':''}>${n} semanas</option>`).join('')}</select></label>
-   <div class="ca-dyn-data-note"><strong>Inicio</strong><span>${d.source==='model'?'Modelo AnyLogic':'Encuestas con respaldo del modelo cuando falten datos'} · ${safe(caObservedWave)}</span></div>
+   <div class="ca-dyn-data-note"><strong>Inicio</strong><span>${'Encuestas reales, sin valores sustitutos'} · ${safe(caObservedWave)}</span></div>
   </div>
   <div class="ca-dyn-sliders">${CA_DYN.controls.map(c=>`<label class="ca-dyn-slider">
    <span class="ca-dyn-slider-head"><strong>${safe(c.label)}</strong><output id="ca-dyn-value-${c.id}">${d.inputs[c.id]}</output></span>
@@ -126,13 +136,14 @@ function caDynSimulate(){
  const x=current();if(!x)return;
  const d=caDynSession(x),info=caDynInitial(x);
  try{
+  if(!info.ready)throw Error('Configura y valida las cuatro dimensiones con encuestas reales antes de simular.');
   const base=CA_DYN.run({initial:info.initial,inputs:CA_DYN.inputs({}),weeks:d.weeks});
   const scenario=CA_DYN.run({initial:info.initial,inputs:d.inputs,weeks:d.weeks});
   const st=caStore(x);st.simulationRuns=st.simulationRuns||[];
   st.simulationRuns.push({id:Date.now().toString(36),createdAt:new Date().toISOString(),
    version:1,initiativeId:x.id,weeks:d.weeks,initial:info.initial,
    provenance:info.sources,wave:info.wave,audienceId:info.audienceId,
-   source:d.source,invertDesgaste:d.invertDesgaste,inputs:{...d.inputs},
+   source:'observed',evidenceOnly:true,invertDesgaste:d.invertDesgaste,inputs:{...d.inputs},
    baseline:base.series,scenario:scenario.series,model:'Modelo_Medición_Madurez_Cambio2.alp',
    integration:'Euler',stepWeeks:0.001});
   if(st.simulationRuns.length>15)st.simulationRuns=st.simulationRuns.slice(-15);
