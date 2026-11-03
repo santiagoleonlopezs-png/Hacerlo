@@ -41,6 +41,14 @@ function caReset(dim){
  const x=current();if(!x)return;delete caStore(x).mappings[dim];
  caStore(x).updatedAt=new Date().toISOString();save();render();
 }
+function caConfirmSuggested(){
+ const x=current();if(!x)return;
+ const st=caStore(x),candidates=caCandidates(x);
+ for(const d of CA_DIMENSIONS)if(!Array.isArray(st.mappings[d.id]))
+   st.mappings[d.id]=caSelection(x,d,candidates).slice();
+ st.updatedAt=new Date().toISOString();
+ save();render();
+}
 function caToggle(){caExpanded=!caExpanded;render();}
 function caFilter(value){caSurveyFilter=value;render();}
 function caMarkup(x){
@@ -59,7 +67,7 @@ function caMarkup(x){
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
   ${CA_DIMENSIONS.map(d=>{const selected=caSelection(x,d,qs),available=chosen.slice().sort((a,b)=>caRecommend(b,d)-caRecommend(a,d));
    return `<section class="panel" style="margin:0"><div class="flex" style="justify-content:space-between"><h3 style="margin:0">${safe(d.name)}</h3><button class="secondary" type="button" onclick="caReset('${d.id}')" style="font-size:11px">Restablecer</button></div>
-    <p class="muted" style="font-size:12px">${selected.length} pregunta(s) vinculada(s) · Recomendación editable</p>
+    <p class="muted" style="font-size:12px">${selected.length} pregunta(s) ${Array.isArray(st.mappings[d.id])?'vinculada(s)':'sugerida(s), pendiente(s) de confirmar'}</p>
     <div style="max-height:280px;overflow:auto">
     ${available.map(q=>{const checked=selected.includes(q.key),score=caRecommend(q,d);
       return `<label style="display:flex;align-items:flex-start;gap:9px;margin:8px 0;padding:8px;border:1px solid rgba(140,170,195,.15);border-radius:8px;cursor:pointer">
@@ -67,6 +75,8 @@ function caMarkup(x){
        <span style="font-size:12px"><b>${safe(q.label)}</b><small class="muted" style="display:block">${safe(q.survey)} · ${safe(q.dimension||'Sin dimensión')} · ${safe(q.type.toUpperCase())}${score>=3?' · Recomendada':''}</small></span>
       </label>`}).join('')||'<p class="muted">No hay preguntas en este filtro.</p>'}</div></section>`}).join('')}
   </div>
-  <p class="notice" style="margin-top:12px">Configuración guardada por iniciativa. La selección no calcula aún los stocks ni ejecuta el modelo AnyLogic. Antes de simular se validarán dirección de los ítems, escalas, muestras y momentos de medición.</p>
+  ${CA_DIMENSIONS.some(d=>!Array.isArray(st.mappings[d.id]))&&qs.length?
+   '<div class="ca-dyn-footer-actions"><button type="button" class="primary" onclick="caConfirmSuggested()">Confirmar preguntas sugeridas</button></div>':''}
+  <p class="muted" style="font-size:12px;margin-top:12px">Las preguntas sugeridas no se aplican hasta que las confirmes o edites. Sin configuración y respuestas reales, no se mostrarán cifras ni se permitirá simular.</p>
  </div>`:''}</section>`;
 }
