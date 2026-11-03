@@ -80,3 +80,7 @@
 .pf-priority-view .priority-item b{font-size:12px}.pf-priority-view .priority-item small{font-size:10px;color:#b6d1df}
 .pf-priority-view .priority-item:focus-visible{outline:2px solid #64ebdc;outline-offset:2px}
 @media(max-width:740px){.pf-main-tabs{display:flex;width:100%}.pf-main-tabs button{flex:1;padding:10px 8px}.pf-priority-view>.panel{padding:14px}.pf-priority-view .priority-cell{padding:14px}}
+
+/* El contexto inicial es opcional; la hipótesis de valor lo reemplaza al formularse. */
+.pf-form .pf-optional{font-size:10px;font-weight:550;color:#83b3c4;margin-left:4px}
+.pf-form .pf-field-hint{display:block;font-size:10px;font-weight:450;line-height:1.5;color:#93b5c4;margin-top:6px}
