@@ -62,14 +62,32 @@ function priorityAnswers(form,s){
  if(valid.errors.length)return {mode:'invalid',error:valid.errors.join(' · ')};
  return {mode:'complete',answers:valid.answers};
 }
-function priorityStoreResponse(x,s,answers,source='initiative-home'){
+function priorityEditableResponse(s){
+ // No modificar respuestas compartidas públicamente ni diligenciadas por terceros.
+ return [...(s?.responses||[])].reverse().find(r=>r.source==='initiative-home')||null;
+}
+function priorityStoreResponse(x,s,answers,source='initiative-home',editResponseId=null){
  const check=EE.validateResponse(s,answers);
  if(check.errors.length)throw Error(check.errors.join(' · '));
  if(!priorityScoreReady(s))throw Error('El instrumento necesita preguntas y valores válidos para Impacto y Esfuerzo.');
  if(s.status==='draft')s.status='active';
  s.responses ||= [];
- s.responses.push({id:EE.uid(),date:EE.now(),respondent:'',audienceId:'',wave:s.wave||'Valoración',answers:check.answers,source});
+ let mode='new',record=null;
+ if(editResponseId){
+  record=s.responses.find(r=>String(r.id)===String(editResponseId)&&r.source==='initiative-home');
+  if(!record)throw Error('No se encontró una valoración editable. Vuelve a abrir la iniciativa.');
+  const now=EE.now();
+  record.revisions ||= [];
+  record.revisions.push({updatedAt:now,previousAnswers:{...record.answers}});
+  record.answers={...check.answers};
+  record.updatedAt=now;
+  mode='edited';
+ }else{
+  record={id:EE.uid(),date:EE.now(),respondent:'',audienceId:'',wave:s.wave||'Valoración',answers:check.answers,source};
+  s.responses.push(record);
+ }
  priorityApplySummary(x);
+ return {mode,response:record};
 }
 function priorityResults(x){
  const surveys=prioritySurveys(x);
@@ -87,7 +105,7 @@ function priorityResults(x){
   const sizes={Impacto:selected.questions.filter(q=>q.dimension==='Impacto'&&q.type==='choice').length,Esfuerzo:selected.questions.filter(q=>q.dimension==='Esfuerzo'&&q.type==='choice').length};
   if(!Object.keys(per).every(k=>per[k].length===sizes[k]))continue;
   for(const k of Object.keys(per))groups[k].push(per[k].reduce((a,b)=>a+b,0)/per[k].length);
-  dates.push(r.date||'');
+  dates.push(r.updatedAt||r.date||'');
  }
  const n=groups.Impacto.length;
  const mean=k=>n?Math.round(groups[k].reduce((a,b)=>a+b,0)/n*100)/100:null;
@@ -100,13 +118,13 @@ function priorityApplySummary(x){
  x.prioritySurveyId=result.survey.id;x.priorityN=result.n;x.priorityDate=result.date;
  return result;
 }
-function priorityQuestionMarkup(s,context='home'){
+function priorityQuestionMarkup(s,context='home',selectedAnswers=null){
  if(!priorityScoreReady(s))return '<div class="pf-priority-warning">Revisa en Encuestas las dimensiones y los valores de respuesta para Impacto y Esfuerzo antes de diligenciar.</div>';
  const sections=['Impacto','Esfuerzo'].map(d=>{
   const qs=s.questions.filter(q=>q.type==='choice'&&q.dimension===d);
   return '<section class="pf-priority-dimension"><h4>'+d+'</h4>'+
     qs.map(q=>'<fieldset class="pf-priority-question"><legend>'+safe(q.label)+'</legend>'+
-      '<div class="pf-priority-options">'+EE.shuffleChoices({...q,priorityRandomized:true}).map(answer=>'<label class="pf-priority-choice"><input type="radio" name="'+safe(q.id)+'" value="'+safe(answer)+'"><span>'+safe(answer)+'</span></label>').join('')+'</div></fieldset>').join('')+'</section>';
+      '<div class="pf-priority-options">'+EE.shuffleChoices({...q,priorityRandomized:true}).map(answer=>'<label class="pf-priority-choice"><input type="radio" name="'+safe(q.id)+'" value="'+safe(answer)+'"'+(selectedAnswers?.[q.id]===answer?' checked':'')+'><span>'+safe(answer)+'</span></label>').join('')+'</div></fieldset>').join('')+'</section>';
  }).join('');
  return '<div class="pf-priority-questions">'+sections+'</div>';
 }
@@ -125,13 +143,27 @@ function prioritySurveyResults(x,s){
 }
 function priorityCardForm(x){
  const s=prioritySurveys(x).sort((a,b)=>Number(b.version||1)-Number(a.version||1))[0]||{questions:priorityQuestions()};
+ const editable=priorityEditableResponse(s);
  return '<details class="pf-priority-card-detail" data-pf-priority><summary>Valorar impacto y esfuerzo <span aria-hidden="true">⌄</span></summary>'+
  '<div class="pf-priority-card-body">'+priorityOverview(x)+
- '<p class="pf-priority-intro">Responde en este mismo lugar o comparte el instrumento desde Encuestas. Las opciones no muestran puntajes y su orden cambia para cada pregunta.</p>'+
- (priorityScoreReady(s)?'<form onsubmit="prioritySubmitOnCard(event)" data-priority-initiative="'+safe(String(x.id))+'">'+priorityQuestionMarkup(s)+
- '<div class="pf-priority-actions"><button type="submit" class="primary">Guardar valoración</button><button type="button" class="secondary" onclick="priorityGoToSurvey(this)">Abrir instrumento en Encuestas ↗</button></div><p class="pf-priority-feedback" data-priority-feedback role="status" aria-live="polite"></p></form>':
+ '<p class="pf-priority-intro">'+(editable?'Tus respuestas guardadas permanecen seleccionadas. Puedes modificarlas y guardar los cambios, o registrar una valoración nueva.':'Responde en este mismo lugar o comparte el instrumento desde Encuestas. Las opciones no muestran puntajes y su orden cambia para cada pregunta.')+'</p>'+
+ (priorityScoreReady(s)?'<form onsubmit="prioritySubmitOnCard(event)" data-priority-initiative="'+safe(String(x.id))+'" data-priority-response="'+safe(String(editable?.id||''))+'">'+priorityQuestionMarkup(s,'home',editable?.answers||null)+
+ '<div class="pf-priority-actions"><button type="submit" class="primary">'+(editable?'Guardar cambios':'Guardar valoración')+'</button>'+
+ (editable?'<button type="button" class="secondary" onclick="priorityStartNewAssessment(this)">Registrar nueva valoración</button>':'')+
+ '<button type="button" class="secondary" onclick="priorityGoToSurvey(this)">Abrir instrumento en Encuestas ↗</button></div><p class="pf-priority-feedback" data-priority-feedback role="status" aria-live="polite"></p></form>':
  '<button type="button" class="secondary" onclick="priorityGoToSurvey(this)">Configurar instrumento en Encuestas ↗</button>')+
  '</div></details>';
+}
+function priorityStartNewAssessment(button){
+ const form=button.closest('form');
+ if(!form)return;
+ form.reset();
+ form.dataset.priorityResponse='';
+ const submit=form.querySelector('button[type="submit"]');
+ if(submit)submit.textContent='Guardar nueva valoración';
+ button.hidden=true;
+ const notice=form.querySelector('[data-priority-feedback]');
+ if(notice)notice.textContent='Nueva valoración. Se guardará como una respuesta adicional, sin sustituir la anterior.';
 }
 function priorityGoToSurvey(button){
  const card=button.closest('[data-pf-id]'),id=card?.getAttribute('data-pf-id');
@@ -161,7 +193,7 @@ async function prioritySubmitOnCard(e){
  const submit=form.querySelector('button[type="submit"]');
  form.dataset.saving='true';if(submit)submit.disabled=true;
  try{
-  priorityStoreResponse(x,s,selected.answers);
+  const result=priorityStoreResponse(x,s,selected.answers,'initiative-home',form.dataset.priorityResponse||null);
   save();
   render();
   // Al reconstruir la tarjeta, conservar abierta la sección y mostrar los promedios.
@@ -169,12 +201,12 @@ async function prioritySubmitOnCard(e){
   const details=card?.querySelector('.pf-priority-card-detail');
   if(details)details.open=true;
   const notice=details?.querySelector('[data-priority-feedback]');
-  if(notice)notice.textContent='Valoración registrada. Confirmando guardado en la nube…';
+  if(notice)notice.textContent=(result.mode==='edited'?'Cambios registrados.':'Valoración registrada.')+' Confirmando guardado en la nube…';
   const hasCloud=typeof cloudReady!=='undefined'&&cloudReady&&typeof syncAll==='function';
   if(hasCloud){
    if(typeof syncTimer!=='undefined')clearTimeout(syncTimer);
    const persisted=await syncAll();
-   if(notice)notice.textContent=persisted===true?'Valoración guardada en Supabase. Los promedios ya están actualizados.':'Valoración registrada localmente. No se confirmó el guardado en Supabase; revisa el aviso de sincronización.';
+   if(notice)notice.textContent=persisted===true?(result.mode==='edited'?'Cambios guardados en Supabase.':'Valoración guardada en Supabase.')+' Los promedios ya están actualizados.':(result.mode==='edited'?'Cambios registrados':'Valoración registrada')+' localmente. No se confirmó el guardado en Supabase; revisa el aviso de sincronización.';
   }else if(notice){
    notice.textContent='Valoración registrada localmente. Se sincronizará cuando haya conexión con Supabase.';
   }
