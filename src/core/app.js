@@ -98,8 +98,8 @@ if(page==='Simulación de agentes'){a.innerHTML=renderABMExperiencePage(x);retur
 if(page==='Analítica'){let vals=Object.values(x.dimensions).filter(v=>v!==null),avg=vals.length?Math.round(vals.reduce((a,b)=>a+Number(b),0)/vals.length):'—';a.innerHTML=hcxHero('Analítica y medición',x,'Observa el avance y contrasta los resultados a lo largo del tiempo.','RDAIM · MEDICIÓN','◷')+portfolioMetricSummary()+`<div class="triple">${[['INS personas','ins_personas'],['INS proceso','ins_proceso'],['CNPS','cnps']].map(([n,k])=>metricCard(x,n,k)).join('')}</div><div class="triple"><section class="panel"><p class="muted">Dimensiones medidas</p><div class="metric">${vals.length}/6</div></section><section class="panel"><p class="muted">Promedio descriptivo*</p><div class="metric">${avg}${vals.length?'%':''}</div></section><section class="panel"><p class="muted">Acciones completadas</p><div class="metric">${x.actions.filter(a=>a.status==='Completada').length}/${x.actions.length}</div></section></div><div class="grid"><section class="panel"><h2>Adopción por dimensión</h2>${dimensionBars(x)}<p class="notice">*Promedio descriptivo, no índice validado.</p></section><section class="panel"><h2>Indicadores predictivos y de resultados</h2>${indicatorTable(x,['Predictivos','Resultados'])}<button class="secondary" onclick="go('Indicadores')">Configurar indicadores</button></section></div><section class="panel"><h2>Evolución de indicadores</h2><p class="muted">Registra valores sucesivos desde Indicadores para visualizar su evolución.</p>${trendCharts(x)}</section>`;return}}
 
 
-const RESULT_TYPES=['Porcentaje de adopción','Porcentaje de cumplimiento','Frecuencia de comportamiento','Nivel de participación','Calidad de las relaciones','Nivel de capacidades','Índice de percepción','Nivel de desempeño','Tiempo o eficiencia','Impacto en resultados'];
-const RESULT_UNITS=['Porcentaje (%)','Puntos / índice','Escala','Número de personas','Frecuencia (veces)','Tiempo (minutos)','Tasa','Valor monetario (COP)'];
+const RESULT_TYPES=['Porcentaje de adopción','Porcentaje de cumplimiento','Frecuencia de comportamiento','Nivel de participación','Calidad de las relaciones','Nivel de capacidades','Índice de percepción','Nivel de desempeño','Tiempo o eficiencia','Impacto en resultados','Conteo de eventos o casos'];
+const RESULT_UNITS=['Porcentaje (%)','Puntos / índice','Escala','Número de personas','Frecuencia (veces)','Tiempo (minutos)','Tasa','Valor monetario (COP)','Cantidad'];
 const OBS_FREQUENCIES=['Diaria','Semanal','Quincenal','Mensual','Trimestral','Semestral','Anual','Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];
 const resultSelect=(items,value)=>items.map(v=>`<option value="${safe(v)}" ${v===value?'selected':''}>${safe(v)}</option>`).join('');
 let resultEditorInitiative=null;
@@ -181,7 +181,7 @@ function resultGlobalPanel(x){
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar resultado global</button><button class="secondary" type="button" onclick="resultEditorClose('global')">Cancelar</button></div></form>
  </div></details>
  ${saved?`<section class="panel hcx-result-read-card hcx-result-read-hybrid"><div class="hcx-result-read-head"><div><span class="hcx-result-read-eyebrow">RESULTADO GLOBAL DEFINIDO</span><h2>${safe(r.verb||'')} ${safe(r.complement||'')}</h2></div><button type="button" class="secondary hcx-result-edit-btn" onclick="resultEditorOpen('global')">Editar resultado</button></div>
- <p class="hcx-result-hybrid-measure">Medición: <strong>${safe(r.measureType||'No definida')}${safe(resultNarrativeUnit(r))}</strong></p>
+ <div class="hcx-result-measure-grid"><div><small>¿Cómo vamos a medirlo?</small><strong>${safe(r.measureType||'No definido')}</strong></div><div><small>Unidad de medición</small><strong>${safe(r.unit||'No definida')}${r.unit==='Escala'?safe(resultNarrativeUnit(r)):''}</strong></div></div>
  <div class="hcx-result-hybrid-metrics" aria-label="Línea base, meta esperada y fecha meta">
  <div class="hcx-result-hybrid-metric"><span>Línea base</span><strong>${safe(resultNarrativeAmount(r.baseline,r.unit))}</strong></div>
  <div class="hcx-result-hybrid-metric"><span>Meta esperada</span><strong>${safe(resultNarrativeAmount(r.target,r.unit))}</strong></div>
@@ -219,7 +219,7 @@ function objectiveIntegratedFlow(x){
   <section class="hcx-hypothesis-side hcx-hypothesis-result ${full?'':'is-pending'}">
    <span class="hcx-hypothesis-eyebrow">RESULTADO GLOBAL</span>
    ${full?`<h3>${safe(outcome)}</h3>
-    <div class="hcx-hypothesis-side-group"><small>Indicador</small><strong>${safe(resultTextClean(r.measureType)||'No definido')}${safe(resultNarrativeUnit(r))}</strong></div>
+    <div class="hcx-hypothesis-side-group"><small>Cómo vamos a medirlo</small><strong>${safe(resultTextClean(r.measureType)||'No definido')}</strong></div><div class="hcx-hypothesis-side-group"><small>Unidad de medición</small><strong>${safe(r.unit||'No definida')}${r.unit==='Escala'?safe(resultNarrativeUnit(r)):''}</strong></div>
     <div class="hcx-hypothesis-target"><div><small>Línea base</small><strong>${safe(resultNarrativeAmount(r.baseline,r.unit))}</strong></div><span aria-hidden="true">→</span><div><small>Meta</small><strong>${safe(resultNarrativeAmount(r.target,r.unit))}</strong></div></div>
     <div class="hcx-hypothesis-side-meta"><span>Fecha meta: ${safe(resultDateLabel(r.dueDate))}</span></div>`:
     '<p class="hcx-hypothesis-pending">Aún no se ha definido un resultado global.</p>'}
