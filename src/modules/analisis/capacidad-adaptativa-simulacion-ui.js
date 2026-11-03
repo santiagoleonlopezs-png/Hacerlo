@@ -50,10 +50,13 @@ function caDynInitial(x){
     questions:d.sources.map(q=>({surveyId:q.surveyId,questionId:q.questionId,n:q.n}))};
   }
  }
- const ready=CA_DIMENSIONS.every(dim=>Number.isFinite(initial[dim.id])
+ const scales=[...new Set(CA_DIMENSIONS.map(dim=>sources[dim.id].scale).filter(Boolean))];
+ const comparable=scales.length<=1;
+ const ready=comparable&&CA_DIMENSIONS.every(dim=>Number.isFinite(initial[dim.id])
   &&['observed','proxy'].includes(sources[dim.id].kind));
- return {initial,sources,ready,
-  missing:CA_DIMENSIONS.filter(dim=>sources[dim.id].kind==='missing').map(dim=>dim.name),
+ const missing=CA_DIMENSIONS.filter(dim=>sources[dim.id].kind==='missing').map(dim=>dim.name);
+ if(!comparable)missing.push('Escalas diferentes entre dimensiones: '+scales.join(' y '));
+ return {initial,sources,ready,comparable,scales,missing,
   observed,wave:caObservedWave,audienceId:caObservedAudience};
 }
 function caDynLastRun(x){
@@ -109,7 +112,7 @@ function caDynScenario(x,d){
  const init=caDynInitial(x),last=caDynLastRun(x);
  if(!init.ready)return `<section class="ca-dyn-panel ca-dyn-empty">
   <h2>Configura primero la medición real</h2>
-  <p>La simulación requiere valores observados para las cuatro dimensiones. Faltan: ${safe(init.missing.join(', '))}.</p>
+  <p>La simulación requiere valores observados para las cuatro dimensiones y una escala de origen comparable. Faltan: ${safe(init.missing.join(', '))}.</p>
   <button type="button" class="primary" onclick="caDynTab('medicion');caDynOpenEvidence()">Revisar fuentes →</button>
  </section>`;
  return `<section class="ca-dyn-panel">
