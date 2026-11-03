@@ -69,10 +69,10 @@ function go(n){
  page=n;nav();render();
 }
 function choose(id){db.selected=id;save();go('RDAIM')}
-function createInitiative(e){e.preventDefault();let f=e.target;let o={id:Date.now(),name:f.name.value,description:f.description.value,population:Number(f.population.value)||0,scope:f.scope.value,createdAt:f.createdAt.value||new Date().toISOString().slice(0,10),impact:Number(f.impact.value)||null,effort:Number(f.effort.value)||null,phase:0,dimensions:Object.fromEntries(dims.map(d=>[d,null])),indicators:[],behaviors:[],audiences:[],actions:[],nodes:[],edges:[],causal:[],systemVariables:[],systemLinks:[]};db.initiatives.push(o);db.selected=o.id;save();go('RDAIM')}
+function createInitiative(e){e.preventDefault();let f=e.target;let o={id:Date.now(),name:f.name.value,description:f.description.value.trim(),population:Number(f.population.value)||0,scope:f.scope.value,createdAt:f.createdAt.value||new Date().toISOString().slice(0,10),impact:Number(f.impact.value)||null,effort:Number(f.effort.value)||null,phase:0,dimensions:Object.fromEntries(dims.map(d=>[d,null])),indicators:[],behaviors:[],audiences:[],actions:[],nodes:[],edges:[],causal:[],systemVariables:[],systemLinks:[]};db.initiatives.push(o);db.selected=o.id;save();go('RDAIM')}
 function render(){let x=current(),a=$('app');if(x){x.behaviors=x.behaviors||[];x.audiences=x.audiences||[];x.indicators=x.indicators||[];x.actions=x.actions||[];x.metrics=x.metrics||{};x.metricHistory=x.metricHistory||{};x.measurements=x.measurements||[];x.notes=x.notes||{};x.systemVariables=x.systemVariables||[];x.systemLinks=x.systemLinks||[];x.evidenceRecords=x.evidenceRecords||[];x.modelRuns=x.modelRuns||[];x.scope=x.scope||'inside';}if(page==='Inteligencia integrada'){a.innerHTML=intelligencePage(x);return}if(page==='Inicio'){a.innerHTML=renderIntelligenceHome();return}if(page==='Iniciativas'){a.innerHTML=renderInitiativesHome();return}
 if(!x){a.innerHTML='<div class="panel">Primero crea una iniciativa desde Inicio.</div>';return}
-let showStageSteps=page==='RDAIM';let head=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>${safe(x.name)}</h2><p class="muted">${safe(x.description)} · ${x.population} personas</p></div><select style="width:auto" onchange="choose(Number(this.value))">${db.initiatives.map(i=>`<option value="${i.id}" ${i.id===x.id?'selected':''}>${safe(i.name)}</option>`).join('')}</select></div>${showStageSteps?`<div class="steps">${phases.map((p,i)=>`<button class="step ${(page==='RDAIM'?phase:(HACERLO_PAGE_PHASE[page]??phase))===i?'selected':''}" style="--c:${p[2]}" onclick="openNavStep(${i});go('RDAIM')"><b>${p[0]}</b>${p[1]}</button>`).join('')}</div>`:''}</section>`;
+let showStageSteps=page==='RDAIM';let head=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>${safe(x.name)}</h2><p class="muted">${safe(initiativeContextSummary(x))} · ${x.population} personas</p></div><select style="width:auto" onchange="choose(Number(this.value))">${db.initiatives.map(i=>`<option value="${i.id}" ${i.id===x.id?'selected':''}>${safe(i.name)}</option>`).join('')}</select></div>${showStageSteps?`<div class="steps">${phases.map((p,i)=>`<button class="step ${(page==='RDAIM'?phase:(HACERLO_PAGE_PHASE[page]??phase))===i?'selected':''}" style="--c:${p[2]}" onclick="openNavStep(${i});go('RDAIM')"><b>${p[0]}</b>${p[1]}</button>`).join('')}</div>`:''}</section>`;
 if(page==='Diseño de comportamientos')head=hcxHero('Diseño de comportamientos',x,'Define las acciones observables que producirán el resultado esperado.','RDAIM · DISEÑO','◈');
  if(page==='RDAIM'||page==='Diseño de comportamientos'){
 let p=phases[phase],body='';
@@ -191,7 +191,7 @@ function resultGlobalPanel(x){
 }
 function resultToggleScale(f){const scale=f.elements.unit.value==='Escala';f.querySelector('[data-scale-box]').style.display=scale?'block':'none';f.querySelector('[data-custom-scale]').style.display=scale&&f.elements.scale.value==='Personalizada'?'grid':'none'}
 function resultSentence(r){const scale=r.unit==='Escala'?` (escala ${r.scale==='Personalizada'?r.scaleMin+' a '+r.scaleMax:r.scale.replace('-',' a ')})`:'';return `${r.verb} ${r.complement}, medido mediante ${r.measureType.toLowerCase()}, en ${r.unit.toLowerCase()}${scale}, de ${r.baseline} a ${r.target} para el ${r.dueDate}.`}
-function saveGlobalResult(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f));const baseline=Number(z.baseline),target=Number(z.target);let min=-Infinity,max=Infinity;if(z.unit==='Porcentaje (%)'){min=0;max=100}else if(z.unit==='Escala'){const b=z.scale==='Personalizada'?[Number(z.scaleMin),Number(z.scaleMax)]:z.scale.split('-').map(Number);[min,max]=b;if(!(min<max))return alert('La escala debe tener un mínimo menor al máximo.')}if(baseline<min||baseline>max||target<min||target>max)return alert('Línea base y meta deben estar dentro de la escala o rango seleccionado.');if(['Incrementar','Mejorar','Fortalecer'].includes(z.verb)&&target<baseline||z.verb==='Reducir'&&target>baseline||z.verb==='Mantener'&&target!==baseline)return alert('Revisa que la meta sea coherente con el verbo seleccionado.');const x=current();x.globalResult={...z,baseline,target,scaleMin:Number(z.scaleMin),scaleMax:Number(z.scaleMax)};x.expected=resultSentence(x.globalResult);resultEditorsExpanded.global=false;save();render()}
+function saveGlobalResult(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f));const baseline=Number(z.baseline),target=Number(z.target);let min=-Infinity,max=Infinity;if(z.unit==='Porcentaje (%)'){min=0;max=100}else if(z.unit==='Escala'){const b=z.scale==='Personalizada'?[Number(z.scaleMin),Number(z.scaleMax)]:z.scale.split('-').map(Number);[min,max]=b;if(!(min<max))return alert('La escala debe tener un mínimo menor al máximo.')}if(baseline<min||baseline>max||target<min||target>max)return alert('Línea base y meta deben estar dentro de la escala o rango seleccionado.');if(['Incrementar','Mejorar','Fortalecer'].includes(z.verb)&&target<baseline||z.verb==='Reducir'&&target>baseline||z.verb==='Mantener'&&target!==baseline)return alert('Revisa que la meta sea coherente con el verbo seleccionado.');const x=current();x.globalResult={...z,baseline,target,scaleMin:Number(z.scaleMin),scaleMax:Number(z.scaleMax)};x.expected=resultSentence(x.globalResult);syncInitiativeContextFromHypothesis(x);resultEditorsExpanded.global=false;save();render()}
 // Visualización RDAIM: conducta una vez, relación esperada y medición separadas.
 function objectiveIntegratedFlow(x){
  const b=x.objectiveBehavior||{},r=x.globalResult||{};
@@ -274,6 +274,30 @@ function resultValueHypothesis(x){
   ' para el '+resultDateLabel(r.dueDate)+'.';
 }
 
+/* Una única fuente para el resumen de la iniciativa: hipótesis de valor construida
+   con Resultado global + Comportamiento objetivo. Preservar el texto manual previo. */
+function initiativeValueHypothesisReady(x){
+ const r=x?.globalResult,b=x?.objectiveBehavior;
+ return !!(r&&b&&resultTextClean(r.verb)&&resultTextClean(r.complement)&&
+  resultTextClean(r.measureType)&&resultTextClean(r.dueDate)&&
+  resultTextClean(b.actor)&&resultTextClean(b.action)&&resultTextClean(b.observeFrom));
+}
+function initiativeContextSummary(x){
+ if(initiativeValueHypothesisReady(x))return resultValueHypothesis(x);
+ return String(x?.description||'').trim()||'Pendiente de formular la hipótesis de valor.';
+}
+function syncInitiativeContextFromHypothesis(x){
+ if(!initiativeValueHypothesisReady(x))return false;
+ const next=resultValueHypothesis(x);
+ if(String(x.description||'')===next)return false;
+ if(x.descriptionSource!=='valueHypothesis'&&String(x.description||'').trim()){
+  x.descriptionBeforeHypothesis=x.description;
+ }
+ x.description=next;
+ x.descriptionSource='valueHypothesis';
+ return true;
+}
+
 function objectiveSentence(b){
  const core=objectiveCoreStatement(b);
  const context=resultTextClean(b.context);
@@ -283,7 +307,7 @@ function objectiveSentence(b){
  return core+(context?'. Contexto: '+context:'')+'. Frecuencia esperada: '+frequency+
    (condition?' ('+condition+')':'')+'. Desde el '+date+'.';
 }
-function saveObjectiveBehavior(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f)),conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];if(conditional.includes(z.frequency)&&!z.condition.trim())return alert('Especifica la actividad o situación que activa el comportamiento.');const x=current();x.objectiveBehavior=z;x.objective=objectiveSentence(z);resultEditorsExpanded.objective=false;save();render()}
+function saveObjectiveBehavior(e){e.preventDefault();const f=e.target,z=Object.fromEntries(new FormData(f)),conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];if(conditional.includes(z.frequency)&&!z.condition.trim())return alert('Especifica la actividad o situación que activa el comportamiento.');const x=current();x.objectiveBehavior=z;x.objective=objectiveSentence(z);syncInitiativeContextFromHypothesis(x);resultEditorsExpanded.objective=false;save();render()}
 
 function resultadosHome(x){
  const r=x.globalResult,b=x.objectiveBehavior;
