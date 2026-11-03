@@ -106,13 +106,13 @@ function priorityQuestionMarkup(s,context='home'){
   const qs=s.questions.filter(q=>q.type==='choice'&&q.dimension===d);
   return '<section class="pf-priority-dimension"><h4>'+d+'</h4>'+
     qs.map(q=>'<fieldset class="pf-priority-question"><legend>'+safe(q.label)+'</legend>'+
-      '<div class="pf-priority-options">'+EE.shuffleChoices(q).map(answer=>'<label class="pf-priority-choice"><input type="radio" name="'+safe(q.id)+'" value="'+safe(answer)+'"><span>'+safe(answer)+'</span></label>').join('')+'</div></fieldset>').join('')+'</section>';
+      '<div class="pf-priority-options">'+EE.shuffleChoices({...q,priorityRandomized:true}).map(answer=>'<label class="pf-priority-choice"><input type="radio" name="'+safe(q.id)+'" value="'+safe(answer)+'"><span>'+safe(answer)+'</span></label>').join('')+'</div></fieldset>').join('')+'</section>';
  }).join('');
  return '<div class="pf-priority-questions">'+sections+'</div>';
 }
 function priorityOverview(x){
  const v=priorityResults(x);
- if(!v.n)return '<div class="pf-priority-empty">Sin respuestas del instrumento. La iniciativa permanece por evaluar.</div>';
+ if(!v.n)return '<div class="pf-priority-empty">Aún no hay respuestas válidas de este instrumento. Si existen puntuaciones anteriores, no provienen de esta medición.</div>';
  return '<div class="pf-priority-stats"><div><span>Impacto promedio</span><strong>'+v.impact.toLocaleString('es-CO',{maximumFractionDigits:2})+' / 5</strong></div>'+
  '<div><span>Esfuerzo promedio</span><strong>'+v.effort.toLocaleString('es-CO',{maximumFractionDigits:2})+' / 5</strong></div></div>'+
  '<p class="pf-priority-proof">'+v.n+' '+(v.n===1?'valoración válida':'valoraciones válidas')+' · Instrumento v'+v.version+(v.date?' · Actualizado '+safe(String(v.date).slice(0,10)):'')+'</p>';
