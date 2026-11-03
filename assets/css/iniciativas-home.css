@@ -131,3 +131,12 @@
 @media(max-width:880px){.pf-priority-options{grid-template-columns:1fr 1fr}.pf-priority-choice span{min-height:70px}}
 @media(max-width:560px){.pf-priority-options{grid-template-columns:1fr}.pf-priority-choice span{min-height:49px}.pf-priority-stats{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.pf-priority-choice span{transition:none}}
+
+/* Eliminación explícita: solo después de confirmación y respuesta de Supabase. */
+.pf-danger-zone{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-top:15px;padding:13px 0 2px;border-top:1px solid rgba(198,105,105,.25)}
+.pf-danger-zone small{font-size:10px;line-height:1.45;color:#b9a8af;flex:1;min-width:160px}
+.pf-delete-button,.pf-table-delete{display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:34px;padding:7px 11px;border:1px solid rgba(233,119,125,.52);border-radius:8px;background:rgba(125,45,61,.16);color:#ffb1b1;font-size:11px;font-weight:750;cursor:pointer}
+.pf-delete-button:hover,.pf-table-delete:hover{border-color:#ff9f9f;background:rgba(160,52,72,.28);color:#ffe8e8}
+.pf-delete-button:focus-visible,.pf-table-delete:focus-visible{outline:2px solid #ffc3c3;outline-offset:2px}
+.pf-delete-button:disabled,.pf-table-delete:disabled{opacity:.55;cursor:progress}
+.pf-table-delete{margin-left:8px}
