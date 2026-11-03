@@ -57,6 +57,7 @@ function caDynInitial(x){
   observed,wave:caObservedWave,audienceId:caObservedAudience};
 }
 function caDynLastRun(x){
+ if(!caDynInitial(x).ready)return null;
  return (x.capacityAdaptive?.simulationRuns||[]).filter(run=>run.source==='observed'
   &&run.evidenceOnly===true
   &&CA_DIMENSIONS.every(d=>Number.isFinite(run.initial?.[d.id])&&['observed','proxy'].includes(run.provenance?.[d.id]?.kind))).at(-1)||null;
