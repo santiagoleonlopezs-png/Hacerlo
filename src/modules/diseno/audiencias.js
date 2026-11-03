@@ -299,11 +299,11 @@ function audAdoptionDistribution(x){
  if(!b){
   const r=audAdoptionConsolidated(x);
   const cards=Object.entries(AUD_ADOPTION_STAGES).map(([key,meta])=>
-   `<div class="aud-stage-card aud-stage-summary" style="--aud-state:${meta.color}"><span>${meta.label}</span><strong>${r.counts[key].toLocaleString('es-CO')}</strong><small>${r.total?(100*r.counts[key]/r.total).toLocaleString('es-CO',{maximumFractionDigits:1}):0}% de las valoraciones aplicables</small></div>`).join('');
+   `<div class="aud-stage-card aud-stage-summary" style="--aud-state:${meta.color}"><span>${meta.label}</span><strong>${r.counts[key].toLocaleString('es-CO')}</strong><small>${r.total?(100*r.counts[key]/r.total).toLocaleString('es-CO',{maximumFractionDigits:1}):0}% de las combinaciones aplicables</small></div>`).join('');
   const table=r.breakdown.map(({behavior,counts,total})=>
    `<tr><th scope="row">${safe(audBehaviorName(behavior))}</th><td>${total.toLocaleString('es-CO')}</td>${Object.keys(AUD_ADOPTION_STAGES).map(k=>`<td>${counts[k].toLocaleString('es-CO')}</td>`).join('')}</tr>`).join('');
   return `<section class="panel aud-adoption-consolidated"><h2>Adopción por comportamiento</h2>${audBehaviorPicker(x)}${audPersonFilterHTML(x)}
-   <p><b>Consolidado de todos los comportamientos</b> · ${r.peopleCount.toLocaleString('es-CO')} personas con comportamientos aplicables · ${r.behaviorCount.toLocaleString('es-CO')} comportamientos · ${r.total.toLocaleString('es-CO')} valoraciones aplicables</p>
+   <p><b>Consolidado de todos los comportamientos</b> · ${r.peopleCount.toLocaleString('es-CO')} personas con comportamientos aplicables · ${r.behaviorCount.toLocaleString('es-CO')} comportamientos · ${r.total.toLocaleString('es-CO')} combinaciones aplicables</p>
    <div class="aud-adoption-cards">${cards}</div>
    <p class="aud-consolidated-note">Cada persona aporta una valoración por cada comportamiento que le corresponde. Se utiliza el último estado registrado; sin registro se clasifica como «Sin evidencia suficiente». Los porcentajes se calculan sobre el total de combinaciones persona–comportamiento, no sobre personas únicas.</p>
    <details class="aud-consolidated-breakdown"><summary>Ver desglose por comportamiento</summary>
