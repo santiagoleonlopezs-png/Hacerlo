@@ -21,8 +21,10 @@ function caReadObserved(x,wave='Base',audienceId=''){
   }
   const scale=details.filter(q=>q.type==='scale'&&Number.isFinite(q.value)&&q.n>0);
   const nps=details.filter(q=>['nps','cnps'].includes(q.type));
-  dimensions[dim.id]={label:dim.name,value:scale.length?
-   scale.reduce((s,q)=>s+q.value,0)/scale.length:null,
+  const rawValue=scale.length?scale.reduce((s,q)=>s+q.value,0)/scale.length:null;
+  const needsOrientation=dim.id==='energia'&&scale.some(q=>caClean(q.dimension).includes('desgaste'));
+  dimensions[dim.id]={label:dim.name,value:needsOrientation?null:rawValue,
+   rawValue,needsOrientation,
    questionCount:scale.length,sources:details,
    sampleNote:'Promedio descriptivo de preguntas, con posible variación en n.',
    nps:nps.map(q=>({value:q.value,n:q.n,label:q.label,type:q.type}))};
