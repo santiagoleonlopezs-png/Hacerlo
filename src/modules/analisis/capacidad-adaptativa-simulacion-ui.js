@@ -73,7 +73,7 @@ function caDynView(x){
 }
 function caDynMeasurement(x,d){
  const init=caDynInitial(x),sources=init.sources;
- const configured=CA_DIMENSIONS.some(dim=>sources[dim.id].kind!=='missing');
+ const configured=CA_DIMENSIONS.some(dim=>Array.isArray(x.capacityAdaptive?.mappings?.[dim.id])&&x.capacityAdaptive.mappings[dim.id].length>0);
  return `<div class="ca-dyn-workspace">
   <section class="ca-dyn-panel">
    <div class="ca-dyn-section-heading"><div><small>01 · PUNTO DE PARTIDA</small><h2>Medición inicial</h2>
