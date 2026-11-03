@@ -48,10 +48,10 @@ function caMarkup(x){
  const chosen=qs.filter(q=>!caSurveyFilter||q.surveyId===caSurveyFilter);
  return `<section class="panel ca-entry" id="ca-panel">
  <div class="flex" style="justify-content:space-between;align-items:center;gap:12px">
-  <div><div class="ca-kicker">ANÁLISIS · PENSAMIENTO SISTÉMICO · SIMULACIÓN DINÁMICA</div>
-  <h2 class="ca-title">Capacidad Adaptativa</h2>
-  <p class="muted" style="margin:0">Explora cuatro dimensiones con evidencia de SENTIR y CNPS por momento y audiencia.</p></div>
-  <button class="secondary" type="button" onclick="caToggle()" aria-expanded="${caExpanded}">${caExpanded?'Cerrar capacidad adaptativa':'Abrir capacidad adaptativa →'}</button>
+  <div><div class="ca-kicker">FUENTES DE DATOS · CONFIGURACIÓN</div>
+  <h2 class="ca-title">Preguntas vinculadas</h2>
+  <p class="muted" style="margin:0">Selecciona qué preguntas alimentan cada dimensión. Puedes revisar y cambiar las sugerencias.</p></div>
+  <button class="secondary" type="button" onclick="caToggle()" aria-expanded="${caExpanded}">${caExpanded?'Ocultar preguntas':'Configurar preguntas →'}</button>
  </div>
  ${caExpanded?`<div style="margin-top:16px">
   <label style="max-width:440px">Instrumento<select onchange="caFilter(this.value)"><option value="">Todos los instrumentos</option>${surveys.map(([id,title])=>`<option value="${safe(id)}" ${caSurveyFilter===id?'selected':''}>${safe(title)}</option>`).join('')}</select></label>
@@ -70,13 +70,3 @@ function caMarkup(x){
   <p class="notice" style="margin-top:12px">Configuración guardada por iniciativa. La selección no calcula aún los stocks ni ejecuta el modelo AnyLogic. Antes de simular se validarán dirección de los ítems, escalas, muestras y momentos de medición.</p>
  </div>`:''}</section>`;
 }
-// Decorador aditivo, cargado después de Encuestas. Evita alterar la navegación existente.
-const caPreviousRender=render;
-render=function(){
- caPreviousRender();
- if(page!=='Pensamiento sistémico')return;
- const x=current(),root=$('app');if(!x||!root||document.getElementById('ca-panel'))return;
- const focus=root.querySelector('.sv-shell .sv-focus');
- if(focus)focus.insertAdjacentHTML('afterend',caMarkup(x));
- else root.insertAdjacentHTML('beforeend',caMarkup(x));
-};
