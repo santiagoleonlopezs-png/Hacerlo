@@ -238,12 +238,40 @@ function objectivePanel(x){
  <div class="hcx-result-editor-content">
  ${legacy?'<p class="notice">Tu descripción anterior se conserva en el campo de acción observable.</p>':''}
  <form onsubmit="saveObjectiveBehavior(event)"><label>¿Quién debe realizarlo?<input name="actor" required value="${safe(b.actor||'')}" placeholder="Ej. Los líderes de equipo"></label><label>¿Qué acción observable esperamos?<textarea name="action" required placeholder="Ej. compartir información y coordinar decisiones">${safe(b.action||x.objective||'')}</textarea></label><label>¿En qué situación o contexto?<input name="context" value="${safe(b.context||'')}" placeholder="Ej. durante la planificación de proyectos"></label>
- <label>¿Con qué frecuencia esperamos observarlo?<select name="frequency" onchange="objectiveToggleCondition(this.form)">${resultSelect(OBS_FREQUENCIES,b.frequency||'Semanal')}</select></label><label data-condition style="display:${conditional.includes(b.frequency)?'block':'none'}"><span data-condition-label>${details[b.frequency]||''}</span><input name="condition" value="${safe(b.condition||'')}" placeholder="Especifica la actividad o situación"></label>
+ <div class="hcx-frequency-field"><span class="hcx-frequency-label">¿Con qué frecuencia esperamos observarlo?</span>
+  <input type="hidden" name="frequency" value="${safe(b.frequency||'Semanal')}">
+  <details class="hcx-frequency-picker"><summary aria-label="Seleccionar frecuencia: ${safe(b.frequency||'Semanal')}"><span data-frequency-selected>${safe(b.frequency||'Semanal')}</span><span class="hcx-frequency-arrow" aria-hidden="true">⌄</span></summary>
+   <div class="hcx-frequency-options" role="group" aria-label="Opciones de frecuencia">
+    ${OBS_FREQUENCIES.map(freq=>`<button type="button" data-frequency="${safe(freq)}" aria-pressed="${freq===(b.frequency||'Semanal')}" class="hcx-frequency-option ${freq===(b.frequency||'Semanal')?'is-selected':''}" onclick="objectiveChooseFrequency(this)">${safe(freq)}</button>`).join('')}
+   </div>
+  </details>
+ </div><label data-condition style="display:${conditional.includes(b.frequency)?'block':'none'}"><span data-condition-label>${details[b.frequency]||''}</span><input name="condition" value="${safe(b.condition||'')}" placeholder="Especifica la actividad o situación"></label>
  <details ${b.evidence?'open':''}><summary>¿Cómo sabremos que ocurrió? (opcional)</summary><label>Evidencia observable<textarea name="evidence" placeholder="Ej. acuerdos documentados">${safe(b.evidence||'')}</textarea></label></details><label>¿Desde cuándo esperamos observar este comportamiento?<input type="date" name="observeFrom" required value="${safe(b.observeFrom||'')}"></label>
  <div class="hcx-result-editor-actions"><button class="primary" type="submit">Guardar comportamiento objetivo</button><button class="secondary" type="button" onclick="resultEditorClose('objective')">Cancelar</button></div></form>
  </div></details>
  ${saved?objectiveIntegratedFlow(x):resultEmptyCard('objective',legacy)}
  </div>`;
+}
+function objectiveChooseFrequency(button){
+ const field=button.closest('.hcx-frequency-field'),form=button.closest('form');
+ if(!field||!form)return;
+ const value=button.dataset.frequency;
+ const input=field.querySelector('input[name="frequency"]');
+ if(!input||!OBS_FREQUENCIES.includes(value))return;
+ input.value=value;
+ const picker=field.querySelector('.hcx-frequency-picker');
+ const summary=picker?.querySelector('summary');
+ const selected=field.querySelector('[data-frequency-selected]');
+ if(selected)selected.textContent=value;
+ if(summary)summary.setAttribute('aria-label','Seleccionar frecuencia: '+value);
+ field.querySelectorAll('.hcx-frequency-option').forEach(option=>{
+  const active=option.dataset.frequency===value;
+  option.setAttribute('aria-pressed',String(active));
+  option.classList.toggle('is-selected',active);
+ });
+ if(picker)picker.open=false;
+ objectiveToggleCondition(form);
+ if(summary)summary.focus({preventScroll:true});
 }
 function objectiveToggleCondition(f){const frequency=f.elements.frequency.value,conditional=['Al iniciar una actividad','Al finalizar una actividad','Ante una situación específica','Otra'];const label=f.querySelector('[data-condition]');label.style.display=conditional.includes(frequency)?'block':'none';label.querySelector('[data-condition-label]').textContent=({'Al iniciar una actividad':'¿Qué actividad debe iniciar?','Al finalizar una actividad':'¿Qué actividad debe finalizar?','Ante una situación específica':'¿Qué situación específica debe ocurrir?','Otra':'Especifica la frecuencia o condición'})[frequency]||'';f.elements.condition.required=conditional.includes(frequency)}
 function resultTextClean(value){
