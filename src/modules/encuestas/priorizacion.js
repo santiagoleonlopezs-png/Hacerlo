@@ -124,8 +124,7 @@ function prioritySurveyResults(x,s){
  '<p class="muted">Promedio de las dos preguntas por dimensión para cada respuesta completa y, después, promedio entre respuestas. Cada persona tiene el mismo peso. La matriz utiliza el valor sin redondearlo a entero.</p></section>';
 }
 function priorityCardForm(x){
- const s=priorityEnsureSurvey(x);
- if(!s)return '';
+ const s=prioritySurveys(x).sort((a,b)=>Number(b.version||1)-Number(a.version||1))[0]||{questions:priorityQuestions()};
  return '<details class="pf-priority-card-detail" data-pf-priority><summary>Valorar impacto y esfuerzo <span aria-hidden="true">⌄</span></summary>'+
  '<div class="pf-priority-card-body">'+priorityOverview(x)+
  '<p class="pf-priority-intro">Responde en este mismo lugar o comparte el instrumento desde Encuestas. Las opciones no muestran puntajes y su orden cambia para cada pregunta.</p>'+
