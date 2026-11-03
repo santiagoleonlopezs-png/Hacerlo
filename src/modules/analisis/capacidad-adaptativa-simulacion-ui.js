@@ -4,7 +4,7 @@ let caDynDraft=null;
 function caDynSession(x){
  if(!caDynDraft||String(caDynDraft.initiativeId)!==String(x.id)){
   caDynDraft={initiativeId:x.id,tab:'medicion',source:'observed',
-   invertDesgaste:false,weeks:52,inputs:CA_DYN.inputs({})};
+   invertDesgaste:false,evidenceOpen:false,weeks:52,inputs:CA_DYN.inputs({})};
  }
  return caDynDraft;
 }
@@ -26,6 +26,7 @@ function caDynInput(id,value){
  const counter=document.getElementById('ca-dyn-value-'+id);
  if(counter)counter.textContent=String(d.inputs[id]);
 }
+function caDynToggleEvidence(){caDynSession(current()).evidenceOpen=!caDynSession(current()).evidenceOpen;}
 function caDynResetScenario(){caDynSession(current()).inputs=CA_DYN.inputs({});render();}
 function caDynInitial(x){
  const draft=caDynSession(x),observed=caReadObserved(x,caObservedWave,caObservedAudience);
@@ -85,12 +86,17 @@ function caDynMeasurement(x,d){
      <span><strong>Utilizar Desgaste como aproximación inversa de Energía</strong><small>Supuesto explícito: Energía = 100 − Desgaste. No es equivalencia validada entre constructos.</small></span></label>`:''}
    <div class="ca-dyn-footer-actions"><button type="button" class="primary" onclick="caDynTab('escenarios')">Continuar a escenarios →</button></div>
   </section>
-  <section class="ca-dyn-panel">
-   <div class="ca-dyn-section-heading"><div><small>FUENTES</small><h2>Encuestas vinculadas</h2>
-    <p>Revisa las mediciones por audiencia y momento, y configura las preguntas de cada dimensión.</p></div></div>
-   ${caObservedView(x)}
-   ${caMarkup(x)}
-  </section>
+  <details class="ca-dyn-panel ca-dyn-evidence" ${d.evidenceOpen?'open':''}>
+   <summary onclick="caDynToggleEvidence()">
+    <span><small>FUENTES E INSTRUMENTOS</small><strong>Revisar preguntas y resultados observados</strong>
+    <em>Filtra por audiencia y momento o cambia las preguntas que alimentan el modelo.</em></span>
+    <span class="ca-dyn-disclosure-arrow" aria-hidden="true">⌄</span>
+   </summary>
+   <div class="ca-dyn-evidence-body">
+    ${caObservedView(x)}
+    ${caMarkup(x)}
+   </div>
+  </details>
  </div>`;
 }
 function caDynScenario(x,d){
