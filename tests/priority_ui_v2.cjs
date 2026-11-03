@@ -47,13 +47,32 @@ const form={dataset:{priorityInitiative:'101'},answers,
  assert.equal(details.open,true,'Mantiene el formulario abierto tras guardar');
  assert.match(feedback.textContent,/guardada en Supabase/,'Muestra resultado verificable');
  assert.equal(errors.length,0);
+ const original=record.surveys[0].responses[0];
+ const checkedMarkup=context.priorityCardForm(record);
+ assert.match(checkedMarkup,/data-priority-response="[^"]+"/,'Identifica la respuesta editable');
+ for(const q of questions){
+  const chosen=answers[q.id];
+  const selected='<input type="radio" name="'+q.id+'" value="'+chosen+'" checked>';
+  assert.ok(checkedMarkup.includes(selected),'Recupera la selección guardada: '+q.id);
+ }
+ assert.match(checkedMarkup,/Guardar cambios/,'La acción existente entra en edición');
+ assert.match(checkedMarkup,/Registrar nueva valoración/,'La creación adicional es una acción explícita');
  context.syncAll=async()=>false;
- // Después de render(), el navegador crea un formulario nuevo.
- const secondForm={dataset:{priorityInitiative:'101'},answers,
+ const updatedAnswers={...answers,[questions[0].id]:questions[0].options[2]};
+ // Después de render(), el navegador crea un formulario nuevo con el ID guardado.
+ const secondForm={dataset:{priorityInitiative:'101',priorityResponse:original.id},answers:updatedAnswers,
   querySelector:sel=>sel==='button[type="submit"]'?{disabled:false,isConnected:true}:null};
  await context.prioritySubmitOnCard({preventDefault(){},target:secondForm});
- assert.equal(record.surveys[0].responses.length,2,'Permite valoraciones adicionales');
+ assert.equal(record.surveys[0].responses.length,1,'Editar no duplica la valoración');
+ assert.equal(record.surveys[0].responses[0].id,original.id,'Conserva la identidad de la respuesta');
+ assert.equal(record.surveys[0].responses[0].answers[questions[0].id],updatedAnswers[questions[0].id]);
+ assert.equal(record.surveys[0].responses[0].revisions.length,1,'Conserva el historial de correcciones');
+ assert.match(context.priorityCardForm(record),/Guardar cambios/);
  assert.match(feedback.textContent,/No se confirmó el guardado/,'No afirma éxito cuando falla Supabase');
+ const additionalForm={dataset:{priorityInitiative:'101',priorityResponse:''},answers,
+  querySelector:sel=>sel==='button[type="submit"]'?{disabled:false,isConnected:true}:null};
+ await context.prioritySubmitOnCard({preventDefault(){},target:additionalForm});
+ assert.equal(record.surveys[0].responses.length,2,'Una nueva valoración sí suma otra respuesta');
  const css=read('assets/css/iniciativas-home.css');
  assert.match(css,/\.pf-priority-create-assessment \.pf-priority-options\{grid-template-columns:minmax\(0,1fr\)\}/,
   'El panel lateral presenta respuestas una por renglón');
