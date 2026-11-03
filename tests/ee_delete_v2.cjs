@@ -1,4 +1,4 @@
-/* HACERLO: eliminar encuestas de forma visible, reversible y segura. */
+/* HACERLO: eliminar encuestas desde Opciones del instrumento, con Papelera y confirmación. */
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
@@ -28,7 +28,7 @@ for(const name of ['eeDesigner','eeSurveyKindPanel','eeHomeSourcesPanel','eeQues
  context[name]=()=>'<div></div>';
 }
 const markup=context.eePage(x);
-assert.match(markup,/class="ee-delete-survey"/,'Botón Eliminar visible sin abrir Opciones');
+assert.match(markup,/<details class="ee-instrument-options"><summary>Opciones del instrumento<\/summary>[\s\S]*?onclick="eeDeleteSurvey\(\)"/,'Eliminar permanece dentro de Opciones del instrumento');
 assert.equal((markup.match(/onclick="eeDeleteSurvey\(\)"/g)||[]).length,1,'Una única acción de eliminar');
 assert.match(markup,/Opciones del instrumento/);
 (async()=>{
@@ -41,7 +41,7 @@ assert.match(markup,/Opciones del instrumento/);
  assert.equal(x.surveys.length,1,'Elimina la encuesta seleccionada de la lista activa');
  assert.equal(x.surveyTrash.length,1,'Conserva preguntas y respuestas en la Papelera');
  assert.equal(revocations.length,0,'Un borrador no requiere revocación de enlace');
- assert.match(context.eePage(x),/ee-trash-overview/,'La Papelera es visible aunque la creación permanezca oculta');
+ assert.match(context.eePage(x),/ee-manager-trash/,'La Papelera sigue disponible al abrir Crear o importar');
  context.eeRestoreSurvey(0);
  assert.equal(x.surveys.length,2);
  assert.equal(x.surveyTrash.length,0);
@@ -62,7 +62,6 @@ assert.match(markup,/Opciones del instrumento/);
  assert.ok(saves>=3);
  assert.ok(renders>=3);
  const css=read('assets/css/encuestas.css');
- assert.match(css,/\.ee-delete-survey\{/);
- assert.match(css,/\.ee-trash-overview\{/);
+ assert.match(css,/\.ee-instrument-options>summary\{/);
  console.log('Encuestas: eliminación visible, confirmación, revocación, Papelera y restauración correctas.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
