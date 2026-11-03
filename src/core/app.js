@@ -5,10 +5,10 @@ const SUPABASE_URL='https://mflakxgdkpuhemgslgsa.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_LK085bNiIRbeQ0uuMOozWw_jYrAiXuk';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const HACERLO_ENGINE_URL='https://hacerlo-engine.onrender.com';
-let cloudOrgId=null, cloudReady=false, syncTimer=null, syncing=false;
+let cloudOrgId=null, cloudReady=false, syncTimer=null, syncing=false, syncPending=false, initiativeDeleteBusy=false;
 const $=id=>document.getElementById(id),safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function localBackup(){localStorage.setItem('hacerlo_v15_backup',JSON.stringify(db))}
-function save(){localBackup(); if(!cloudReady)return; clearTimeout(syncTimer); syncTimer=setTimeout(syncAll,450)}
+function save(){localBackup();if(!cloudReady)return;syncPending=true;if(initiativeDeleteBusy)return;clearTimeout(syncTimer);syncTimer=setTimeout(syncAll,450)}
 function evidenceToDb(v){return ({'Registrada':'registered','Observada':'observed','Declarada':'declared','Estimada':'estimated','Hipotética':'hypothesis','Hipotesis':'hypothesis','Hipótesis':'hypothesis'})[v]||'declared'}
 async function syncGraphForInitiative(i){if(!i._cloudId)return;i.nodes=i.nodes||[];i.edges=i.edges||[];
   for(const n of i.nodes){if(!n._cloudNodeId)n._cloudNodeId=crypto.randomUUID()}
@@ -18,9 +18,42 @@ async function syncGraphForInitiative(i){if(!i._cloudId)return;i.nodes=i.nodes||
   if(i.nodes.length){let rows=i.nodes.map((n,idx)=>({id:n._cloudNodeId,initiative_id:i._cloudId,label:n.name||'Sin nombre',node_type:n.type||'Otro',attributes:{local_index:idx}}));let {error}=await sb.from('graph_nodes').insert(rows);if(error)throw error}
   if(i.edges.length){let rows=i.edges.filter(e=>i.nodes[Number(e.s)]&&i.nodes[Number(e.t)]).map(e=>({id:e._cloudEdgeId,initiative_id:i._cloudId,source_node_id:i.nodes[Number(e.s)]._cloudNodeId,target_node_id:i.nodes[Number(e.t)]._cloudNodeId,relation_type:edgeRelation(e),measure_type:e.measureType||null,measure_value:e.measureValue===undefined||e.measureValue===null||e.measureValue===''?null:Number(e.measureValue),measure_unit:e.measureUnit||null,evidence_kind:evidenceToDb(e.evidence),evidence_notes:e.evidenceNotes||null,attributes:{relation_key:e.relationKey||normalizeRelation(edgeRelation(e))}}));if(rows.length){let {error}=await sb.from('graph_edges').insert(rows);if(error)throw error}}
 }
-async function syncAll(){if(syncing||!cloudReady||!cloudOrgId)return;syncing=true;setCloudStatus('Guardando…');try{for(const i of db.initiatives){for(const n of (i.nodes||[])){if(!n._cloudNodeId)n._cloudNodeId=crypto.randomUUID()}for(const e of (i.edges||[])){if(!e._cloudEdgeId)e._cloudEdgeId=crypto.randomUUID()}const payload={organization_id:cloudOrgId,name:i.name||'Sin nombre',description:i.description||null,population:Number(i.population)||0,entry_date:i.createdAt||new Date().toISOString().slice(0,10),impact:i.impact||null,effort:i.effort||null,phase:phases[i.phase||0]?.[0]||'R',scope:i.scope||'inside',app_state:i};if(i._cloudId){let {error}=await sb.from('initiatives').update(payload).eq('id',i._cloudId);if(error)throw error}else{let {data,error}=await sb.from('initiatives').insert(payload).select('id').single();if(error)throw error;i._cloudId=data.id}await syncGraphForInitiative(i)}setCloudStatus('Guardado en Supabase ✓')}catch(e){console.error(e);setCloudStatus('Error de sincronización: '+e.message,true)}finally{syncing=false;localBackup()}}
-function setCloudStatus(t,err=false){let el=document.getElementById('cloud-status');if(el){el.textContent='Centro de Inteligencia · '+t;el.style.color=err?'#f2a2a2':''}}
+async function syncAll(){if(!cloudReady||!cloudOrgId)return;if(syncing||initiativeDeleteBusy){syncPending=true;return;}syncing=true;syncPending=false;setCloudStatus('Guardando…');try{for(const i of db.initiatives){for(const n of (i.nodes||[])){if(!n._cloudNodeId)n._cloudNodeId=crypto.randomUUID()}for(const e of (i.edges||[])){if(!e._cloudEdgeId)e._cloudEdgeId=crypto.randomUUID()}const payload={organization_id:cloudOrgId,name:i.name||'Sin nombre',description:i.description||null,population:Number(i.population)||0,entry_date:i.createdAt||new Date().toISOString().slice(0,10),impact:i.impact||null,effort:i.effort||null,phase:phases[i.phase||0]?.[0]||'R',scope:i.scope||'inside',app_state:i};if(i._cloudId){let {error}=await sb.from('initiatives').update(payload).eq('id',i._cloudId);if(error)throw error}else{let {data,error}=await sb.from('initiatives').insert(payload).select('id').single();if(error)throw error;i._cloudId=data.id}await syncGraphForInitiative(i)}setCloudStatus('Guardado en Supabase ✓')}catch(e){console.error(e);setCloudStatus('Error de sincronización: '+e.message,true)}finally{syncing=false;localBackup();if(syncPending&&!initiativeDeleteBusy){clearTimeout(syncTimer);syncTimer=setTimeout(syncAll,450)}}}
+function setCloudStatus(t,err=false,allowRetry=err){const el=document.getElementById('cloud-status');if(el){el.textContent='Centro de Inteligencia · '+t;el.style.color=err?'#f2a2a2':'';el.classList.toggle('hcx-visually-hidden',!err);el.classList.toggle('hcx-cloud-sync-error',err)}const retry=document.getElementById('sync-retry');if(retry)retry.hidden=!allowRetry;}
 async function loadCloud(){let {data:m,error:me}=await sb.from('memberships').select('organization_id,role').limit(1);if(me)throw me;if(!m?.length)throw Error('Tu usuario no tiene una organización asignada.');cloudOrgId=m[0].organization_id;let {data,error}=await sb.from('initiatives').select('*').eq('organization_id',cloudOrgId).order('created_at');if(error)throw error;db={initiatives:(data||[]).map(r=>{let x=r.app_state||{};x.id=x.id||Date.now()+Math.random();x._cloudId=r.id;x.name=r.name;x.description=r.description||'';x.population=r.population||0;x.createdAt=r.entry_date;x.impact=r.impact;x.effort=r.effort;x.scope=r.scope||'inside';x.phase=Math.max(0,phases.findIndex(p=>p[0]===r.phase));return x}),selected:null};db.selected=db.initiatives[0]?.id||null;cloudReady=true;localBackup();setCloudStatus('Supabase conectado ✓');nav();render()}
+/* La eliminación se confirma también en Supabase ANTES de quitar la tarjeta.
+   Un rechazo de permisos o restricciones deja intacta la iniciativa local. */
+async function deleteInitiative(id){
+ const item=db.initiatives.find(i=>String(i.id)===String(id));
+ if(!item||initiativeDeleteBusy)return false;
+ if(!cloudReady||!cloudOrgId){alert('Para eliminar una iniciativa primero necesitas conexión con Supabase. No se ha eliminado ningún dato.');return false;}
+ initiativeDeleteBusy=true;clearTimeout(syncTimer);
+ setCloudStatus('Eliminando iniciativa…');
+ try{
+  // No competir con el guardado anterior: evita que una escritura pendiente la recree.
+  while(syncing)await new Promise(resolve=>setTimeout(resolve,60));
+  if(item._cloudId){
+   const {data,error}=await sb.from('initiatives').delete().eq('id',item._cloudId).eq('organization_id',cloudOrgId).select('id');
+   if(error)throw error;
+   if(!Array.isArray(data)||!data.some(row=>String(row.id)===String(item._cloudId))){
+    throw Error('El servidor no confirmó el borrado. Revisa los permisos de eliminación.');
+   }
+  }
+  const i=db.initiatives.findIndex(row=>String(row.id)===String(id));
+  if(i>=0)db.initiatives.splice(i,1);
+  if(String(db.selected)===String(id))db.selected=db.initiatives[0]?.id??null;
+  localBackup();
+  if(page==='Iniciativas')render();else go('Iniciativas');
+  setCloudStatus('Iniciativa eliminada de Supabase ✓');
+  return true;
+ }catch(error){
+  const message='No se pudo eliminar la iniciativa: '+(error?.message||'Error desconocido')+'. No se eliminó de tu portafolio.';
+  setCloudStatus(message,true,false);alert(message);return false;
+ }finally{
+  initiativeDeleteBusy=false;
+  if(syncPending){clearTimeout(syncTimer);syncTimer=setTimeout(syncAll,450);}
+ }
+}
 let recoveryMode=false;
 function showRecoveryForm(){recoveryMode=true;$('login-form').classList.add('hide');$('recovery-form').classList.remove('hide');$('auth-gate').style.display='flex'}
 async function requestPasswordRecovery(){let email=$('login-email').value.trim(),msg=$('login-msg');if(!email){msg.textContent='Escribe primero tu correo.';return}msg.textContent='Enviando enlace…';let {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://santiagoleonlopezs-png.github.io/Hacerlo/'});msg.textContent=error?error.message:'Revisa tu correo. Abre el enlace y HACERLO te pedirá crear una nueva contraseña.'}
