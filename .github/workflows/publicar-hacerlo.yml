@@ -33,6 +33,9 @@ jobs:
           test -f index.html
           test -f responder.html
           test -f admin/index.html
+          test -f admin/analytics.js
+          test -f admin/analytics.css
+          node --check admin/analytics.js
           test -f src/core/app.js
           test -f src/modules/encuestas/encuestas.js
           node --check src/core/app.js
