@@ -102,3 +102,13 @@
  .ca-dyn-evidence>summary{padding:17px}
  .ca-dyn-result-summary b,.ca-dyn-stock b{font-size:23px}
 }
+
+/* Medición real: nunca representar valores ausentes como cifras del modelo. */
+.ca-dyn-empty-state{
+  padding:32px 18px;border-radius:12px;text-align:center;
+  border:1px dashed rgba(104,182,195,.37);background:rgba(20,70,88,.13);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.ca-dyn-empty-state strong{font-size:16px;color:#e5faf8}
+.ca-dyn-empty-state p{margin:0;max-width:580px;color:#abc7d3;line-height:1.65;font-size:12px}
+.ca-dyn-root button:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5)}
