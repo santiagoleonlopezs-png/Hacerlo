@@ -78,6 +78,20 @@ function pfClear(){
  const input=document.getElementById('pf-search');if(input)input.value='';
  pfSetFilter('all');if(input)input.focus();
 }
+async function pfDelete(button){
+ const parent=button.closest('[data-pf-id]'),key=parent?.getAttribute('data-pf-id');
+ const initiative=db.initiatives.find(i=>String(i.id)===key);
+ if(!initiative)return;
+ if(!confirm('¿Eliminar definitivamente «'+initiative.name+'»?\n\nEsta acción eliminará la iniciativa y sus datos relacionados en HACERLO. No se puede deshacer.'))return;
+ button.disabled=true;
+ try{
+  const removed=await deleteInitiative(initiative.id);
+  if(!removed)button.disabled=false;
+ }catch(error){
+  button.disabled=false;
+  alert('No se pudo eliminar: '+(error?.message||'Error desconocido'));
+ }
+}
 function pfCard(i,idx){
  const p=priority(i),actions=i.actions||[],running=pfRunning(i),done=actions.filter(a=>normalizedStatus(a.status)==='Completada').length;
  const stage=Math.min(4,Math.max(0,Number.isFinite(Number(i.phase))?Math.trunc(Number(i.phase)):0));
@@ -102,7 +116,7 @@ function pfCard(i,idx){
    '<div class="pf-card-foot"><div class="pf-actions"><span>'+pfIcon(actions.length?'check':'clock')+
     (actions.length?done+' de '+actions.length+' acciones completadas':'Sin acciones registradas')+'</span>'+
     (actions.length?'<div class="pf-actions-track" role="progressbar" aria-label="Acciones completadas" aria-valuenow="'+done+'" aria-valuemin="0" aria-valuemax="'+actions.length+'"><i style="width:'+ratio+'%"></i></div>':'')+
-   '</div><details class="pf-edit"><summary>Editar prioridad <b aria-hidden="true">···</b></summary><div class="pf-edit-inner">'+priorityEditor(i)+'</div></details></div>'+(typeof priorityCardForm==='function'?priorityCardForm(i):'')+'</article>';
+   '</div><details class="pf-edit"><summary>Editar prioridad <b aria-hidden="true">···</b></summary><div class="pf-edit-inner">'+priorityEditor(i)+'<div class="pf-danger-zone"><button type="button" class="pf-delete-button" onclick="pfDelete(this)">Eliminar iniciativa</button><small>Elimina la iniciativa y sus registros asociados. Se solicitará confirmación.</small></div></div></details></div>'+(typeof priorityCardForm==='function'?priorityCardForm(i):'')+'</article>';
 }
 
 function pfSwitchView(next){
@@ -125,7 +139,7 @@ function pfConsolidatedTable(items){
    '<td>'+safe(phases[stage][1])+'</td><td><span class="pf-table-priority">'+safe(p.label)+'</span></td>'+
    '<td>'+((i.audiences||[]).length)+'</td><td>'+((i.behaviors||[]).length)+'</td><td>'+((i.indicators||[]).length)+'</td>'+
    ['Pendiente','En ejecución','Completada'].map(s=>'<td>'+value(s)+'</td>').join('')+
-   '<td><button type="button" class="pf-table-open" onclick="pfOpen(this)" aria-label="Abrir '+safe(i.name)+'">Abrir ↗</button></td></tr>';
+   '<td><button type="button" class="pf-table-open" onclick="pfOpen(this)" aria-label="Abrir '+safe(i.name)+'">Abrir ↗</button><button type="button" class="pf-table-delete" onclick="pfDelete(this)" aria-label="Eliminar '+safe(i.name)+'">Eliminar</button></td></tr>';
  }).join('')+'</tbody></table></div>';
 }
 function renderInitiativesHome(){
