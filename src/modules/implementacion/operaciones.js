@@ -105,7 +105,137 @@ function indicatorBehaviorIds(x,r){ensureBehaviorIds(x);return Array.isArray(r.b
 function indicatorHasBehavior(x,r,b){return indicatorBehaviorIds(x,r).includes(String(b.id));}
 function indicatorBehaviorLabel(x,r){const ids=indicatorBehaviorIds(x,r);return (x.behaviors||[]).filter(b=>ids.includes(String(b.id))).map(b=>b.name).join(', ')||(!Array.isArray(r.behaviorIds)?r.behavior||'':'');}
 function writeIndicatorBehaviorIds(x,r,ids){const valid=new Set((x.behaviors||[]).map(b=>String(b.id)));r.behaviorIds=[...new Set(ids.map(String))].filter(id=>valid.has(id));r.behavior=(x.behaviors||[]).find(b=>r.behaviorIds.includes(String(b.id)))?.name||'';}
-function behaviorIndicatorChoices(x,b){ensureBehaviorIds(x);const selected=x.indicators.filter(r=>b&&indicatorHasBehavior(x,r,b));return x.indicators.length?`<details class="association-picker"><summary>Seleccionar indicadores · ${selected.length} seleccionados</summary><div class="association-options">${x.indicators.map((r,i)=>`<label><input type="checkbox" name="existingIndicators" value="${i}"${b&&indicatorHasBehavior(x,r,b)?' checked':''} onchange="updateAssociationCount(this)"><span>${safe(r.name)} <small class="muted">· ${safe(r.type||'Sin tipo')}</small></span></label>`).join('')}</div><p class="muted">Puedes seleccionar varios. Cada indicador puede asociarse también a otros comportamientos.</p></details>`:'<p class="muted">Aún no hay indicadores. Puedes crearlos en Resultados → Indicadores o utilizar el formulario de indicador nuevo.</p>';}
+function behaviorIndicatorOptions(items,value){
+ const list=[...items];if(value&&!list.includes(value))list.push(value);
+ return list.map(item=>'<option value="'+safe(item)+'"'+(String(value||'')===String(item)?' selected':'')+'>'+safe(item)+'</option>').join('');
+}
+function behaviorIndicatorTypes(){
+ return typeof indicatorMeasureTypes==='function'?indicatorMeasureTypes():typeof RESULT_TYPES!=='undefined'?RESULT_TYPES:['Conteo de eventos o casos','Porcentaje de cumplimiento','Impacto en resultados'];
+}
+function behaviorIndicatorUnits(){
+ return typeof indicatorMeasureUnits==='function'?indicatorMeasureUnits():typeof RESULT_UNITS!=='undefined'?RESULT_UNITS:['Cantidad','Porcentaje (%)','Puntos / índice','Escala'];
+}
+function behaviorIndicatorFields(record={},newRecord=false){
+ const data=record||{},field=(k)=>newRecord?{name:({name:'indicator',type:'kind',definition:'newIndicatorDefinition',measureType:'newIndicatorMeasureType',unit:'newIndicatorUnit',scale:'newIndicatorScale',scaleMin:'newIndicatorScaleMin',scaleMax:'newIndicatorScaleMax',baseline:'newIndicatorBaseline',target:'target',value:'newIndicatorValue'})[k]}:{dataIndField:k};
+ const attr=k=>newRecord?'name="'+field(k).name+'"':'data-indicator-field="'+k+'"';
+ const text=k=>safe(data[k]??'');
+ const selectedType=data.type||(newRecord?'Gestión':'');
+ const optionsType=behaviorIndicatorOptions(['Gestión','Predictivos','Resultados'],selectedType);
+ const hasScale=data.unit==='Escala';
+ return '<div class="behavior-indicator-fields'+(newRecord?' behavior-indicator-fields-new':'')+'">'+
+  '<div class="behavior-indicator-form-grid"><label>Nombre del indicador<input '+attr('name')+' value="'+(newRecord?'':text('name'))+'" placeholder="Ej. Número de eventos de riesgo"></label>'+
+  '<label>Tipo de indicador<select '+attr('type')+'>'+optionsType+'</select></label></div>'+
+  '<label>Definición / fórmula<input '+attr('definition')+' value="'+text('definition')+'" placeholder="Qué se registra y cómo se calcula"></label>'+
+  '<div class="behavior-indicator-form-grid"><label>¿Cómo vamos a medirlo?<select '+attr('measureType')+'><option value="">Seleccionar medición</option>'+behaviorIndicatorOptions(behaviorIndicatorTypes(),data.measureType)+'</select></label>'+
+  '<label>Unidad de medición<select '+attr('unit')+' onchange="behaviorIndicatorToggleScale(this.closest(\'.behavior-indicator-fields\'))"><option value="">Seleccionar unidad</option>'+behaviorIndicatorOptions(behaviorIndicatorUnits(),data.unit)+'</select></label></div>'+
+  '<div class="behavior-indicator-scale" data-indicator-scale'+(hasScale?'':' hidden')+'><label>Rango de escala<select '+attr('scale')+' onchange="behaviorIndicatorToggleScale(this.closest(\'.behavior-indicator-fields\'))">'+behaviorIndicatorOptions(['1-5','1-10','1-100','Personalizada'],data.scale||'1-5')+'</select></label>'+
+  '<div class="behavior-indicator-form-grid" data-indicator-custom-scale'+(hasScale&&data.scale==='Personalizada'?'':' hidden')+'><label>Desde<input type="number" step="any" '+attr('scaleMin')+' value="'+text('scaleMin')+'"></label><label>Hasta<input type="number" step="any" '+attr('scaleMax')+' value="'+text('scaleMax')+'"></label></div></div>'+
+  '<div class="behavior-indicator-form-grid behavior-indicator-values"><label>Línea base<input type="number" step="any" '+attr('baseline')+' value="'+text('baseline')+'"></label><label>Meta<input type="number" step="any" '+attr('target')+' value="'+text('target')+'"></label><label>Actual<input type="number" step="any" '+attr('value')+' value="'+text('value')+'"></label></div></div>';
+}
+function behaviorIndicatorToggleScale(fields){
+ if(!fields)return;
+ const unit=fields.querySelector('[data-indicator-field="unit"],[name="newIndicatorUnit"]')?.value||'';
+ const scale=fields.querySelector('[data-indicator-field="scale"],[name="newIndicatorScale"]')?.value||'1-5';
+ const box=fields.querySelector('[data-indicator-scale]'),custom=fields.querySelector('[data-indicator-custom-scale]');
+ if(box)box.hidden=unit!=='Escala';
+ if(custom)custom.hidden=unit!=='Escala'||scale!=='Personalizada';
+}
+function behaviorIndicatorValidation(data){
+ if(typeof indicatorValidateMeasurement==='function')return indicatorValidateMeasurement(data);
+ const vals=[data.baseline,data.target,data.value].filter(v=>String(v??'').trim()!=='');
+ if(vals.some(v=>!Number.isFinite(Number(v))))return 'Los valores deben ser numéricos.';
+ if(data.unit==='Porcentaje (%)'&&vals.some(v=>Number(v)<0||Number(v)>100))return 'El porcentaje debe estar entre 0 y 100.';
+ if(data.unit==='Escala'){
+  const range=data.scale==='Personalizada'?[Number(data.scaleMin),Number(data.scaleMax)]:String(data.scale||'1-5').split('-').map(Number);
+  if(!Number.isFinite(range[0])||!Number.isFinite(range[1])||range[0]>=range[1]||vals.some(v=>Number(v)<range[0]||Number(v)>range[1]))return 'Revisa los límites de la escala.';
+ }
+ return '';
+}
+function behaviorIndicatorFromFields(container,newRecord){
+ const pairs=newRecord?[
+  ['name','indicator'],['type','kind'],['definition','newIndicatorDefinition'],['measureType','newIndicatorMeasureType'],['unit','newIndicatorUnit'],['scale','newIndicatorScale'],['scaleMin','newIndicatorScaleMin'],['scaleMax','newIndicatorScaleMax'],['baseline','newIndicatorBaseline'],['target','target'],['value','newIndicatorValue']
+ ]:['name','type','definition','measureType','unit','scale','scaleMin','scaleMax','baseline','target','value'].map(k=>[k,k]);
+ return Object.fromEntries(pairs.map(([k,name])=>[k,String(container.querySelector(newRecord?'[name="'+name+'"]':'[data-indicator-field="'+name+'"]')?.value??'').trim()]));
+}
+function behaviorSaveInlineIndicator(button,index){
+ const x=current(),indicator=x?.indicators?.[index],panel=button.closest('.behavior-indicator-option');
+ if(!indicator||!panel)return;
+ const data=behaviorIndicatorFromFields(panel,false);
+ if(!data.name)return alert('Indica el nombre del indicador.');
+ if(!data.measureType||!data.unit)return alert('Selecciona cómo vamos a medirlo y la unidad.');
+ const error=behaviorIndicatorValidation(data);if(error)return alert(error);
+ const changes=Object.keys(data).filter(k=>String(indicator[k]??'')!==String(data[k]??''));
+ if(changes.length){
+  const date=new Date().toISOString();
+  indicator.revisionHistory ||= [];
+  indicator.revisionHistory.push({date,changes:changes.map(k=>({field:k,previous:indicator[k]??'',current:data[k]}))});
+  if(changes.includes('value')&&data.value!==''){indicator.history ||= [];indicator.history.push({date,value:Number(data.value)});}
+  Object.assign(indicator,data);
+  save();
+ }
+ const label=panel.querySelector('.behavior-indicator-option-name');
+ if(label)label.textContent=data.name;
+ const meta=panel.querySelector('.behavior-indicator-option-meta');
+ if(meta)meta.textContent=' · '+data.type+' · '+data.measureType+' · '+data.unit;
+ const status=panel.querySelector('[data-indicator-status]');
+ if(status){status.textContent=changes.length?'Indicador actualizado. Se refleja en todos los comportamientos vinculados.':'Sin cambios pendientes.';status.hidden=false;}
+}
+function behaviorNewIndicatorDetails(behaviorIndex=null){
+ const saveButton=Number.isInteger(behaviorIndex)?'<button class="secondary" type="button" onclick="behaviorCreateIndicatorForBehavior(this,'+behaviorIndex+')">Crear y vincular indicador</button>':'';
+ return '<details class="behavior-create-optional behavior-create-indicator-new"><summary>Crear un indicador nuevo <small>Opcional</small></summary>'+
+  '<p class="behavior-indicator-help">Se guardará como un único indicador de la iniciativa, vinculado a este comportamiento.</p>'+
+  behaviorIndicatorFields({},true)+saveButton+'</details>';
+}
+function behaviorIndicatorChoices(x,b){
+ ensureBehaviorIds(x);
+ const selected=(x.indicators||[]).filter(r=>b&&indicatorHasBehavior(x,r,b));
+ if(!x.indicators.length)return '<div data-behavior-indicator-holder><p class="muted">Aún no hay indicadores. Puedes crear uno aquí o en Resultados → Indicadores.</p></div>';
+ return '<div data-behavior-indicator-holder><details class="association-picker behavior-indicator-picker"><summary>Seleccionar indicadores · '+selected.length+' seleccionados</summary><div class="association-options behavior-indicator-options">'+
+  x.indicators.map((r,i)=>{
+   const linked=(x.behaviors||[]).filter(behavior=>indicatorHasBehavior(x,r,behavior)).length;
+   return '<div class="behavior-indicator-option"><div class="behavior-indicator-option-head"><label><input type="checkbox" name="existingIndicators" value="'+i+'"'+(b&&indicatorHasBehavior(x,r,b)?' checked':'')+' onchange="updateAssociationCount(this)"><span><b class="behavior-indicator-option-name">'+safe(r.name)+'</b><small class="muted behavior-indicator-option-meta"> · '+safe(r.type||'Sin tipo')+' · '+safe(r.measureType||'Sin medición')+' · '+safe(r.unit||'Sin unidad')+'</small></span></label><button type="button" class="secondary behavior-indicator-edit-button" onclick="const d=this.closest(\'.behavior-indicator-option\').querySelector(\'.behavior-indicator-edit\');d.hidden=!d.hidden;this.setAttribute(\'aria-expanded\',String(!d.hidden));" aria-expanded="false">Editar indicador</button></div>'+
+   '<div class="behavior-indicator-edit" hidden><small class="behavior-indicator-help">'+(linked>1?'Compartido por '+linked+' comportamientos. Los cambios se reflejarán en todos.':'Puedes modificar el indicador sin salir del comportamiento.')+'</small>'+
+   behaviorIndicatorFields(r,false)+
+   '<div class="behavior-indicator-inline-actions"><button type="button" class="primary" onclick="behaviorSaveInlineIndicator(this,'+i+')">Guardar indicador</button><small data-indicator-status hidden role="status"></small></div></div></div>';
+  }).join('')+'</div><p class="muted">Selecciona los indicadores que correspondan. «Editar indicador» modifica su ficha original; no genera duplicados.</p></details></div>';
+}
+function behaviorRefreshIndicatorChoices(form,b){
+ const holder=form?.querySelector('[data-behavior-indicator-holder]');if(!holder)return;
+ const checked=new Set([...holder.querySelectorAll('input[name="existingIndicators"]:checked')].map(el=>el.value));
+ const open=!!holder.querySelector('.behavior-indicator-picker')?.open;
+ const wrapper=document.createElement('div');wrapper.innerHTML=behaviorIndicatorChoices(current(),b);
+ const replacement=wrapper.firstElementChild;
+ holder.replaceWith(replacement);
+ const picker=replacement.querySelector('.behavior-indicator-picker');
+ if(picker)picker.open=open||true;
+ replacement.querySelectorAll('input[name="existingIndicators"]').forEach(input=>{
+  if(checked.has(input.value))input.checked=true;
+ });
+ const input=replacement.querySelector('input[name="existingIndicators"]');
+ if(input)updateAssociationCount(input);
+}
+function behaviorCreateIndicatorForBehavior(button,behaviorIndex){
+ const x=current(),b=x?.behaviors?.[behaviorIndex];
+ if(!b)return;
+ const panel=button.closest('.behavior-create-indicator-new'),form=button.closest('form');
+ const data=behaviorIndicatorFromFields(panel,true);
+ if(!data.name)return alert('Indica el nombre del nuevo indicador.');
+ if(!data.measureType||!data.unit)return alert('Selecciona cómo vamos a medirlo y la unidad.');
+ const error=behaviorIndicatorValidation(data);if(error)return alert(error);
+ ensureBehaviorIds(x);
+ data.id=typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'ind-'+Date.now();
+ data.behaviorIds=[String(b.id)];data.behavior=b.name;
+ const now=new Date().toISOString();
+ data.history=data.value!==''?[{date:now,value:Number(data.value)}]:[];
+ data.revisionHistory=[];
+ x.indicators.push(data);save();
+ behaviorRefreshIndicatorChoices(form,b);
+ panel.open=false;
+ panel.querySelector('[name="indicator"]').value='';
+ const hint=document.createElement('p');hint.className='behavior-indicator-help';hint.textContent='Indicador creado y vinculado. Puedes modificarlo desde la lista de indicadores asociados.';
+ panel.appendChild(hint);
+}
+
 function updateAssociationCount(input){const picker=input.closest('.association-picker');picker.querySelector('summary').textContent='Seleccionar '+(input.name==='behaviorIds'?'comportamientos':'indicadores')+' · '+picker.querySelectorAll('input:checked').length+' seleccionados';}
 function linkBehaviorIndicators(x,b,selected){ensureBehaviorIds(x);const indexes=new Set(selected.map(String));x.indicators.forEach((r,i)=>{const ids=indicatorBehaviorIds(x,r).filter(id=>id!==String(b.id));if(indexes.has(String(i)))ids.push(String(b.id));writeIndicatorBehaviorIds(x,r,ids);});}
 function saveBehaviorIndicators(e,i){e.preventDefault();const x=current(),b=x.behaviors[i];if(!b)return;linkBehaviorIndicators(x,b,new FormData(e.target).getAll('existingIndicators'));save();render();}
