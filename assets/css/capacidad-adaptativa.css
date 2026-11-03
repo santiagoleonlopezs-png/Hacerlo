@@ -1,5 +1,5 @@
 /* HACERLO · Pensamiento Sistémico · Capacidad Adaptativa */
-.sv-shell .ca-entry{
+.sh-capacity-layout .ca-entry{
   margin:16px 0 20px;
   padding:21px 25px;
   border:1px solid rgba(92,228,196,.32);
@@ -8,25 +8,25 @@
   box-shadow:inset 0 1px rgba(255,255,255,.03);
   color:#eaf5ff;
 }
-.sv-shell .ca-entry>.flex{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-.sv-shell .ca-entry>.flex>div{flex:1;min-width:220px}
-.sv-shell .ca-entry .ca-kicker{
+.sh-capacity-layout .ca-entry>.flex{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.sh-capacity-layout .ca-entry>.flex>div{flex:1;min-width:220px}
+.sh-capacity-layout .ca-entry .ca-kicker{
   font-size:10.5px;line-height:1.6;letter-spacing:1.15px;
   color:#74dfca;font-weight:800;
 }
-.sv-shell .ca-entry .ca-title{
+.sh-capacity-layout .ca-entry .ca-title{
   font-size:clamp(20px,2vw,27px);line-height:1.22;
   letter-spacing:-.4px;margin:5px 0 6px;font-weight:750;
 }
-.sv-shell .ca-entry>.flex button{
+.sh-capacity-layout .ca-entry>.flex button{
   background:#17627b;border-color:#3789a1;color:#e8fbff;
   border-radius:11px;padding:12px 16px;font-size:12px;
   font-weight:700;white-space:normal;
 }
-.sv-shell .ca-entry>.flex button:hover{background:#1b758f}
-.sv-shell .ca-entry .panel{background:#0d2838;border-color:rgba(117,183,203,.25)}
-.sv-shell .ca-entry .notice{line-height:1.55}
+.sh-capacity-layout .ca-entry>.flex button:hover{background:#1b758f}
+.sh-capacity-layout .ca-entry .panel{background:#0d2838;border-color:rgba(117,183,203,.25)}
+.sh-capacity-layout .ca-entry .notice{line-height:1.55}
 @media(max-width:620px){
- .sv-shell .ca-entry{padding:18px}
- .sv-shell .ca-entry>.flex button{width:100%}
+ .sh-capacity-layout .ca-entry{padding:18px}
+ .sh-capacity-layout .ca-entry>.flex button{width:100%}
 }
