@@ -28,7 +28,7 @@ function pfMatches(i){
  const group=portfolioFilter;
  if(!(group==='all'||(group==='running'&&pfRunning(i))||(group==='strategic'&&pfStrategic(i))||(group==='pending'&&pfPending(i))))return false;
  const q=pfNorm(portfolioQuery);
- return !q||pfNorm([i.name,i.description,priority(i).label,i.scope].join(' ')).includes(q);
+ return !q||pfNorm([i.name,initiativeContextSummary(i),priority(i).label,i.scope].join(' ')).includes(q);
 }
 function pfDate(d){if(!d)return 'Sin fecha';const date=new Date(String(d)+'T12:00:00');return Number.isNaN(date.getTime())?'Sin fecha':new Intl.DateTimeFormat('es-CO',{day:'2-digit',month:'short',year:'numeric'}).format(date)}
 function pfOpen(btn){const key=btn.closest('[data-pf-id]')?.getAttribute('data-pf-id');const i=db.initiatives.find(z=>String(z.id)===key);if(i)choose(i.id)}
@@ -82,7 +82,7 @@ function pfCard(i,idx){
  return '<article class="pf-card" data-pf-id="'+safe(String(i.id))+'"'+(pfMatches(i)?'':' hidden')+'>'+
    '<div class="pf-card-top"><span class="pf-card-icon">'+pfIcon(idx%3===0?'people':idx%3===1?'layers':'target')+'</span>'+
    '<div class="pf-card-main"><div class="pf-title-line"><h3>'+safe(i.name)+'</h3><span class="pf-chip">'+scope+'</span></div>'+
-   '<p>'+safe(i.description||'Sin descripción registrada.')+'</p></div>'+
+   '<p>'+safe(initiativeContextSummary(i))+'</p></div>'+
    '<div class="pf-card-badges"><span class="pf-chip pf-priority'+(pfStrategic(i)?' strategic':'')+'">'+safe(p.label)+'</span>'+
    (running?'<span class="pf-chip pf-running"><i></i>En ejecución</span>':'')+'</div></div>'+
    '<div class="pf-card-info"><div class="pf-facts">'+
@@ -167,7 +167,7 @@ function renderInitiativesHome(){
       '<span class="pf-create-toggle-label" aria-hidden="true">'+(portfolioCreateOpen?'Ocultar':'Abrir')+'</span></button>'+
    '<form class="pf-form" id="pf-create-form" onsubmit="createInitiative(event)"'+(portfolioCreateOpen?'':' hidden')+'>'+
     '<label>Nombre de la iniciativa <em>*</em><input name="name" required placeholder="Ej. Adopción de CRM" maxlength="180" autocomplete="off"></label>'+
-    '<label>Objetivo y contexto <em>*</em><textarea name="description" rows="3" required placeholder="¿Qué quieres transformar y por qué?"></textarea></label>'+
+    '<label>Objetivo y contexto <span class="pf-optional">(automático)</span><textarea name="description" rows="3" placeholder="Se completará con tu hipótesis de valor. Si quieres, añade aquí el contexto inicial."></textarea><small class="pf-field-hint">Al definir el resultado y el comportamiento objetivo, este texto se actualizará con la hipótesis de valor.</small></label>'+
     '<div class="pf-form-pair"><label>Ámbito<select name="scope"><option value="inside">Inside · Interno</option><option value="outside">Outside · Externo</option></select></label>'+
     '<label>Población estimada<input type="number" name="population" min="0" step="1" placeholder="Ej. 310"></label></div>'+
     '<label>Fecha de ingreso <em>*</em><input type="date" name="createdAt" required></label>'+
