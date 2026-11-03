@@ -858,3 +858,14 @@ button.behavior-explore-entry:focus-visible{outline:2px solid #80eadc;outline-of
 @media(max-width:1150px){.hcx-hypothesis-triptych{grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr) minmax(0,.95fr);gap:10px}.hcx-hypothesis-side,.hcx-hypothesis-central{padding:15px 14px}.hcx-hypothesis-central::before{left:-10px;width:10px}.hcx-hypothesis-central::after{right:-10px;width:10px}}
 @media(max-width:910px){.hcx-hypothesis-triptych{grid-template-columns:1fr;gap:10px}.hcx-hypothesis-central::before,.hcx-hypothesis-central::after{display:none}.hcx-hypothesis-side{gap:11px}.hcx-hypothesis-action-preview{-webkit-line-clamp:3;line-clamp:3}.hcx-hypothesis-target{max-width:380px}.hcx-hypothesis-side-meta{margin-top:0}}
 @media(max-width:540px){.hcx-hypothesis-side,.hcx-hypothesis-central{padding:15px 14px}.hcx-hypothesis-fulltext{font-size:12.5px;line-height:1.75}.hcx-hypothesis-central{gap:12px}}
+
+/* Método y unidad de medición compartidos entre Indicadores y Resultado global. */
+.indicator-board-form-method{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.indicator-board-scale{padding:12px 14px;border:1px solid #31596d;border-radius:10px;background:rgba(12,44,62,.65)}
+.indicator-board-scale[hidden],.indicator-board-scale-custom[hidden]{display:none!important}
+.indicator-board-scale-custom{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.hcx-result-measure-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 15px}
+.hcx-result-measure-grid>div{display:grid;gap:5px;min-width:0;padding:12px 14px;border-radius:10px;border:1px solid #31586a;background:rgba(16,55,73,.5)}
+.hcx-result-measure-grid small{color:#9cc3ce;font-size:11px}
+.hcx-result-measure-grid strong{color:#e6f4f6;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:650px){.indicator-board-form-method,.hcx-result-measure-grid{grid-template-columns:1fr}}
