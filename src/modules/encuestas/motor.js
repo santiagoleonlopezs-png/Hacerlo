@@ -14,6 +14,17 @@ const EE = (() => {
   if(kind!=='Libre')q.push({id:'relato',label:'¿Qué experiencia explica tu respuesta? ¿Qué ayudaría a mejorar?',type:'text',required:false});
   return q;
  }
+ // Presentación sin valores numéricos; la puntuación queda asociada al texto.
+ function shuffleChoices(q){
+  const values=[...(q.options||[])];
+  if(!q.priorityRandomized||values.length<2)return values;
+  for(let i=values.length-1;i>0;i--){
+   let pick=Math.floor(Math.random()*(i+1));
+   [values[i],values[pick]]=[values[pick],values[i]];
+  }
+  if(values.every((v,i)=>v===q.options[i]))values.push(values.shift());
+  return values;
+ }
  function init(x){x.surveys ||= [];return x.surveys;}
  function create(kind,title){return {id:uid(),kind,title,status:'draft',version:1,createdAt:now(),questions:template(kind),responses:[],audienceId:'',wave:'Base',period:'',description:'',instrumentNote:'Plantilla de trabajo editable. No es un instrumento psicométrico validado.'};}
  function validateQuestions(qs){
@@ -115,5 +126,5 @@ const EE = (() => {
  }
  function records(rows){if(rows.length<2)throw Error('El archivo necesita encabezados y al menos una respuesta.');const headers=rows[0].map(v=>String(v??'').trim());if(headers.some(v=>!v)||new Set(headers).size!==headers.length)throw Error('Encabezados vacíos o duplicados.');return {headers,rows:rows.slice(1).map((r,i)=>{if(r.length>headers.length)throw Error('Fila '+(i+2)+': más celdas que encabezados.');return Object.fromEntries(headers.map((h,j)=>[h,String(r[j]??'')]));})};}
  function csv(rows){return '\uFEFF'+rows.map(r=>r.map(v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v)&&!/^[-+]?\d+(\.\d+)?$/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"';}).join(';')).join('\r\n');}
- return {optionScore,validateOptionScoring,evolution,composition,detailed,uid,now,init,create,template,validateQuestions,validateResponse,summarize,simulation,parseCSV,records,csv};
+ return {optionScore,shuffleChoices,validateOptionScoring,evolution,composition,detailed,uid,now,init,create,template,validateQuestions,validateResponse,summarize,simulation,parseCSV,records,csv};
 })();
