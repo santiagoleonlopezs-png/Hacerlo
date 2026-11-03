@@ -31,29 +31,29 @@ function caDynToggleEvidence(){caDynSession(current()).evidenceOpen=!caDynSessio
 function caDynOpenEvidence(){caDynSession(current()).evidenceOpen=true;caExpanded=true;render();}
 function caDynResetScenario(){caDynSession(current()).inputs=CA_DYN.inputs({});render();}
 function caDynInitial(x){
- const draft=caDynSession(x),observed=caReadObserved(x,caObservedWave,caObservedAudience);
+ const draft=caDynSession(x),observed=caReadObserved(x,caObservedWave,caObservedAudience,draft.invertDesgaste);
  const initial={},sources={};
  for(const dim of CA_DIMENSIONS){
-  const d=observed.dimensions[dim.id],configured=Array.isArray(x.capacityAdaptive?.mappings?.[dim.id])&&x.capacityAdaptive.mappings[dim.id].length>0;
-  const n=d.sources.filter(q=>q.type==='scale'&&q.n>0).length;
+  const d=observed.dimensions[dim.id],configured=Array.isArray(x.capacityAdaptive?.mappings?.[dim.id])
+   &&x.capacityAdaptive.mappings[dim.id].length>0;
   if(!configured){
-   sources[dim.id]={value:null,kind:'missing',label:'Sin configurar: selecciona preguntas de esta dimensión'};
-  }else if(d.needsOrientation){
-   if(draft.invertDesgaste&&Number.isFinite(d.rawValue)){
-    initial[dim.id]=100-d.rawValue;
-    sources[dim.id]={value:initial[dim.id],kind:'proxy',label:'Encuesta · Desgaste invertido explícitamente',n};
-   }else{
-    sources[dim.id]={value:null,kind:'missing',label:'Pendiente: confirmar orientación de Desgaste'};
-   }
-  }else if(Number.isFinite(d.value)&&n>0){
-   initial[dim.id]=d.value;
-   sources[dim.id]={value:d.value,kind:'observed',label:'Encuesta real · '+caObservedWave,n};
+   sources[dim.id]={value:null,kind:'missing',label:'Sin preguntas configuradas'};
+  }else if(!d.ready||!Number.isFinite(d.value)){
+   sources[dim.id]={value:null,kind:'missing',label:d.warning||'Sin respuestas válidas para este momento y audiencia'};
   }else{
-   sources[dim.id]={value:null,kind:'missing',label:'Sin respuestas válidas para el momento y audiencia seleccionados'};
+   const inverted=dim.id==='energia'&&draft.invertDesgaste&&d.sources.some(q=>q.desgaste);
+   initial[dim.id]=d.value;
+   sources[dim.id]={value:d.value,kind:inverted?'proxy':'observed',
+    label:(inverted?'Respuestas de Desgaste invertidas · ':'Balance categórico · ')+
+      (d.scale==='1-5'?'escala 1–5':'escala 0–10')+' · '+caObservedWave,
+    n:d.counts.n,scale:d.scale,counts:{...d.counts},
+    questions:d.sources.map(q=>({surveyId:q.surveyId,questionId:q.questionId,n:q.n}))};
   }
  }
- const ready=CA_DIMENSIONS.every(dim=>Number.isFinite(initial[dim.id])&&['observed','proxy'].includes(sources[dim.id].kind));
- return {initial,sources,ready,missing:CA_DIMENSIONS.filter(dim=>sources[dim.id].kind==='missing').map(dim=>dim.name),
+ const ready=CA_DIMENSIONS.every(dim=>Number.isFinite(initial[dim.id])
+  &&['observed','proxy'].includes(sources[dim.id].kind));
+ return {initial,sources,ready,
+  missing:CA_DIMENSIONS.filter(dim=>sources[dim.id].kind==='missing').map(dim=>dim.name),
   observed,wave:caObservedWave,audienceId:caObservedAudience};
 }
 function caDynLastRun(x){
@@ -78,18 +78,18 @@ function caDynMeasurement(x,d){
  return `<div class="ca-dyn-workspace">
   <section class="ca-dyn-panel">
    <div class="ca-dyn-section-heading"><div><small>01 · PUNTO DE PARTIDA</small><h2>Medición inicial</h2>
-   <p>Los valores se calculan exclusivamente con respuestas reales de las encuestas que configures para esta iniciativa.</p></div></div>
+   <p>Cada resultado proviene de contar promotores, pasivos y detractores de las preguntas vinculadas; no se promedian los índices individuales.</p></div></div>
    ${configured?`<div class="ca-dyn-stocks">${CA_DIMENSIONS.map(dim=>{const source=sources[dim.id];
     return `<article class="ca-dyn-stock"><span>${safe(dim.name)}</span>
      <b>${Number.isFinite(source.value)?source.value.toFixed(2):'—'}</b>
-     <small>${safe(source.label)}</small></article>`}).join('')}</div>`:
+     <small>${safe(source.label)}</small>${Number.isFinite(source.value)&&source.counts?`<small>P: ${source.counts.promoters} · Pas: ${source.counts.passives} · D: ${source.counts.detractors} · ${source.counts.n} respuestas</small>`:''}</article>`}).join('')}</div>`:
     `<div class="ca-dyn-empty-state"><strong>Sin mediciones configuradas</strong>
      <p>Aún no hay valores que mostrar. Vincula las preguntas de SENTIR/CNPS y confirma sus fuentes para comenzar.</p>
      <button type="button" class="secondary" onclick="caDynOpenEvidence()">Configurar preguntas →</button></div>`}
    ${init.observed.dimensions.energia.needsOrientation&&Array.isArray(x.capacityAdaptive?.mappings?.energia)?
     `<label class="ca-dyn-assumption"><input type="checkbox" style="width:auto" ${d.invertDesgaste?'checked':''} onchange="caDynInvert(this.checked)">
      <span><strong>Usar Desgaste como aproximación inversa de Energía</strong>
-     <small>Requiere tu confirmación expresa: Energía = 100 − Desgaste. Es una transformación de encuesta, no una equivalencia validada.</small></span></label>`:''}
+     <small>Requiere tu confirmación expresa: se invierte cada respuesta de Desgaste antes de clasificar promotores, pasivos y detractores. No implica equivalencia psicométrica validada.</small></span></label>`:''}
    ${!init.ready&&configured?
     `<p class="notice">Para iniciar una simulación con evidencia real, faltan: ${safe(init.missing.join(', '))}.</p>`:''}
    <div class="ca-dyn-footer-actions"><button type="button" class="primary" onclick="caDynTab('escenarios')" ${!init.ready?'disabled':''}>
