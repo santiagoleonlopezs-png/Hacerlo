@@ -54,8 +54,7 @@ function sysHubCapacityPage(x){
    <h1>Capacidad Adaptativa</h1>
    <p>Explora la evidencia de cuatro dimensiones. Revisa primero las preguntas vinculadas y después sus resultados.</p>
   </header>
-  ${caMarkup(x)}
-  ${caObservedView(x)}
+  ${caDynView(x)}
  </div>`;
 }
 function sysHubRender(a,x){
