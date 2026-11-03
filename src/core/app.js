@@ -74,7 +74,7 @@ const HACERLO_PAGE_PHASE={'Inicio de Resultados':0,'Resultado global':0,'Comport
 // Solo una etapa desplegada. null permite cerrar todas sin cambiar la pantalla.
 let expandedNavStep=null;
 function trackPlatformUsage(moduleName,eventType='view'){
- if(!cloudReady||!cloudOrgId)return;
+ if(typeof cloudReady==='undefined'||!cloudReady||typeof cloudOrgId==='undefined'||!cloudOrgId||typeof sb==='undefined')return;
  void sb.rpc('platform_record_activity',{p_org:cloudOrgId,p_module:moduleName,p_event:eventType})
    .then(()=>{}).catch(()=>{});
 }
