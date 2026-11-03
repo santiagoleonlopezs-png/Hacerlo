@@ -45,6 +45,10 @@ jobs:
           node --check src/modules/resultados/diagnostico.js
           node tests/ee_v2_compact_selector.cjs
           node tests/diagnostico_nav_v2.cjs
+          node --check src/modules/analisis/capacidad-adaptativa.js
+          node --check src/modules/analisis/capacidad-adaptativa-lectura.js
+          node --check src/modules/analisis/capacidad-adaptativa-simulacion-ui.js
+          node tests/capacidad_adaptativa_dinamica_v1.cjs
 
       - name: Preparar sitio publico
         run: |
