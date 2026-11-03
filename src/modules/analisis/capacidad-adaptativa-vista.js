@@ -10,7 +10,7 @@ function caObservedView(x){
  const responses=(x.surveys||[]).flatMap(s=>s.responses||[]);
  const ids=[...new Set(responses.map(r=>String(r.audienceId||'')).filter(Boolean))];
  const names=new Map((x.audiences||[]).map(a=>[String(a.id),a.name||a.title||String(a.id)]));
- const total=(x.capacityAdaptive?.observations||[]).length;
+ const total=(x.capacityAdaptive?.observations||[]).filter(o=>o.model==='observed-categorical-v3').length;
  const fmt=v=>Number.isFinite(v)?v.toFixed(2)+' puntos':'—';
  const stats=c=>c?.n?'Promotores: '+c.promoters+' · Pasivos: '+c.passives+' · Detractores: '+c.detractors+' · Total: '+c.n+' respuestas':'Sin respuestas válidas';
  return `<section class="panel ca-counts-panel" style="margin-top:12px">
