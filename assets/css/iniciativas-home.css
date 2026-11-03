@@ -88,3 +88,46 @@
 /* El objetivo/contexto solo se lee: proviene de la hipótesis de valor. */
 .pf-form textarea[name="description"][readonly]{cursor:default;resize:none;user-select:none;color:#b2d8e1;background:rgba(17,47,63,.6);border-style:dashed;border-color:#376575;box-shadow:none}
 .pf-form textarea[name="description"][readonly]::placeholder{color:#91b8c5;opacity:1}
+
+/* Valoración de Impacto y Esfuerzo · una fuente desde Encuestas. */
+.pf-priority-card-detail{display:block;min-width:0;margin:13px 0 0;border:1px solid rgba(67,157,166,.39);border-radius:12px;background:linear-gradient(145deg,rgba(10,47,64,.72),rgba(8,35,52,.9));overflow:hidden}
+.pf-priority-card-detail[hidden]{display:none!important}
+.pf-priority-card-detail>summary{display:flex;justify-content:space-between;gap:12px;align-items:center;list-style:none;padding:13px 16px;color:#b9f1e5;font-size:12px;font-weight:720;cursor:pointer}
+.pf-priority-card-detail>summary::-webkit-details-marker{display:none}
+.pf-priority-card-detail[open]>summary{background:rgba(15,94,100,.24);border-bottom:1px solid rgba(69,155,172,.36)}
+.pf-priority-card-detail>summary:focus-visible{outline:2px solid #77ebd4;outline-offset:-3px}
+.pf-priority-card-body{padding:14px 15px 18px}
+.pf-priority-intro,.pf-priority-proof,.pf-priority-empty{margin:0 0 12px;font-size:11px;line-height:1.55;color:#9bc7d0}
+.pf-priority-empty{padding:11px 12px;border:1px dashed #356c77;border-radius:8px}
+.pf-priority-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:10px}
+.pf-priority-stats>div{display:grid;gap:5px;background:#113e4c;border:1px solid #326a74;border-radius:10px;padding:11px 13px}
+.pf-priority-stats span{font-size:11px;color:#a7d3d7}
+.pf-priority-stats strong{font-size:21px;color:#dffbf2;font-variant-numeric:tabular-nums}
+.pf-priority-questions{display:grid;gap:17px}
+.pf-priority-dimension{display:grid;gap:11px;min-width:0}
+.pf-priority-dimension h4{font-size:13px;color:#78e1d2;letter-spacing:.2px;margin:4px 0}
+.pf-priority-question{border:1px solid #2d5c6d;border-radius:11px;padding:13px;background:rgba(8,34,51,.62);min-width:0;margin:0}
+.pf-priority-question legend{font-size:12px;font-weight:690;color:#e1f6f5;line-height:1.5;padding:0 5px;max-width:100%;white-space:normal}
+.pf-priority-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;align-items:stretch}
+.pf-priority-choice{position:relative;display:flex;align-items:stretch;min-width:0;cursor:pointer}
+.pf-priority-choice input{position:absolute;width:1px;height:1px;opacity:0;margin:0;padding:0;pointer-events:none}
+.pf-priority-choice span{display:flex;align-items:center;min-height:78px;width:100%;padding:11px;border:1px solid #315e71;border-radius:9px;background:#0d2d42;color:#c9e5ec;font-size:12px;font-weight:490;line-height:1.45;white-space:normal;overflow-wrap:anywhere;transition:background .16s,border-color .16s}
+.pf-priority-choice:hover span{border-color:#4dbbb1;background:#18475a}
+.pf-priority-choice input:checked+span{border:2px solid #50dbc6;background:#144e50;color:#ebfff9;font-weight:720}
+.pf-priority-choice input:focus-visible+span{outline:2px solid #81efe0;outline-offset:2px}
+.pf-priority-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:17px}
+.pf-priority-actions button{width:auto;font-size:12px}
+.pf-priority-create-assessment{margin:10px 0 0}
+.pf-priority-warning{font-size:12px;color:#f2c38f;padding:14px;border:1px dashed #92754d;border-radius:8px}
+.priority-evidence-editor{display:grid;gap:11px;padding:12px;background:#092538;border:1px solid #315c6a;border-radius:11px}
+.priority-evidence-editor>label{display:grid;gap:5px;font-size:11px;color:#b4d5dc}
+.priority-evidence-editor input{margin:0}
+.priority-evidence-editor button{font-size:12px;width:auto}
+.priority-evidence-editor small{font-size:11px;line-height:1.45}
+.priority-evidence-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.priority-evidence-values>div{display:grid;gap:4px;padding:11px;background:#10384b;border:1px solid #326079;border-radius:9px}
+.priority-evidence-values strong{font-size:17px;color:#e8f9f7;font-variant-numeric:tabular-nums}
+.pf-priority-survey-summary{border-color:#37867e;background:linear-gradient(120deg,#0c3342,#102c41)}
+@media(max-width:880px){.pf-priority-options{grid-template-columns:1fr 1fr}.pf-priority-choice span{min-height:70px}}
+@media(max-width:560px){.pf-priority-options{grid-template-columns:1fr}.pf-priority-choice span{min-height:49px}.pf-priority-stats{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.pf-priority-choice span{transition:none}}
