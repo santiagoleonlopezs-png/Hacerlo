@@ -9,6 +9,42 @@ function indicatorGroupKey(type){
  return 'Otros';
 }
 
+
+/* La metodología y la unidad son conceptos distintos. Se utilizan las opciones de
+   Resultado global; el respaldo permite probar Indicadores de forma aislada. */
+function indicatorMeasureTypes(){
+ return typeof RESULT_TYPES!=='undefined'?RESULT_TYPES:['Conteo de eventos o casos','Porcentaje de cumplimiento','Impacto en resultados'];
+}
+function indicatorMeasureUnits(){
+ return typeof RESULT_UNITS!=='undefined'?RESULT_UNITS:['Cantidad','Porcentaje (%)','Puntos / índice','Escala'];
+}
+function indicatorUnitLabel(r){
+ const unit=String(r.unit||'').trim();
+ if(!unit)return 'Sin definir';
+ if(unit!=='Escala')return unit;
+ const range=r.scale==='Personalizada'?String(r.scaleMin??'')+' a '+String(r.scaleMax??''):String(r.scale||'1-5').replace('-', ' a ');
+ return 'Escala '+range;
+}
+function indicatorToggleScale(form){
+ const box=form?.querySelector('[data-indicator-scale]');
+ if(!box)return;
+ const isScale=form.elements.namedItem('unit')?.value==='Escala';
+ box.hidden=!isScale;
+ const custom=box.querySelector('[data-indicator-scale-custom]');
+ if(custom)custom.hidden=!isScale||form.elements.namedItem('scale')?.value!=='Personalizada';
+}
+function indicatorValidateMeasurement(d){
+ const selected=[d.baseline,d.target,d.value].filter(v=>String(v??'').trim()!=='');
+ if(selected.some(v=>!Number.isFinite(Number(v))))return 'Línea base, meta y valor actual deben ser numéricos.';
+ if(d.unit==='Escala'){
+  const [min,max]=d.scale==='Personalizada'?[Number(d.scaleMin),Number(d.scaleMax)]:String(d.scale||'1-5').split('-').map(Number);
+  if(!Number.isFinite(min)||!Number.isFinite(max)||min>=max)return 'Define los límites válidos de la escala.';
+  if(selected.some(v=>Number(v)<min||Number(v)>max))return 'Los valores deben estar dentro de la escala seleccionada.';
+ }
+ if(d.unit==='Porcentaje (%)'&&selected.some(v=>Number(v)<0||Number(v)>100))return 'Un porcentaje debe estar entre 0 y 100.';
+ return '';
+}
+
 function indicatorBoardCard(x,r,i){
  const actual=r.value!==undefined&&r.value!==null&&String(r.value).trim()!=='';
  const category=indicatorGroupKey(r.type);
@@ -24,6 +60,8 @@ function indicatorBoardCard(x,r,i){
     <summary>Detalles y actualización <span aria-hidden="true">⌄</span></summary>
     <div class="indicator-board-detail-body">
      <p><strong>Comportamientos asociados</strong><span>${safe(indicatorBehaviorLabel(x,r)||'General')}</span></p>
+     <p><strong>¿Cómo vamos a medirlo?</strong><span>${safe(r.measureType||'Sin definir')}</span></p>
+     <p><strong>Unidad de medición</strong><span>${safe(indicatorUnitLabel(r))}</span></p>
      ${r.definition?`<p><strong>Definición / fórmula</strong><span>${safe(r.definition)}</span></p>`:''}
      <label>Registrar valor actual<input type="number" step="any" value="${safe(r.value??'')}" onchange="updateIndicator(${i},this.value)" placeholder="Sin registro" aria-label="Valor actual de ${safe(r.name||'indicador')}"></label>
     </div>
@@ -78,6 +116,8 @@ function renderIndicatorsEditor(x,head){
       <label>Tipo de indicador<select name="type">${choices.map(t=>option(t,editing?v.type:'Gestión')).join('')}</select></label>
      </div>
      <label>Definición o fórmula<input name="definition" placeholder="Definición / fórmula" value="${val('definition')}"></label>
+     <div class="indicator-board-form-method"><label>¿Cómo vamos a medirlo?<select name="measureType"><option value="">Seleccionar forma de medición</option>${indicatorMeasureTypes().map(t=>option(t,v.measureType)).join('')}</select></label><label>Unidad de medición<select name="unit" onchange="indicatorToggleScale(this.form)"><option value="">Seleccionar unidad</option>${indicatorMeasureUnits().map(u=>option(u,v.unit)).join('')}</select></label></div>
+     <div class="indicator-board-scale" data-indicator-scale ${v.unit==='Escala'?'':'hidden'}><label>Rango de escala<select name="scale" onchange="indicatorToggleScale(this.form)">${['1-5','1-10','1-100','Personalizada'].map(t=>option(t,v.scale||'1-5')).join('')}</select></label><div class="indicator-board-scale-custom" data-indicator-scale-custom ${v.unit==='Escala'&&v.scale==='Personalizada'?'':'hidden'}><label>Desde<input name="scaleMin" type="number" step="any" value="${val('scaleMin')||'1'}"></label><label>Hasta<input name="scaleMax" type="number" step="any" value="${val('scaleMax')||'5'}"></label></div></div>
      <div class="indicator-board-behavior-select"><strong>Comportamientos asociados</strong>${indicatorBehaviorChoices(x,v)}</div>
      <div class="indicator-board-form-metrics">
       <label>Línea base<input name="baseline" type="number" step="any" placeholder="Línea base" value="${val('baseline')}"></label>
@@ -100,7 +140,7 @@ function renderIndicatorsEditor(x,head){
 }
 function editIndicator(i){if(!current()?.indicators?.[i])return;editingIndicatorIndex=i;indicatorCreateOpen=true;render();document.querySelector('form[onsubmit="saveIndicatorEditor(event)"] input[name="name"]')?.focus()}
 function cancelIndicatorEditor(){editingIndicatorIndex=null;indicatorCreateOpen=false;render()}
-function saveIndicatorEditor(e){e.preventDefault();const x=current();if(!x)return;const fd=new FormData(e.target);const data=Object.fromEntries(fd);delete data.behaviorIds;ensureBehaviorIds(x);const association={};writeIndicatorBehaviorIds(x,association,fd.getAll('behaviorIds'));Object.assign(data,association);const idx=editingIndicatorIndex;const existing=Number.isInteger(idx)?x.indicators[idx]:null;const now=new Date().toISOString();
+function saveIndicatorEditor(e){e.preventDefault();const x=current();if(!x)return;const fd=new FormData(e.target);const data=Object.fromEntries(fd);const measurementError=indicatorValidateMeasurement(data);if(measurementError)return alert(measurementError);delete data.behaviorIds;ensureBehaviorIds(x);const association={};writeIndicatorBehaviorIds(x,association,fd.getAll('behaviorIds'));Object.assign(data,association);const idx=editingIndicatorIndex;const existing=Number.isInteger(idx)?x.indicators[idx]:null;const now=new Date().toISOString();
  if(existing){const changes=Object.keys(data).filter(k=>String(existing[k]??'')!==String(data[k]??''));if(changes.length){existing.revisionHistory=existing.revisionHistory||[];existing.revisionHistory.push({date:now,changes:changes.map(k=>({field:k,previous:existing[k]??'',current:data[k]}))});if(changes.includes('value')&&data.value!==''){existing.history=existing.history||[];existing.history.push({date:now,value:Number(data.value)})}Object.assign(existing,data)}}
  else{data.id=crypto.randomUUID();data.history=data.value!==''?[{date:now,value:Number(data.value)}]:[];data.revisionHistory=[];x.indicators.push(data)}
  editingIndicatorIndex=null;indicatorCreateOpen=false;save();render();
