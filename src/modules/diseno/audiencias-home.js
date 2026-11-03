@@ -100,7 +100,7 @@
       '<div class="ah-overview-header"><span class="ah-eyebrow"><span class="ah-live-dot"></span> PANORAMA DE AUDIENCIAS</span><span class="ah-overview-tag">Datos de esta iniciativa</span></div>'+
       '<div class="ah-kpi-grid">'+
       '<div class="ah-kpi"><span class="ah-kpi-icon">◈</span><span class="ah-kpi-caption">Audiencias</span><strong>'+number(audiences.length)+'</strong><small>Grupos y segmentos definidos</small></div>'+
-      '<div class="ah-kpi"><span class="ah-kpi-icon">♙</span><span class="ah-kpi-caption">Personas asignadas</span><strong>'+number(people.length)+'</strong><small>Vinculadas a audiencias</small></div>'+
+      '<button class="ah-kpi ah-kpi-click" type="button" onclick="audHomePeople()" aria-label="Abrir personas asignadas"><span class="ah-kpi-icon">♙</span><span class="ah-kpi-caption">Personas asignadas ↗</span><strong>'+number(people.length)+'</strong><small>Vinculadas a audiencias</small></button>'+
       '<div class="ah-kpi"><span class="ah-kpi-icon">◎</span><span class="ah-kpi-caption">Clasificación individual</span><strong>'+(classifiedPct===null?'—':classifiedPct+'%')+'</strong><small>'+(people.length?number(individualClassified)+' de '+number(people.length)+' clasificadas':'Aún no hay personas')+'</small></div>'+
       '<div class="ah-kpi"><span class="ah-kpi-icon">⌁</span><span class="ah-kpi-caption">Comportamientos asociados</span><strong>'+number(linked)+'</strong><small>Con audiencias vinculadas</small></div>'+
       '</div></section>';
