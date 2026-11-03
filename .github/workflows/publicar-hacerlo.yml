@@ -32,6 +32,7 @@ jobs:
           set -e
           test -f index.html
           test -f responder.html
+          test -f admin/index.html
           test -f src/core/app.js
           test -f src/modules/encuestas/encuestas.js
           node --check src/core/app.js
@@ -62,7 +63,7 @@ jobs:
           set -e
           mkdir -p _site
           cp index.html responder.html _site/
-          cp -R assets src _site/
+          cp -R assets src admin _site/
           touch _site/.nojekyll
 
       - name: Configurar Pages
