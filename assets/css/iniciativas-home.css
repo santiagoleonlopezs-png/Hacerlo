@@ -84,3 +84,7 @@
 /* El contexto inicial es opcional; la hipótesis de valor lo reemplaza al formularse. */
 .pf-form .pf-optional{font-size:10px;font-weight:550;color:#83b3c4;margin-left:4px}
 .pf-form .pf-field-hint{display:block;font-size:10px;font-weight:450;line-height:1.5;color:#93b5c4;margin-top:6px}
+
+/* El objetivo/contexto solo se lee: proviene de la hipótesis de valor. */
+.pf-form textarea[name="description"][readonly]{cursor:default;resize:none;user-select:none;color:#b2d8e1;background:rgba(17,47,63,.6);border-style:dashed;border-color:#376575;box-shadow:none}
+.pf-form textarea[name="description"][readonly]::placeholder{color:#91b8c5;opacity:1}
