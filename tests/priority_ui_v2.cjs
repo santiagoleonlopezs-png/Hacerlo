@@ -48,7 +48,10 @@ const form={dataset:{priorityInitiative:'101'},answers,
  assert.match(feedback.textContent,/guardada en Supabase/,'Muestra resultado verificable');
  assert.equal(errors.length,0);
  context.syncAll=async()=>false;
- await context.prioritySubmitOnCard({preventDefault(){},target:form});
+ // Después de render(), el navegador crea un formulario nuevo.
+ const secondForm={dataset:{priorityInitiative:'101'},answers,
+  querySelector:sel=>sel==='button[type="submit"]'?{disabled:false,isConnected:true}:null};
+ await context.prioritySubmitOnCard({preventDefault(){},target:secondForm});
  assert.equal(record.surveys[0].responses.length,2,'Permite valoraciones adicionales');
  assert.match(feedback.textContent,/No se confirmó el guardado/,'No afirma éxito cuando falla Supabase');
  const css=read('assets/css/iniciativas-home.css');
