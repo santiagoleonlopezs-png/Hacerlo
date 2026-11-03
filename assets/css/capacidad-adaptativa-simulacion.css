@@ -112,3 +112,25 @@
 .ca-dyn-empty-state strong{font-size:16px;color:#e5faf8}
 .ca-dyn-empty-state p{margin:0;max-width:580px;color:#abc7d3;line-height:1.65;font-size:12px}
 .ca-dyn-root button:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5)}
+
+/* V2.24 · banco único y trazabilidad de balance categórico */
+.ca-assigned-row,.ca-pool-row{border:1px solid rgba(117,183,203,.2);border-radius:10px;padding:11px 12px;background:#123449;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0}
+.ca-assigned-row>div,.ca-pool-info{min-width:0;flex:1}
+.ca-assigned-row strong,.ca-pool-info strong{display:block;font-size:12px;line-height:1.5;color:#edf8fc;overflow-wrap:anywhere}
+.ca-assigned-row small,.ca-pool-info small{display:block;color:#9cbec9;font-size:10.5px;line-height:1.5;margin-top:3px}
+.ca-pool-hint{color:#80dec9!important}
+.ca-assigned-row button.secondary{flex:none;padding:5px 9px;border-radius:8px}
+.ca-unassigned-pool{margin-top:15px;padding:14px;border-radius:12px;background:#0d2a3b;border:1px solid rgba(118,185,195,.29)}
+.ca-unassigned-pool>summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#e2f7fa}
+.ca-unassigned-pool>summary strong{font-size:13px}
+.ca-unassigned-pool>summary small{font-size:11px;color:#9dbcc5}
+.ca-pool-controls{margin-top:13px;max-width:350px}
+.ca-pool-row label{font-size:11px;min-width:148px;color:#b8dce3}
+.ca-pool-row select{margin-top:4px;background:#163d4d;color:#e7f7ff;border-color:#35667a}
+.ca-count-card .metric{font-size:25px;line-height:1.4;white-space:normal}
+.ca-count-summary{font-size:11px;color:#83ddcb;margin-top:10px;line-height:1.65}
+.ca-count-question{padding:9px 0;border-bottom:1px solid rgba(135,187,199,.17)}
+.ca-count-question:last-child{border-bottom:0}
+.ca-count-question strong{display:block;color:#e8f9ff;font-size:11px;line-height:1.5}
+.ca-count-question small{display:block;color:#a8c9d3;font-size:10.5px;line-height:1.6;margin-top:3px}
+@media(max-width:620px){.ca-pool-row{align-items:stretch;flex-direction:column}.ca-pool-row label{width:100%;min-width:0}}
