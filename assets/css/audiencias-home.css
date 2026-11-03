@@ -10,6 +10,7 @@
 .ah-live-dot,.ah-pulse{display:inline-block;width:7px;height:7px;border-radius:50%;background:#50dfc1;box-shadow:0 0 0 5px rgba(60,211,180,.1)}
 .ah-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:relative;z-index:1}
 .ah-kpi{display:flex;flex-direction:column;align-items:flex-start;min-width:0;padding:0 23px;border-left:1px solid rgba(112,170,184,.22);gap:3px}
+.ah-kpi-click{background:transparent;border-top:0;border-right:0;border-bottom:0;text-align:left;color:inherit;cursor:pointer;border-radius:0;transition:background .2s}.ah-kpi-click:hover{background:rgba(55,145,148,.08)}.ah-kpi-click:focus-visible{outline:2px solid #70e8d3;outline-offset:3px}
 .ah-kpi:first-child{padding-left:0;border-left:0}.ah-kpi:last-child{padding-right:0}
 .ah-kpi-icon{display:grid;place-items:center;width:30px;height:30px;margin-bottom:9px;border:1px solid rgba(77,212,196,.24);border-radius:9px;background:rgba(52,158,157,.13);color:#65dbc9;font-size:18px;line-height:1}
 .ah-kpi-caption{font-size:12px;font-weight:650;color:#bbd5e1}
