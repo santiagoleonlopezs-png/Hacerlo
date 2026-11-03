@@ -140,3 +140,18 @@
 .pf-delete-button:focus-visible,.pf-table-delete:focus-visible{outline:2px solid #ffc3c3;outline-offset:2px}
 .pf-delete-button:disabled,.pf-table-delete:disabled{opacity:.55;cursor:progress}
 .pf-table-delete{margin-left:8px}
+
+/* En el panel lateral de Nueva iniciativa las respuestas se muestran en una sola
+   columna, sin forzar el texto a quedar comprimido en tres tarjetas estrechas. */
+.pf-priority-create-assessment .pf-priority-options{grid-template-columns:minmax(0,1fr)}
+.pf-priority-create-assessment .pf-priority-choice span{min-height:0;padding:12px 14px;line-height:1.5;font-size:12px}
+.pf-priority-create-assessment .pf-priority-question{padding:13px 11px;min-width:0}
+.pf-priority-create-assessment .pf-priority-card-body{padding:13px 13px 16px}
+.pf-priority-create-assessment .pf-priority-dimension{gap:13px}
+.pf-priority-card-body{container-type:inline-size}
+@container (max-width:560px){
+ .pf-priority-options{grid-template-columns:minmax(0,1fr)}
+ .pf-priority-choice span{min-height:0;white-space:normal;overflow-wrap:normal;word-break:normal;line-height:1.5}
+}
+.pf-priority-feedback{margin:11px 0 0;min-height:0;color:#97e8d8;font-size:12px;line-height:1.55;font-weight:630}
+.pf-priority-feedback:empty{display:none}
