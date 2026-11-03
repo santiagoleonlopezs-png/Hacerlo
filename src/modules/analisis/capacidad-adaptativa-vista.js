@@ -30,8 +30,8 @@ function caObservedView(x){
   const d=reading.dimensions[dim.id];const val=d.value;
   return `<div class="dash-card" style="padding:14px">
    <div class="muted" style="font-size:12px">${safe(d.label)}</div>
-   <div class="metric">${val===null?'—':val.toFixed(2)+'%'}</div>
-   <small class="muted">${d.questionCount} pregunta(s) de escala con datos</small>
+   <div class="metric">${d.needsOrientation?'Por orientar':val===null?'—':val.toFixed(2)+'%'}</div>
+   <small class="muted">${d.questionCount} pregunta(s) de escala con datos</small>${d.nps.length ? `<p class="muted" style="font-size:11px">${d.nps.map(n=>`${safe(n.type.toUpperCase())}: ${n.value===null?"Sin datos":n.value.toFixed(2)+" puntos"} (n=${n.n})`).join("; ")}</p>` : ""}
    <details style="margin-top:9px"><summary style="cursor:pointer">Ver fuentes</summary>
     ${d.sources.length?d.sources.map(q=>`<p class="muted" style="font-size:11px;margin:8px 0">
      ${safe(q.survey)} · v${q.version} · ${safe(q.label)}
