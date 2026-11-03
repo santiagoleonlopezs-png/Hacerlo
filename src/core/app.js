@@ -67,6 +67,7 @@ function go(n){
   phase=HACERLO_PAGE_PHASE[n];expandedNavStep=phase;
  }
  page=n;nav();render();
+ if(n==='Iniciativas'&&typeof prioritySyncPublic==='function')void prioritySyncPublic();
 }
 function choose(id){db.selected=id;save();go('RDAIM')}
 function createInitiative(e){
