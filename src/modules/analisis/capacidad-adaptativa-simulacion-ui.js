@@ -59,10 +59,22 @@ function caDynInitial(x){
  return {initial,sources,ready,comparable,scales,missing,
   observed,wave:caObservedWave,audienceId:caObservedAudience};
 }
+function caDynEvidenceKey(info){
+ return JSON.stringify({
+  wave:info.wave,audience:info.audienceId,initial:info.initial,
+  sources:CA_DIMENSIONS.map(dim=>{const source=info.sources[dim.id];return {
+   dimension:dim.id,scale:source?.scale,kind:source?.kind,counts:source?.counts,
+   questions:source?.questions
+  };})
+ });
+}
 function caDynLastRun(x){
- if(!caDynInitial(x).ready)return null;
+ const info=caDynInitial(x);
+ if(!info.ready)return null;
+ const evidenceKey=caDynEvidenceKey(info);
  return (x.capacityAdaptive?.simulationRuns||[]).filter(run=>run.source==='observed'
-  &&run.evidenceOnly===true
+  &&run.evidenceOnly===true&&run.metricVersion==='balance-categorical-v3'
+  &&run.evidenceKey===evidenceKey
   &&CA_DIMENSIONS.every(d=>Number.isFinite(run.initial?.[d.id])&&['observed','proxy'].includes(run.provenance?.[d.id]?.kind))).at(-1)||null;
 }
 function caDynView(x){
@@ -147,7 +159,8 @@ function caDynSimulate(){
   st.simulationRuns.push({id:Date.now().toString(36),createdAt:new Date().toISOString(),
    version:1,initiativeId:x.id,weeks:d.weeks,initial:info.initial,
    provenance:info.sources,wave:info.wave,audienceId:info.audienceId,
-   source:'observed',evidenceOnly:true,invertDesgaste:d.invertDesgaste,inputs:{...d.inputs},
+   source:'observed',evidenceOnly:true,metricVersion:'balance-categorical-v3',
+   evidenceKey:caDynEvidenceKey(info),invertDesgaste:d.invertDesgaste,inputs:{...d.inputs},
    baseline:base.series,scenario:scenario.series,model:'Modelo_Medición_Madurez_Cambio2.alp',
    integration:'Euler',stepWeeks:0.001});
   if(st.simulationRuns.length>15)st.simulationRuns=st.simulationRuns.slice(-15);
