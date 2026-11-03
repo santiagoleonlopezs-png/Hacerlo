@@ -63,6 +63,8 @@ function addIndicator(e){e.preventDefault();let z=Object.fromEntries(new FormDat
 function editAction(i){
  const x=current(),action=x?.actions?.[i],f=document.getElementById('action-form');
  if(!action||!f)return;
+ const editor=document.getElementById('action-editor');
+ if(editor)editor.open=true; // El formulario está plegado hasta que se crea o edita una acción.
  f.elements.namedItem('editIndex').value=String(i);
  for(const field of ['name','dimension','owner','start','end','source','hypothesis']){
    const control=f.elements.namedItem(field);
@@ -73,7 +75,7 @@ function editAction(i){
  const submit=document.getElementById('action-submit');
  if(submit)submit.textContent='Guardar cambios';
  document.getElementById('action-cancel')?.classList.remove('hide');
- f.closest('.panel')?.scrollIntoView({behavior:'smooth',block:'start'});
+ (editor||f.closest('.panel'))?.scrollIntoView({behavior:'smooth',block:'start'});
  f.elements.namedItem('name')?.focus({preventScroll:true});
 }
 function cancelActionEdit(){
@@ -86,6 +88,8 @@ function cancelActionEdit(){
  const submit=document.getElementById('action-submit');
  if(submit)submit.textContent='+ Crear acción';
  document.getElementById('action-cancel')?.classList.add('hide');
+ const editor=document.getElementById('action-editor');
+ if(editor)editor.open=false;
 }
 function setAction(i,v){current().actions[i].status=v;save();render()}
 function toggleReverse(sel){let form=sel.form,group=form.querySelector('.reverse-fields'),on=sel.value==='bidirectional';group.hidden=!on;group.querySelectorAll('input,select').forEach(el=>el.disabled=!on)}
