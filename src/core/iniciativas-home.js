@@ -102,7 +102,7 @@ function pfCard(i,idx){
    '<div class="pf-card-foot"><div class="pf-actions"><span>'+pfIcon(actions.length?'check':'clock')+
     (actions.length?done+' de '+actions.length+' acciones completadas':'Sin acciones registradas')+'</span>'+
     (actions.length?'<div class="pf-actions-track" role="progressbar" aria-label="Acciones completadas" aria-valuenow="'+done+'" aria-valuemin="0" aria-valuemax="'+actions.length+'"><i style="width:'+ratio+'%"></i></div>':'')+
-   '</div><details class="pf-edit"><summary>Editar prioridad <b aria-hidden="true">···</b></summary><div class="pf-edit-inner">'+priorityEditor(i)+'</div></details></div></article>';
+   '</div><details class="pf-edit"><summary>Editar prioridad <b aria-hidden="true">···</b></summary><div class="pf-edit-inner">'+priorityEditor(i)+'</div></details></div>'+(typeof priorityCardForm==='function'?priorityCardForm(i):'')+'</article>';
 }
 
 function pfSwitchView(next){
@@ -171,13 +171,15 @@ function renderInitiativesHome(){
       '<span class="pf-create-copy"><strong id="pf-create-title">Nueva iniciativa</strong><small id="pf-create-hint">'+(portfolioCreateOpen?'Completa los datos para crearla.':'Pulsa + para añadir una iniciativa.')+'</small></span>'+
       '<span class="pf-create-toggle-label" aria-hidden="true">'+(portfolioCreateOpen?'Ocultar':'Abrir')+'</span></button>'+
    '<form class="pf-form" id="pf-create-form" onsubmit="createInitiative(event)"'+(portfolioCreateOpen?'':' hidden')+'>'+
-    '<label>Nombre de la iniciativa <em>*</em><input name="name" required placeholder="Ej. Adopción de CRM" maxlength="180" autocomplete="off"></label>'+
+    '<label>Nombre de la iniciativa <em>*</em><input name="name" required placeholder="Ej. Adopción de CRM" maxlength="180" autocomplete="off" oninput="if(typeof priorityCreateState===\'function\')priorityCreateState(this.form)"></label>'+ 
     '<label>Objetivo y contexto <span class="pf-optional">(automático · solo lectura)</span><textarea name="description" rows="3" readonly aria-readonly="true" tabindex="-1" placeholder="Se completará automáticamente al formular la hipótesis de valor en Resultados."></textarea><small class="pf-field-hint">Este campo no se diligencia aquí. HACERLO lo completa cuando guardas el resultado global y el comportamiento objetivo.</small></label>'+
     '<div class="pf-form-pair"><label>Ámbito<select name="scope"><option value="inside">Inside · Interno</option><option value="outside">Outside · Externo</option></select></label>'+
     '<label>Población estimada<input type="number" name="population" min="0" step="1" placeholder="Ej. 310"></label></div>'+
-    '<label>Fecha de ingreso <em>*</em><input type="date" name="createdAt" required></label>'+
-    '<div class="pf-form-pair"><label>Impacto (1–5)<select name="impact"><option value="">Sin evaluar</option>'+[1,2,3,4,5].map(n=>'<option value="'+n+'">'+n+'</option>').join('')+'</select></label>'+
-    '<label>Esfuerzo (1–5)<select name="effort"><option value="">Sin evaluar</option>'+[1,2,3,4,5].map(n=>'<option value="'+n+'">'+n+'</option>').join('')+'</select></label></div>'+
-    '<p class="pf-form-helper">La prioridad puede definirse o editarse después.</p>'+
+    '<label>Fecha de ingreso <em>*</em><input type="date" name="createdAt" required onchange="if(typeof priorityCreateState===\'function\')priorityCreateState(this.form)"></label>'+ 
+    '<input type="hidden" name="impact" value=""><input type="hidden" name="effort" value="">'+
+    (typeof priorityCreateForm==='function'?priorityCreateForm():'<p class="pf-form-helper">Impacto y Esfuerzo: Sin evaluar.</p>')+
+    
+
+    '<p class="pf-form-helper">La valoración es opcional al crear la iniciativa. Los promedios se calculan desde Diagnóstico → Encuestas.</p>'+
     '<button class="pf-submit" type="submit">Crear iniciativa '+pfIcon('arrow')+'</button></form></section></div>')+'</section>';
 }
