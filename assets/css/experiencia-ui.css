@@ -916,3 +916,9 @@ button.behavior-explore-entry:focus-visible{outline:2px solid #80eadc;outline-of
 .hcx-frequency-option.is-selected{border-color:#41b9b6;background:#12545b;color:#baf8e8;font-weight:720}
 @media(max-width:520px){.hcx-frequency-options{grid-template-columns:1fr;max-height:220px}.hcx-result-editor-content .hcx-frequency-picker{max-width:100%}}
 @media(prefers-reduced-motion:reduce){.hcx-frequency-arrow{transition:none}}
+
+/* Errores de sincronización visibles: no ocultar fallos de persistencia. */
+#cloud-status.hcx-cloud-sync-error{display:inline-flex;align-items:center;max-width:min(760px,65vw);min-width:0;padding:8px 12px;border:1px solid rgba(239,139,139,.55);border-radius:9px;background:rgba(106,35,48,.28);font-size:12px;font-weight:620;line-height:1.5;overflow-wrap:anywhere}
+.hcx-sync-retry{flex:none;width:auto;font-size:11px;padding:7px 11px}
+.hcx-sync-retry[hidden]{display:none!important}
+@media(max-width:700px){#cloud-status.hcx-cloud-sync-error{max-width:100%;font-size:11px}.hcx-session-bar{flex-wrap:wrap}}
