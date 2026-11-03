@@ -63,7 +63,7 @@ function caMarkup(x){
     <div style="max-height:280px;overflow:auto">
     ${available.map(q=>{const checked=selected.includes(q.key),score=caRecommend(q,d);
       return `<label style="display:flex;align-items:flex-start;gap:9px;margin:8px 0;padding:8px;border:1px solid rgba(140,170,195,.15);border-radius:8px;cursor:pointer">
-       <input type="checkbox" style="width:auto;margin-top:3px" ${checked?'checked':''} onchange="caToggleDimension('${d.id}',${JSON.stringify(q.key).replace(/"/g,'&quot;')},this.checked)">
+       <input type="checkbox" style="width:auto;margin-top:3px" ${checked?'checked':''} onchange="caToggleDimension('${d.id}',decodeURIComponent('${encodeURIComponent(q.key)}'),this.checked)">
        <span style="font-size:12px"><b>${safe(q.label)}</b><small class="muted" style="display:block">${safe(q.survey)} · ${safe(q.dimension||'Sin dimensión')} · ${safe(q.type.toUpperCase())}${score>=3?' · Recomendada':''}</small></span>
       </label>`}).join('')||'<p class="muted">No hay preguntas en este filtro.</p>'}</div></section>`}).join('')}
   </div>
