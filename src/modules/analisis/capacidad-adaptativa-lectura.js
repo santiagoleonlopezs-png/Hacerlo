@@ -36,6 +36,7 @@ function caReadObserved(x,wave='Base',audienceId=''){
 function caSaveObserved(){
  const x=current();if(!x)return;
  const snapshot=caReadObserved(x,caObservedWave,caObservedAudience);
+ if(!CA_DIMENSIONS.some(d=>Number.isFinite(snapshot.dimensions[d.id]?.value))){alert('No hay lecturas reales configuradas para guardar.');return;}
  const st=caStore(x);st.observations=st.observations||[];
  st.observations.push(snapshot);save();render();
 }
