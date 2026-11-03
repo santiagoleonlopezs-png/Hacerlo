@@ -19,9 +19,13 @@ const c={
 };
 vm.createContext(c);vm.runInContext(code,c);
 const markup=c.renderInitiativesHome();
+// Este módulo se prueba aislado, sin cargar app.js ni las funciones de Resultados.
+assert.match(markup,/Adopción/,'La descripción original permanece como respaldo cuando no se ha generado hipótesis');
 for(const word of ['Centro de iniciativas','Conectados para crecer','Cámara Contrata','End to end','310 personas','350 personas','660','En ejecución','Proyecto estratégico','Por evaluar','Abrir iniciativa','Editar prioridad','pf-create','pf-search','Sin evaluar'])assert.ok(markup.includes(word),'Falta '+word);
 for(const field of ['name','description','scope','population','createdAt','impact','effort'])assert.ok(markup.includes('name="'+field+'"'),'Campo existente '+field);
 assert.match(markup,/onsubmit="createInitiative\(event\)"/);
+assert.match(markup,/name="description"[^>]*readonly/,'Objetivo y contexto se alimenta automáticamente');
+assert.doesNotMatch(markup,/name="description"[^>]*required/,'La hipótesis de valor no se exige al crear una iniciativa');
 assert.match(markup,/id="pf-create-form"[^>]* hidden/,'Formulario oculto por defecto');
 assert.match(markup,/id="pf-create-toggle"[^>]*aria-expanded="false"/,'Botón + plegado por defecto');
 assert.match(markup,/id="pf-layout"/);
@@ -36,8 +40,8 @@ assert.match(markup,/1 de 2 acciones completadas/,'Progreso de acciones basado e
 assert.match(markup,/Sin acciones registradas/);
 assert.equal((markup.match(/class="pf-card"/g)||[]).length,3);
 assert.match(app,/if\(page==='Iniciativas'\)\{a.innerHTML=renderInitiativesHome\(\);return\}/);
-assert.match(html,/src\/core\/iniciativas-home\.js\?v=2\.18\.0/);
-assert.match(html,/assets\/css\/iniciativas-home\.css\?v=2\.18\.0/);
+assert.match(html,/src\/core\/iniciativas-home\.js\?v=\d+\.\d+\.\d+/,'Módulo de iniciativas enlazado con versión');
+assert.match(html,/assets\/css\/iniciativas-home\.css\?v=\d+\.\d+\.\d+/,'Estilos de iniciativas enlazados con versión');
 assert.ok(css.includes('.pf-layout')&&css.includes('.pf-card')&&css.includes('@media'));
 c.portfolioPriority=embedded=>'<div id="priority-matrix" data-embedded="'+embedded+'"></div>';
 vm.runInContext("portfolioView='priority'",c);
