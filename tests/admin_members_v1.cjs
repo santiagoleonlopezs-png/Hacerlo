@@ -36,7 +36,9 @@ assert.match(main,/Invitación activada/,'Confirmar la activación al usuario');
 
 const invitation=read('supabase/templates/invite.html');
 assert.match(invitation,/HACERLO/,'La plantilla utiliza el nombre de marca');
-assert.match(invitation,/Fábrica del Comportamiento/);
+assert.match(invitation,/Fábrica de Comportamientos/);
+assert.match(invitation,/Bienvenido a tu fábrica/);
+assert.doesNotMatch(invitation,/Fábrica del Comportamiento/);
 assert.match(invitation,/Creamos sistemas organizacionales inteligentes/);
 assert.ok(invitation.includes('{{ .ConfirmationURL }}'),'Conserva el enlace seguro para activar el acceso');
 assert.ok(invitation.includes('{{ .Data.organization_name }}'),'La invitación muestra la empresa');
