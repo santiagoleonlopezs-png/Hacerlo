@@ -156,14 +156,14 @@ function eeRestoreCnpsBank(){
  s.questionBankHistory ||= [];
  s.questionBankHistory.push({savedAt:EE.now(),reason:'Restaurar banco desde archivo Excel',questions:structuredClone(s.questions||[])});
  s.questions=EE.template('CNPS');
- s.instrumentNote='Banco Voces del Cambio (Excel). Faltan en la fuente las alternativas de las preguntas 5 y 7; complétalas antes de activar. Estas preguntas no son automáticamente un índice CNPS.';
+ s.instrumentNote='Banco Voces del Cambio (Excel) con alternativas aportadas para las preguntas 5, 7 y 8. El banco no incluye una pregunta CNPS explícita; no se calcula automáticamente.';
  s.status='draft';
  s.updatedAt=EE.now();
  save();render();eeMsg('Se cargaron las 10 preguntas. Completa las alternativas 5 y 7 y guarda el diseño.');
 }
 function eeClone(){const x=current(),s=eeSurvey(),z=structuredClone(s);Object.assign(z,{id:EE.uid(),previousSurveyId:s.id,familyId:s.familyId||s.id,title:s.title+' · nueva versión',version:s.version+1,status:'draft',responses:[],createdAt:EE.now()});delete z.publication;delete z.syncedAt;delete z.metricLinks;delete z.importHistory;delete z.lastImportedAt;EE.init(x).push(z);eeSelected=z.id;eeTab='diseño';save();render();}
 async function eeStatus(status){const s=eeSurvey();if(s.status==='draft'){const form=document.querySelector('form[onsubmit="eeSaveDesign(event)"]');if(form&&(!form.reportValidity()||!eeSaveDesign({preventDefault(){},target:form})))return;}try{EE.validateQuestions(s.questions);if(status==='active'&&eeHasUnfinishedChoices(s))throw Error('Completa las alternativas de selección de todas las preguntas antes de activar.');if(eeHasUnfinishedChoices(s))throw Error('Completa las alternativas pendientes de las preguntas 5 y 7 antes de publicar.');if(eeIsPriority(s)&&(typeof priorityScoreReady!=='function'||!priorityScoreReady(s)))throw Error('Revisa Impacto, Esfuerzo y los valores de las opciones antes de activar el instrumento.');if(s.publication){eeMsg('Actualizando captura pública…');const {error}=await sb.from('ee_publications').update({active:status==='active'&&!s.publication.revoked}).eq('id',s.publication.id);if(error)throw error;}s.status=status;save();render();void eeVerifySave('Estado de encuesta',s.id);}catch(e){eeMsg(e.message,true);}}
-function eeQuestionInput(q){const attrs=`name="${safe(q.id)}" ${q.required?'required':''}`;if(q.type==='text')return `<textarea ${attrs} maxlength="5000"></textarea>`;if(['choice','knowledge'].includes(q.type))return `<select ${attrs}><option value="">Seleccionar</option>${EE.shuffleChoices(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select>`;return EE.scaleMarkup(q,safe);}
+function eeQuestionInput(q){const attrs=`name="${safe(q.id)}" ${q.required?'required':''}`;if(q.type==='text')return `<textarea ${attrs} maxlength="5000"></textarea>`;if(['choice','knowledge'].includes(q.type))return `<div class="ee-choice-options" role="radiogroup" aria-label="${safe(q.label)}">${EE.shuffleChoices(q).map((o,i)=>`<label class="ee-choice-option"><input type="radio" name="${safe(q.id)}" value="${safe(o)}" ${q.required?'required':''}><span>${safe(o)}</span></label>`).join('')}</div>`;return EE.scaleMarkup(q,safe);}
 
 function eeResponsePanel(x,s){
  if(s.status!=='active')return '<section class="panel empty">Activa el instrumento en Diseño antes de registrar respuestas.</section>';
