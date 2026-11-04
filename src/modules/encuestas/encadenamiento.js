@@ -39,7 +39,7 @@ function eeChainStrictCompatibility(a,b){
 }
 function eeChainFullCompatible(x,s){
  const members=eeChainMembers(x,s);
- return members.length>1&&members.every(m=>eeChainStrictCompatibility(members[0],m));
+ return members.length>1&&members.every((m,i)=>i===0||eeChainStrictCompatibility(members[0],m));
 }
 function eeChainMembers(x,s){
  const all=EE.init(x);
