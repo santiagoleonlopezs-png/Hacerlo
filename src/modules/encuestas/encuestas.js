@@ -100,11 +100,14 @@ function eePage(x){
        '<button class="secondary '+(eeTab===t?'active':'')+'" type="button" onclick="eeSetTab(&quot;'+t+'&quot;)">'+
        t[0].toUpperCase()+t.slice(1)+'</button>').join('')+
    '</div></section>'+
-   (eeTab==='diseño'||eeTab==='compartir'?(typeof eeAppConfigPanel==='function'?eeAppConfigPanel(x,s):''):'')+
-   (eeTab==='diseño'?eeDesigner(x,s)+'<details class="ee-advanced"><summary>Configuración avanzada · tipos, análisis y fuentes</summary>'+eeSurveyKindPanel(s)+eeHomeSourcesPanel(x)+eeQuestionTypePanel(s)+eeDirectionPanel(s)+eeOptionScoringPanel(s)+'</details>':
+   (eeTab==='diseño'?'<div class="ee-design-workspace">'+
+      '<details class="ee-design-section" name="ee-design-section" open><summary><span class="ee-design-stepno">01</span><span><strong>Preguntas y estructura</strong><small>Contenido del instrumento</small></span></summary>'+eeDesigner(x,s)+'</details>'+
+      '<details class="ee-design-section" name="ee-design-section"><summary><span class="ee-design-stepno">02</span><span><strong>Aplicación del instrumento</strong><small>Fechas, ola, identidad y audiencias</small></span></summary>'+(typeof eeAppConfigPanel==='function'?eeAppConfigPanel(x,s):'')+'</details>'+
+      '<details class="ee-design-section" name="ee-design-section"><summary><span class="ee-design-stepno">03</span><span><strong>Configuración avanzada</strong><small>Tipos, análisis y fuentes</small></span></summary><div class="ee-design-advanced">'+eeSurveyKindPanel(s)+eeHomeSourcesPanel(x)+eeQuestionTypePanel(s)+eeDirectionPanel(s)+eeOptionScoringPanel(s)+'</div></details>'+
+     '</div>':
     eeTab==='responder'?eeResponsePanel(x,s):
     eeTab==='importar'?eeImportPanel(s):
-    eeTab==='resultados'?(eeIsPriority(s)&&typeof prioritySurveyResults==='function'?prioritySurveyResults(x,s):'')+eeResults(x,s):eeSharePanel(s)):
+    eeTab==='resultados'?(eeIsPriority(s)&&typeof prioritySurveyResults==='function'?prioritySurveyResults(x,s):'')+eeResultsAudienceScope(x,s)+eeResults(x,s):eeSharePanel(s)):
     '<section class="panel empty"><h2>Empieza con un instrumento</h2>'+
       '<p>Carga un archivo Excel o crea una encuesta SENTIR, NPS, CNPS, Conocimiento o Libre.</p></section>';
  return '<section class="panel ee-hero"><div class="flex" style="justify-content:space-between">'+
@@ -234,15 +237,52 @@ async function eePreviewImport(){const state=eeImport,s=eeSurvey(),x=current();i
 function eeCommitImport(){const s=eeSurvey();if(!eeImport?.accepted||eeImport.errors.length||eeImport.surveyId!==s.id||eeImport.initiativeId!==current().id||s.status!=='active')return;const seen=new Set(s.responses.flatMap(r=>[r.id,r.externalId,r.importKey].filter(Boolean)));const rows=eeImport.accepted.filter(r=>!seen.has(r.importKey)&&!seen.has(r.id));eeStampImport(s,rows,eeImport.fileName||'',eeImport.importMoment||s.wave);s.responses.push(...rows);eeIntegrate(current(),s);eeImport=null;save();eeTab='resultados';render();eeMsg(rows.length+' respuestas importadas.');}
 function eeSummaryPanel(x){if(typeof page==='string'&&page==='Indicadores')return '';const list=EE.init(x).filter(s=>s.responses.length);if(!list.length)return '';return `<section class="panel"><div class="flex" style="justify-content:space-between"><h2>Evidencia de encuestas y experiencias</h2><button class="secondary" onclick="go('Encuestas y experiencias')">Abrir módulo →</button></div>${list.map(s=>{const a=EE.summarize(s);return `<p><b>${safe(s.title)}</b> · ${a.n} respuestas · ${a.metrics.map(m=>safe(m.label)+': '+(m.value??'—')+safe(m.unit)).join(' · ')}</p>`;}).join('')}${(x.surveyPriorities||[]).length?`<h3>Señales para priorizar</h3>${x.surveyPriorities.map(p=>`<p>${safe(p.label)}: ${p.value} · ${safe(p.reason)} · n=${p.n}</p>`).join('')}<p class="muted">Señales descriptivas; conservan la priorización manual de impacto y esfuerzo.</p>`:''}<button class="secondary" onclick="eeExportSimulation()">↓ Entradas para Simulación de Capacidad de Cambio</button></section>`;}
 function eeSharePanel(s){
- const active=s.status==='active';
+ const x=current(),audiences=x?.audiences||[],selected=eeAssignedAudiences(x,s);
+ const audienceSettings=audiences.length?
+  '<form class="ee-share-target-form" onsubmit="eeSaveShareTargets(event)">'+
+    '<div class="ee-share-target-heading"><h4>Audiencias del enlace general</h4><p class="muted">Elige a cuáles audiencias se destina el mismo enlace o QR. Quienes respondan no necesitan seleccionarlas.</p></div>'+
+    '<div class="ee-share-target-list">'+audiences.map(a=>'<label class="ee-share-target-option"><input type="checkbox" name="audienceIds" value="'+safe(a.id)+'"'+(selected.includes(String(a.id))?' checked':'')+'><span>'+safe(a.name)+'</span></label>').join('')+'</div>'+
+    '<p class="muted ee-share-target-hint">Si no marcas ninguna, el enlace general se destina a todas las audiencias existentes.</p>'+
+    '<label class="ee-share-select-audience"><input type="checkbox" name="collectAudience" value="true"'+(s.collectAudience===true?' checked':'')+'><span><strong>Preguntar audiencia a quien responde</strong><small>Opcional: actívalo únicamente si necesitas diferenciar resultados por audiencia con un solo enlace.</small></span></label>'+
+    '<div class="ee-share-target-actions"><button class="secondary" type="submit">Guardar audiencias del enlace</button></div>'+
+    '<p class="muted ee-share-target-hint">La selección define las audiencias destinatarias. Si no se pregunta o identifica la audiencia, sus respuestas solo pueden analizarse de forma global.</p>'+
+   '</form>':
+  '<p class="muted">No hay audiencias registradas; el enlace puede compartirse sin segmentación.</p>';
  return '<section class="panel ee-share-panel"><h3>Compartir instrumento</h3>'+
- '<p class="muted">Un enlace general para todas las personas. Si activas la segmentación en Diseño, cada persona puede elegir su audiencia.</p>'+
- '<div class="flex"><button class="primary" '+(!active?'disabled':'')+' onclick="eePublish()">'+
+ '<p class="muted">Un enlace general y un solo QR para las audiencias que definas. Los enlaces específicos por audiencia y ola siguen disponibles como opción avanzada.</p>'+
+ audienceSettings+
+ '<div class="ee-share-actions flex"><button class="primary" '+(s.status!=='active'?'disabled':'')+' onclick="eePublish()">'+
  (s.publication&&!s.publication.revoked?'Actualizar enlace':'Generar enlace')+'</button>'+
  '<button class="secondary" '+(!s.publication?'disabled':'')+' onclick="eePull()">Recuperar respuestas</button>'+
  (s.publication?'<button class="secondary" onclick="eeRevoke()">Cerrar enlace</button>':'')+'</div>'+
  '<div id="ee-public-link">'+(s.publication&&!s.publication.revoked?eePublishLinks(s):'')+'</div>'+
- '<p class="muted ee-share-footnote">Comparte el enlace general. Los enlaces específicos por audiencia y ola permanecen disponibles como opción avanzada.</p></section>';
+ '<details class="ee-share-optional-settings"><summary>Otras condiciones de aplicación</summary><p class="muted">Las fechas, la ola y la identificación se configuran en Diseño → Aplicación del instrumento.</p><button class="secondary" type="button" onclick="eeSetTab(\'diseño\')">Ir al diseño</button></details></section>';
+}
+async function eeSaveShareTargets(event){
+ event.preventDefault();
+ const x=current(),s=eeSurvey();if(!x||!s)return;
+ const fd=new FormData(event.target),allowed=new Set((x.audiences||[]).map(a=>String(a.id)));
+ const audienceIds=[...new Set(fd.getAll('audienceIds').map(String))];
+ if(audienceIds.some(id=>!allowed.has(id)))return eeMsg('Hay una audiencia que ya no existe. Actualiza la selección.',true);
+ const collectAudience=fd.get('collectAudience')==='true';
+ const updated={...s,audienceIds,audienceId:audienceIds.length===1?audienceIds[0]:'',collectAudience,updatedAt:EE.now()};
+ try{
+  if(s.publication?.id){
+   const {data:rows,error}=await sb.from('ee_publications').update({snapshot:eePublicSnapshot(updated)}).eq('id',s.publication.id).select('id');
+   if(error)throw Error('No fue posible actualizar el enlace general: '+error.message);
+   if(!rows?.length)throw Error('Supabase no confirmó la actualización del enlace.');
+  }
+  Object.assign(s,updated);save();render();
+  if(typeof eeVerifySave==='function')void eeVerifySave('Audiencias del enlace',s.id);
+  else eeMsg('Audiencias guardadas. El enlace general no cambia.');
+ }catch(error){eeMsg(error.message,true);}
+}
+function eeResultsAudienceScope(x,s){
+ const all=x?.audiences||[];
+ if(!all.length)return '';
+ const ids=eeAssignedAudiences(x,s);
+ const audienceNames=(ids.length?all.filter(a=>ids.includes(String(a.id))):all).map(a=>a.name);
+ return '<div class="ee-results-audience-scope"><span>Audiencias asociadas a la aplicación</span><strong>'+safe(audienceNames.join(' · '))+'</strong><small>Los resultados se muestran globalmente cuando las respuestas no contienen una audiencia identificada.</small></div>';
 }
 function eePublicSnapshot(s){
  const x=current();
@@ -316,7 +356,7 @@ async function eeCopyLink(button){const input=button?.closest('.ee-share-link')?
 async function eeRevoke(){const s=eeSurvey();if(!s.publication)return;try{const token=EE.uid();const {error}=await sb.from('ee_publications').update({active:false,token}).eq('id',s.publication.id);if(error)throw error;s.publication.token=token;s.publication.revoked=true;save();render();eeMsg('Enlace revocado. Todas las respuestas se conservan y pueden recuperarse.');}catch(e){eeMsg(e.message,true);}}
 let eePulling=false;
 async function eePull(quiet=false){const s=eeSurvey(),x=current();if(!s?.publication||eePulling)return;eePulling=true;try{const seen=new Set(s.responses.map(r=>r.id)),rows=[];let start=0;while(true){const {data,error}=await sb.from('ee_submissions').select('id,answers,respondent,created_at,audience_id,wave').eq('publication_id',s.publication.id).order('created_at').order('id').range(start,start+499);if(error)throw error;rows.push(...data);if(data.length<500)break;start+=500;if(start>=100000)throw Error('Más de 100000 respuestas: exporta desde Supabase por lotes.');}
- if(!EE.init(x).some(z=>z.id===s.id))return;let added=0,rejected=0;for(const r of rows){if(seen.has(r.id))continue;const v=EE.validateResponse(s,r.answers);if(v.errors.length){rejected++;continue;}s.responses.push({id:r.id,date:r.created_at,respondent:r.respondent||'',audienceId:r.audience_id||s.audienceId,wave:r.wave||s.wave,answers:v.answers,source:'public'});seen.add(r.id);added++;}
+ if(!EE.init(x).some(z=>z.id===s.id))return;let added=0,rejected=0;for(const r of rows){if(seen.has(r.id))continue;const v=EE.validateResponse(s,r.answers);if(v.errors.length){rejected++;continue;}s.responses.push({id:r.id,date:r.created_at,respondent:r.respondent||'',audienceId:r.audience_id||'',wave:r.wave||s.wave,answers:v.answers,source:'public'});seen.add(r.id);added++;}
  if(added){eeIntegrate(x,s);save();}if(current()?.id===x.id&&eeSurvey()?.id===s.id&&(!quiet||added||rejected)){render();if(!quiet||added||rejected)eeMsg(`${added} respuestas nuevas · ${rejected} inválidas. ${quiet?'Actualización automática.':''}`);}
  }catch(e){if(!quiet)eeMsg('No se pudieron recuperar respuestas: '+e.message,true);}finally{eePulling=false;}}
 
