@@ -27,4 +27,11 @@ assert.match(edge,/is_platform_admin/);
 assert.match(edge,/inviteUserByEmail/);
 assert.match(edge,/verify|auth\.getUser/);
 assert.doesNotMatch(html,/SUPABASE_SERVICE_ROLE_KEY|sb_secret_/,'Ningún secreto en el navegador');
+const main=read('src/core/app.js');
+assert.match(main,/HACERLO_INITIAL_AUTH_FLOW/,'Conservar el modo de activación antes de procesar tokens');
+assert.match(main,/HACERLO_INITIAL_AUTH_FLOW==='invite'/,'Reconocer correos de invitación');
+assert.match(main,/showRecoveryForm\(isInvite\?'invite':'recovery'\)/,'Abrir creación de contraseña al aceptar invitación');
+assert.match(main,/sb\.auth\.updateUser\(\{password:p\}\)/,'Guardar contraseña del usuario invitado');
+assert.match(main,/Invitación activada/,'Confirmar la activación al usuario');
+
 console.log('Administración de usuarios: scripts, acciones, roles, protección del propietario y enlace de invitación OK.');
