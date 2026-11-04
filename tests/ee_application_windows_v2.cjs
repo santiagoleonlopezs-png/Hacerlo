@@ -28,12 +28,13 @@ assert.match(template[4].options[0],/Estoy en pausa/);
 assert.match(template[5].label,/me quita tiempo/);
 assert.deepEqual(Array.from(template[5].options),['Nada o muy poco','Algo','Bastante','Totalmente']);
 assert.equal(template[5].optionScoring,undefined,'Sin puntuación no especificada en P6');
+const optionScore=vm.runInContext('EE.optionScore',ctx);
 for(const n of [4,6]){
  const q=template[n];
  assert.equal(q.optionScoring.enabled,true);
  assert.deepEqual(Array.from(q.optionScoring.options,x=>x.value),[6,8,9,10]);
- assert.equal(ctx.EE.optionScore(q,q.options[0]),6);
- assert.equal(ctx.EE.optionScore(q,q.options[3]),10);
+ assert.equal(optionScore(q,q.options[0]),6);
+ assert.equal(optionScore(q,q.options[3]),10);
 }
 assert.equal(template.filter(q=>q.type==='cnps').length,0,'No inventar una pregunta CNPS ausente del archivo');
 assert.match(template[0].label,/Tengo claridad sobre qué está cambiando/);
