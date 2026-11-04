@@ -1,0 +1,39 @@
+
+/* Administración de usuarios por fábrica */
+.ham-dialog{position:fixed;inset:0;margin:auto;padding:0;border-radius:20px;border:1px solid #3c6077;
+ background:#0c2438;color:#edf4fb;box-shadow:0 28px 86px #000a;width:min(880px,calc(100% - 28px));max-width:880px;max-height:88vh;overflow:auto}
+.ham-dialog::backdrop{background:#03111fe6;backdrop-filter:blur(5px)}
+.ham-dialog h2{font-size:24px;margin:5px 0 3px}
+.ham-dialog h3{font-size:16px;margin:0 0 7px}
+.ham-dialog p{font-size:13px;line-height:1.5;margin:7px 0}
+.ham-header{padding:21px 24px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:1px solid #305064;background:linear-gradient(135deg,#153b52,#0c2438)}
+.ham-overline{font-size:11px;letter-spacing:.1em;font-weight:750;color:#e3b74d}
+.ham-org-label{font-size:15px!important;color:#bfd6e6!important}
+.ham-close{font-size:12px;padding:9px 13px!important}
+.ham-section{margin:0;padding:20px 24px;border-bottom:1px solid #29495c}
+.ham-section>p{color:#a8c0d2}
+.ham-invite-form{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:12px;align-items:end;margin-top:15px}
+.ham-invite-form label{font-size:12px;font-weight:650;color:#c9deeb}
+.ham-invite-form input,.ham-invite-form select,.ham-row-role{width:100%;box-sizing:border-box;padding:11px 12px;background:#081d2e;border-radius:10px;border:1px solid #45657d;color:#f1f7fa;font-size:13px;font-family:inherit;min-height:43px}
+.ham-invite-form input{margin:7px 0 0}
+.ham-invite-form select{margin-top:7px}
+.ham-invite-form button{min-height:43px;margin:0;border-radius:10px;font-size:13px}
+.ham-hint{color:#9eb9ca!important;font-size:12px!important;padding:0 24px 15px;margin:12px 0!important}
+.ham-section .ham-hint{padding:0;margin:12px 0 0!important}
+.ham-list-heading{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.ham-list-heading button{padding:8px 12px;font-size:12px}
+.ham-table-scroll{overflow-x:auto;margin-top:12px;border:1px solid #2d4b60;border-radius:12px}
+.ham-table{width:100%;border-collapse:collapse;min-width:560px}
+.ham-table th,.ham-table td{padding:12px 15px;text-align:left;border-bottom:1px solid #284355;font-size:13px}
+.ham-table tr:last-child td{border-bottom:0}
+.ham-table th{font-weight:600;color:#a6c0d0;background:#112d41}
+.ham-user-email{max-width:320px;overflow-wrap:anywhere}
+.ham-row-role{max-width:230px;padding:8px 10px;min-height:38px}
+.ham-row-role:disabled{opacity:.65}
+.ham-remove{padding:7px 10px!important;font-size:12px}
+.ham-owner-label{font-size:12px;color:#e2b548}
+.ham-loading{text-align:center!important;color:#9db9c9;padding:21px!important}
+.ham-message{min-height:20px;margin:13px 24px!important;color:#7be2ad!important;font-size:13px!important}
+.ham-message.is-error{color:#ffbb85!important}
+.ham-dialog button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:700px){.ham-invite-form{grid-template-columns:1fr}.ham-section{padding:17px}.ham-header{padding:17px}.ham-dialog h2{font-size:20px}.ham-invite-form button{width:100%}}
