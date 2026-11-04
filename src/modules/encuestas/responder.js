@@ -22,16 +22,35 @@ function localPublicTime(value){
 }
 function publicApplicationFields(s){
  const params=new URLSearchParams(location.search);
- const selectedAudience=params.get('a')||'';
- const selectedWave=params.get('w')||s.wave||'Antes';
- const audiences=Array.isArray(s.audiences)?s.audiences.filter(a=>a?.id):[];
- const allowed=Array.isArray(s.audienceIds)&&s.audienceIds.length?s.audienceIds.map(String):audiences.map(a=>String(a.id));
- const audience=selectedAudience||s.audienceId||(allowed.length===1?allowed[0]:'');
- if(allowed.length&&(!audience||!allowed.includes(audience)))throw Error('Necesitas el enlace de tu audiencia. Solicita el enlace correspondiente al equipo que te convocó.');
- const allowedWaves=(s.waveMode==='Todas')?['Antes','Durante','Después']:[s.waveMode||s.wave||'Antes'];
- if(!allowedWaves.includes(selectedWave))throw Error('Este enlace no corresponde a una ola de aplicación habilitada.');
- return '<input type="hidden" name="_audienceId" value="'+esc(audience)+'">'+
-        '<input type="hidden" name="_wave" value="'+esc(selectedWave)+'">';
+ const linkedAudience=params.get('a')||'';
+ const linkedWave=params.get('w')||'';
+ const audiences=Array.isArray(s.audiences)?s.audiences.filter(a=>a?.id&&a?.name):[];
+ const scopedIds=Array.isArray(s.audienceIds)&&s.audienceIds.length?s.audienceIds.map(String):audiences.map(a=>String(a.id));
+ const allowedAudiences=audiences.filter(a=>scopedIds.includes(String(a.id)));
+ const selfSelect=s.collectAudience===true;
+ let audienceField='';
+ if(linkedAudience){
+  if(!scopedIds.includes(linkedAudience))throw Error('Este enlace no corresponde a una audiencia habilitada.');
+  audienceField='<input type="hidden" name="_audienceId" value="'+esc(linkedAudience)+'">';
+ }else if(selfSelect&&allowedAudiences.length>1){
+  audienceField='<label class="ee-public-audience">¿A qué audiencia perteneces?'+
+   '<select name="_audienceId" required><option value="">Selecciona tu audiencia</option>'+
+   allowedAudiences.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('')+'</select></label>';
+ }else{
+  const assigned=selfSelect&&allowedAudiences.length===1?String(allowedAudiences[0].id):'';
+  audienceField='<input type="hidden" name="_audienceId" value="'+esc(assigned)+'">';
+ }
+ const waves=s.waveMode==='Todas'?['Antes','Durante','Después']:[s.waveMode||s.wave||'Antes'];
+ let waveField='';
+ if(linkedWave){
+  if(!waves.includes(linkedWave))throw Error('Este enlace no corresponde a una ola habilitada.');
+  waveField='<input type="hidden" name="_wave" value="'+esc(linkedWave)+'">';
+ }else if(waves.length>1){
+  waveField='<label class="ee-public-wave">Momento de la medición'+
+   '<select name="_wave" required><option value="">Selecciona el momento</option>'+
+   waves.map(w=>'<option value="'+esc(w)+'">'+esc(w)+'</option>').join('')+'</select></label>';
+ }else waveField='<input type="hidden" name="_wave" value="'+esc(waves[0])+'">';
+ return '<div class="ee-public-meta">'+audienceField+waveField+'</div>';
 }
 async function load(){
  try{
@@ -63,7 +82,7 @@ async function submit(e){
  try{id=sessionStorage.getItem(key)||EE.uid();sessionStorage.setItem(key,id);}catch{id=EE.uid();}
  try{
   await rpc('ee_submit',{p_token:token,p_response_id:id,
-    p_answers:{...v.answers,_audienceId:data._audienceId||'',_wave:data._wave||formDefinition.wave||'Antes'},
+    p_answers:{...v.answers,_audienceId:data._audienceId||'',_wave:data._wave||''},
     p_respondent:formDefinition.anonymous===false?(data.respondent||''):''});
   try{sessionStorage.removeItem(key);}catch{}
   root.innerHTML='<h1>Gracias por compartir tu experiencia.</h1><p>Tu respuesta quedó registrada. Ya puedes cerrar esta página.</p>';
