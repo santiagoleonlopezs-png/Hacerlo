@@ -170,11 +170,16 @@ function eeResponsePanel(x,s){
  const schedule=eeApplicationCheck(s);
  if(!schedule.ok)return '<section class="panel empty"><h3>Aplicación no disponible</h3><p>'+safe(schedule.message)+'</p></section>';
  const audiences=eeTargetAudiences(x,s),waves=eeResponseWaves(s);
- return '<section class="panel ee-response-card"><h3>Registrar respuesta</h3><p class="muted">Selecciona el momento y la audiencia. La captura externa se gestiona en Compartir.</p>'+
- '<form onsubmit="eeSubmit(event)"><div class="ee-response-meta">'+
- '<label>Código o alias (opcional)<input name="respondent" maxlength="100" placeholder="Sin datos personales"></label>'+
- '<label>Audiencia<select name="audienceId" '+(audiences.length?'required':'')+'>'+eeApplicationAudienceOptions(x,s)+'</select></label>'+
- '<label>Ola<select name="wave" required>'+eeApplicationWaveOptions(s)+'</select></label></div>'+
+ const audienceSelect=audiences.length?'<label>Audiencia<select name="audienceId" required>'+audiences.map((a,i)=>'<option value="'+safe(a.id)+'">'+safe(a.name)+'</option>').join('')+'</select></label>':'<input type="hidden" name="audienceId" value="">';
+ const waveSelect=waves.length>1?'<label>Ola<select name="wave">'+waves.map(w=>'<option value="'+safe(w)+'">'+safe(w)+'</option>').join('')+'</select></label>':'<input type="hidden" name="wave" value="'+safe(waves[0])+'">';
+ const changeable=audiences.length>1||waves.length>1;
+ const segmentation=changeable?
+   '<details class="ee-internal-scope" open><summary>Asignar audiencia y ola de esta captura · solo facilitador</summary><div class="ee-response-meta">'+audienceSelect+waveSelect+'</div></details>':
+   '<div class="ee-response-scope">Esta captura se asociará a '+safe(audiences[0]?.name||'la audiencia no segmentada')+' · '+safe(waves[0])+'.</div>'+audienceSelect+waveSelect;
+ const identity=s.anonymous===false?'<label class="ee-internal-identity">'+safe(s.identityLabel||'Nombre o identificación')+'<input name="respondent" maxlength="100" required></label>':'';
+ return '<section class="panel ee-response-card"><h3>Registrar respuesta</h3>'+
+ '<p class="muted">Captura interna para facilitadores. Las personas que reciben el enlace no deben escoger audiencia ni ola.</p>'+
+ '<form onsubmit="eeSubmit(event)">'+segmentation+identity+
  (eeIsPriority(s)&&typeof priorityQuestionMarkup==='function'?priorityQuestionMarkup(s):
  s.questions.map(q=>'<div class="ee-response-question"><p class="ee-response-question-label">'+safe(q.label)+(q.required?' <span aria-hidden="true">*</span>':'')+'</p>'+eeQuestionInput(q)+'</div>').join(''))+
  '<button class="primary">Guardar respuesta</button></form></section>';
@@ -189,10 +194,12 @@ function eeSubmit(e){
  if(allowedAudiences.length&&!allowedAudiences.some(a=>String(a.id)===String(f.audienceId)))
   return eeMsg('Selecciona una de las audiencias habilitadas.',true);
  if(!allowedWaves.includes(f.wave))return eeMsg('Selecciona una ola habilitada.',true);
+ if(s.anonymous===false&&(!String(f.respondent||'').trim()||String(f.respondent).length>100))
+  return eeMsg('Completa el campo de identificación indicado para esta encuesta.',true);
  const v=EE.validateResponse(s,f);
  if(v.errors.length)return eeMsg(v.errors.join('\n'),true);
- s.responses.push({id:EE.uid(),date:EE.now(),respondent:f.respondent||'',audienceId:f.audienceId||'',wave:f.wave,answers:v.answers,source:'internal'});
- eeIntegrate(x,s);save();render();eeMsg('Respuesta registrada y evidencia actualizada.');
+ s.responses.push({id:EE.uid(),date:EE.now(),respondent:s.anonymous===false?String(f.respondent||'').trim():'',audienceId:f.audienceId||'',wave:f.wave,answers:v.answers,source:'internal'});
+ eeIntegrate(x,s);save();render();eeMsg('Respuesta registrada.');if(typeof eeVerifySave==='function')void eeVerifySave('Respuesta',s.id);
 }
 function eeIntegrate(x,s){
  const a=EE.summarize(s),stamp=EE.now();x.indicators ||= [];x.diagnosisFindings ||= [];x.evidenceRecords ||= [];x.surveyPriorities ||= [];
