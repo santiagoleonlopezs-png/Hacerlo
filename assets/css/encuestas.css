@@ -218,3 +218,24 @@
 .ee-locked-history{margin-top:20px;border-top:1px solid #36566a;padding-top:13px}
 .ee-locked-history>summary{color:#bacfdc;font-size:13px;cursor:pointer}
 @media(max-width:670px){.ee-locked-header{display:block}.ee-locked-active{display:inline-block;margin-top:12px}.ee-locked-option{grid-template-columns:15px minmax(0,1fr)}.ee-locked-option small{grid-column:2}.ee-locked-question-body{padding:13px}}
+
+
+/* Comentarios: expandir hacia abajo y añadir nuevas tarjetas al final del flujo. */
+.ee-comments-board .ee-comment-accordion,
+.ee-comments-board .ee-comment-accordion[open]{
+  overflow:visible;
+  max-height:none;
+  height:auto;
+}
+.ee-comments-board .ee-comment-accordion>summary{cursor:pointer}
+.ee-comments-board .ee-comment-accordion[open]>summary{margin-bottom:16px}
+.ee-comment-list{display:flex;flex-direction:column;gap:14px;overflow:visible;max-height:none;min-width:0}
+.ee-comments-board .ee-comment-list>.ee-comment-card{flex:none;margin:0;min-width:0}
+.ee-comment-more-actions{display:flex;justify-content:center;padding:18px 0 6px}
+.ee-comment-more-actions button{min-width:210px}
+.ee-comment-more-actions button[hidden]{display:none!important}
+.ee-comment-progress{font-size:13px;margin:16px 0 14px}
+@media(max-width:640px){
+ .ee-comment-more-actions button{width:100%}
+ .ee-comments-board .ee-comment-list>.ee-comment-card{padding:16px}
+}
