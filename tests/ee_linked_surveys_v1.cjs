@@ -61,7 +61,7 @@ assert.throws(()=>f.eeChainLink(x,during,base.id,'Durante','Durante'),/vinculada
 assert.match(f.eeChainPanel(x,during),/Conectar y comparar encuestas/);
 assert.match(f.eeChainPanel(x,during),/Pulso inicial/);
 assert.match(f.eeChainPanel(x,during),/Guardar ajustes/);
-assert.match(f.eeChainPanel(x,during),/Escalas equivalentes|No hay otras encuestas|Revisión por resultados/);
+assert.match(f.eeChainPanel(x,during),/Seleccionar encuesta|No hay otras encuestas disponibles/,'Opciones de vinculación compactas');
 f.eeChainLink(x,during,incompatible.id,'Durante','Después');
 assert.equal(f.eeChainMembers(x,during).length,3,'Vincula encuesta diferente cuando es parte de la serie');
 assert.equal(f.eeChainFullCompatible(x,during),false);
