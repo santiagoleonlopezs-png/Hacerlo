@@ -308,8 +308,6 @@ function eeChainOverview(x,s){
  return '<div class="ee-chain-overview">'+
   '<div><h3>Secuencia vinculada</h3><p class="muted">'+members.length+' encuestas conectadas · '+
   safe(eeChainMoment(members[0]))+' → '+safe(eeChainMoment(members.at(-1)))+'</p></div>'+
-  '</div>'+
-
   '<h3>Secuencia de medición</h3><div class="ee-chain-timeline">'+list+'</div>'+
   metrics+
   (count?'<button class="secondary" type="button" onclick="eeChainExportComparison()">↓ Descargar preguntas comparables</button>':'')+
