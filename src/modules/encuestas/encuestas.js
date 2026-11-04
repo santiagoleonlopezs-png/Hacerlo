@@ -156,7 +156,7 @@ function eeRestoreCnpsBank(){
  s.questionBankHistory ||= [];
  s.questionBankHistory.push({savedAt:EE.now(),reason:'Restaurar banco desde archivo Excel',questions:structuredClone(s.questions||[])});
  s.questions=EE.template('CNPS');
- s.instrumentNote='Banco Voces del Cambio (Excel) con alternativas aportadas para las preguntas 5, 7 y 8. El banco no incluye una pregunta CNPS explícita; no se calcula automáticamente.';
+ s.instrumentNote='Banco Voces del Cambio: preguntas 5, 6, 7 y 8 con opciones. Las puntuaciones 6/8/9/10 de las preguntas 5 y 7 son internas. No se calcula automáticamente un CNPS.';
  s.status='draft';
  s.updatedAt=EE.now();
  save();render();eeMsg('Se cargaron las 10 preguntas. Completa las alternativas 5 y 7 y guarda el diseño.');
@@ -301,8 +301,9 @@ async function eePublish(){
    s.publication=data;save();
   }else{
    // Actualizar la configuración del enlace existente sin cambiar token ni respuestas.
-   const {error}=await sb.from('ee_publications').update({snapshot,active:true}).eq('id',s.publication.id);
+   const {data:updated,error}=await sb.from('ee_publications').update({snapshot,active:true}).eq('id',s.publication.id).select('id');
    if(error)throw error;
+   if(!updated?.length)throw Error('Supabase no confirmó la actualización del enlace.');
    if(s.publication.revoked){s.publication.revoked=false;save();}
   }
   const container=$('ee-public-link');
