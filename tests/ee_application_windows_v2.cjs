@@ -6,7 +6,7 @@ const {randomUUID}=require('node:crypto');
 const read=path=>fs.readFileSync(path,'utf8');
 const x={id:1,name:'Cambio de ejemplo',audiences:[{id:'g1',name:'Gestores'},{id:'g2',name:'Administradores'}],surveys:[],surveyTrash:[]};
 const ctx={console,crypto:{randomUUID},current:()=>x,save:()=>{},render:()=>{},diagModuleMenu:()=>'<nav></nav>',
- confirm:()=>true,alert:message=>{throw Error(message)},
+ $:()=>({textContent:'',setAttribute(){}}),confirm:()=>true,alert:message=>{throw Error(message)},
  safe:v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
 };
 vm.createContext(ctx);
