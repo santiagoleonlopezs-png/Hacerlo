@@ -225,13 +225,46 @@ async function eePreviewImport(){const state=eeImport,s=eeSurvey(),x=current();i
  }catch(e){eeMsg(e.message,true);}}
 function eeCommitImport(){const s=eeSurvey();if(!eeImport?.accepted||eeImport.errors.length||eeImport.surveyId!==s.id||eeImport.initiativeId!==current().id||s.status!=='active')return;const seen=new Set(s.responses.flatMap(r=>[r.id,r.externalId,r.importKey].filter(Boolean)));const rows=eeImport.accepted.filter(r=>!seen.has(r.importKey)&&!seen.has(r.id));eeStampImport(s,rows,eeImport.fileName||'',eeImport.importMoment||s.wave);s.responses.push(...rows);eeIntegrate(current(),s);eeImport=null;save();eeTab='resultados';render();eeMsg(rows.length+' respuestas importadas.');}
 function eeSummaryPanel(x){if(typeof page==='string'&&page==='Indicadores')return '';const list=EE.init(x).filter(s=>s.responses.length);if(!list.length)return '';return `<section class="panel"><div class="flex" style="justify-content:space-between"><h2>Evidencia de encuestas y experiencias</h2><button class="secondary" onclick="go('Encuestas y experiencias')">Abrir módulo →</button></div>${list.map(s=>{const a=EE.summarize(s);return `<p><b>${safe(s.title)}</b> · ${a.n} respuestas · ${a.metrics.map(m=>safe(m.label)+': '+(m.value??'—')+safe(m.unit)).join(' · ')}</p>`;}).join('')}${(x.surveyPriorities||[]).length?`<h3>Señales para priorizar</h3>${x.surveyPriorities.map(p=>`<p>${safe(p.label)}: ${p.value} · ${safe(p.reason)} · n=${p.n}</p>`).join('')}<p class="muted">Señales descriptivas; conservan la priorización manual de impacto y esfuerzo.</p>`:''}<button class="secondary" onclick="eeExportSimulation()">↓ Entradas para Simulación de Capacidad de Cambio</button></section>`;}
-function eeSharePanel(s){return `<section class="panel"><h3>Compartir con participantes</h3><p class="muted">La captura interna e importación ya usan la persistencia existente. El enlace solo admite respuestas durante el intervalo configurado y permite que las personas elijan su audiencia y ola habilitadas.</p><div class="flex"><button class="primary" ${s.status!=='active'?'disabled':''} onclick="eePublish()">${s.publication?'Mostrar enlace':'Crear enlace de respuesta'}</button><button class="secondary" ${!s.publication?'disabled':''} onclick="eePull()">Recuperar respuestas externas</button>${s.publication?'<button class="secondary" onclick="eeRevoke()">Revocar enlace</button>':''}</div><div id="ee-public-link"></div><p class="notice">Las respuestas externas se guardan en Supabase. Se incorporan al abrir Resultados y al pulsar Recuperar. Mantén este enlace dentro de la población convocada; quien lo tenga puede responder. No se considera autenticación individual ni garantiza una respuesta por persona.</p></section>`;}
-function eePublicSnapshot(s){const x=current();return {id:s.id,title:s.title,kind:s.kind,version:s.version,description:s.description,wave:s.wave,waveMode:eeApplicationMode(s),audienceId:s.audienceId,audienceIds:eeAssignedAudiences(x,s),audiences:eeTargetAudiences(x,s).map(a=>({id:String(a.id),name:String(a.name)})),applicationStart:s.applicationStart||null,applicationEnd:s.applicationEnd||null,instrumentNote:s.instrumentNote,questions:s.questions.map(q=>{const z={...q};delete z.correct;if(eeIsPriority(s)&&z.type==='choice')z.priorityRandomized=true;if(z.priorityRandomized)delete z.optionScoring;return z;})};}
+function eeSharePanel(s){
+ const visible=s.status==='active';
+ return '<section class="panel ee-share-panel"><h3>Compartir instrumento</h3>'+
+ '<p class="muted">Genera enlaces específicos por audiencia y ola. Quien responde no tiene que escoger esos datos.</p>'+
+ '<div class="flex"><button class="primary" '+(!visible?'disabled':'')+' onclick="eePublish()">'+(s.publication?'Ver enlaces de aplicación':'Generar enlaces de aplicación')+'</button>'+
+ '<button class="secondary" '+(!s.publication?'disabled':'')+' onclick="eePull()">Recuperar respuestas</button>'+
+ (s.publication?'<button class="secondary" onclick="eeRevoke()">Cerrar enlaces</button>':'')+'</div>'+
+ '<div id="ee-public-link"></div>'+
+ '<p class="muted ee-share-footnote">La audiencia y el momento se asocian al enlace utilizado. Los enlaces no verifican por sí mismos la identidad de quien responde. Comparte cada enlace únicamente con el grupo correspondiente.</p></section>';
+}
+function eePublicSnapshot(s){
+ const x=current();
+ return {id:s.id,title:s.title,kind:s.kind,version:s.version,
+ description:s.description,wave:s.wave,waveMode:eeApplicationMode(s),
+ audienceId:s.audienceId,audienceIds:eeAssignedAudiences(x,s),
+ audiences:eeTargetAudiences(x,s).map(a=>({id:String(a.id),name:String(a.name)})),
+ anonymous:s.anonymous!==false,identityLabel:s.identityLabel||'Nombre o identificación',
+ applicationStart:s.applicationStart||null,applicationEnd:s.applicationEnd||null,
+ questions:s.questions.map(q=>{const z={...q};delete z.correct;if(eeIsPriority(s)&&z.type==='choice')z.priorityRandomized=true;if(z.priorityRandomized)delete z.optionScoring;return z;})};
+}
+function eePublishLinks(s){
+ const x=current(),audiences=eeTargetAudiences(x,s);
+ const groups=audiences.length?audiences.map(a=>({id:String(a.id),name:String(a.name)})):[{id:'',name:'Sin segmentación'}];
+ const waves=eeResponseWaves(s);
+ return '<h4>Enlaces listos para distribuir</h4><p class="muted">Cada enlace lleva la audiencia y ola configuradas.</p>'+
+ groups.map((a,index)=>'<details class="ee-share-group" '+(index===0?'open':'')+'><summary>'+safe(a.name)+' · '+waves.length+' '+(waves.length===1?'enlace':'enlaces')+'</summary>'+
+ waves.map(w=>{
+ const url=new URL('responder.html',location.href);url.searchParams.set('t',s.publication.token);
+ if(a.id)url.searchParams.set('a',a.id);
+ url.searchParams.set('w',w);
+ return '<div class="ee-share-link"><span>'+safe(w)+'</span><input aria-label="Enlace para '+safe(a.name)+' en '+safe(w)+'" type="text" readonly value="'+safe(url.href)+'">'+
+ '<button type="button" class="secondary" onclick="eeCopyLink(this)">Copiar</button>'+
+ '<a class="secondary" href="'+safe(url.href)+'" target="_blank" rel="noopener">Abrir</a></div>';
+ }).join('')+'</details>').join('');
+}
 async function eePublish(){const s=eeSurvey(),x=current();if(s.status!=='active')return;try{if(eeIsPriority(s)&&(typeof priorityScoreReady!=='function'||!priorityScoreReady(s)))throw Error('Antes de compartir, completa los valores de las opciones en ambas dimensiones.');if(!x._cloudId||!cloudOrgId)throw Error('Espera a que la iniciativa se guarde en Supabase.');if(!s.publication){eeMsg('Creando enlace…');const {data,error}=await sb.from('ee_publications').insert({initiative_id:x._cloudId,organization_id:cloudOrgId,survey_local_id:s.id,snapshot:eePublicSnapshot(s),active:true}).select('id,token').single();if(error)throw error;s.publication=data;save();}
  if(s.publication.revoked){const {error}=await sb.from('ee_publications').update({active:true}).eq('id',s.publication.id);if(error)throw error;s.publication.revoked=false;save();}
- const url=new URL('responder.html',location.href);url.searchParams.set('t',s.publication.token);$('ee-public-link').innerHTML=`<label>Enlace de respuesta<input id="ee-link-value" readonly value="${safe(url.href)}"></label><button class="secondary" onclick="eeCopyLink()">Copiar enlace</button><a class="secondary" href="${safe(url.href)}" target="_blank" rel="noopener">Abrir formulario ↗</a>`;
+ $('ee-public-link').innerHTML=eePublishLinks(s);
  }catch(e){eeMsg('No se pudo publicar: '+e.message+'. Verifica la instalación SQL V2.4.',true);}}
-async function eeCopyLink(){try{await navigator.clipboard.writeText($('ee-link-value').value);eeMsg('Enlace copiado.');}catch{$('ee-link-value').select();eeMsg('Selecciona y copia el enlace.');}}
+async function eeCopyLink(button){const input=button?.closest('.ee-share-link')?.querySelector('input');if(!input)return;try{await navigator.clipboard.writeText(input.value);eeMsg('Enlace de aplicación copiado.');}catch{input.select();eeMsg('Selecciona y copia el enlace.');}}
 async function eeRevoke(){const s=eeSurvey();if(!s.publication)return;try{const token=EE.uid();const {error}=await sb.from('ee_publications').update({active:false,token}).eq('id',s.publication.id);if(error)throw error;s.publication.token=token;s.publication.revoked=true;save();render();eeMsg('Enlace revocado. Todas las respuestas se conservan y pueden recuperarse.');}catch(e){eeMsg(e.message,true);}}
 let eePulling=false;
 async function eePull(quiet=false){const s=eeSurvey(),x=current();if(!s?.publication||eePulling)return;eePulling=true;try{const seen=new Set(s.responses.map(r=>r.id)),rows=[];let start=0;while(true){const {data,error}=await sb.from('ee_submissions').select('id,answers,respondent,created_at,audience_id,wave').eq('publication_id',s.publication.id).order('created_at').order('id').range(start,start+499);if(error)throw error;rows.push(...data);if(data.length<500)break;start+=500;if(start>=100000)throw Error('Más de 100000 respuestas: exporta desde Supabase por lotes.');}
