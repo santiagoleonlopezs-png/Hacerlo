@@ -57,6 +57,7 @@ jobs:
           node tests/ee_application_windows_v2.cjs
           node tests/ee_comments_progressive_v1.cjs
           node --check src/modules/encuestas/encadenamiento.js
+          node --check src/modules/encuestas/comparacion-vinculada.js
           node tests/ee_linked_surveys_v1.cjs
           node --check src/modules/resultados/diagnostico.js
           node tests/ee_v2_compact_selector.cjs
