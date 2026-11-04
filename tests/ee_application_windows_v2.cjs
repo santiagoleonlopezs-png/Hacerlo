@@ -47,6 +47,17 @@ for(const text of ['Inicio de aplicación','Fin de aplicación','name="audienceI
   'Antes','Durante','Después','Todas','ee-question-fold'])
  assert.ok(html.includes(text),'Falta control '+text);
 assert.equal(vm.runInContext('eeHasUnfinishedChoices',ctx)(survey),false);
+survey.status='active';
+const activeDesigner=ctx.eeLockedDesigner(survey);
+assert.equal((activeDesigner.match(/class="ee-locked-question"/g)||[]).length,10,'Las diez preguntas deben aparecer en diseño activo');
+assert.match(activeDesigner,/Alternativas configuradas/,'Las opciones deben verse en instrumento activo');
+assert.match(activeDesigner,/Estoy en pausa: hoy tengo otras prioridades más urgentes/);
+assert.match(activeDesigner,/Nada o muy poco/);
+assert.match(activeDesigner,/Valor interno: 6/,'El administrador ve la puntuación interna');
+assert.match(activeDesigner,/Valor interno: 10/);
+assert.match(activeDesigner,/name="ee-locked-question"/,'Solo una pregunta se abre a la vez');
+survey.status='draft';
+
 survey.applicationStart=vm.runInContext('eeParseApplicationTime',ctx)('2026-11-04T08:00');
 survey.applicationEnd=vm.runInContext('eeParseApplicationTime',ctx)('2026-11-04T10:00');
 const check=vm.runInContext('eeApplicationCheck',ctx);
