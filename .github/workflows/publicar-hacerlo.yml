@@ -47,6 +47,10 @@ jobs:
           node tests/initiative_lifecycle_v2.cjs
           node tests/home_rdaim_v2.cjs
           node --check src/modules/encuestas/encuestas.js
+          node --check src/modules/encuestas/motor.js
+          node --check src/modules/encuestas/programacion.js
+          node --check src/modules/encuestas/responder.js
+          node tests/ee_application_windows_v2.cjs
           node --check src/modules/resultados/diagnostico.js
           node tests/ee_v2_compact_selector.cjs
           node tests/ee_delete_v2.cjs
