@@ -98,8 +98,9 @@ async function eeSaveApplication(event){
     updatedAt:EE.now()};
   if(s.publication?.id){
    const snapshot=eePublicSnapshot(updated);
-   const {error}=await sb.from('ee_publications').update({snapshot}).eq('id',s.publication.id);
+   const {data:rows,error}=await sb.from('ee_publications').update({snapshot}).eq('id',s.publication.id).select('id');
    if(error)throw Error('No fue posible sincronizar el enlace público: '+error.message);
+   if(!rows?.length)throw Error('Supabase no confirmó la actualización de la encuesta compartida.');
   }
   Object.assign(s,updated);save();render();if(typeof eeVerifySave==='function')void eeVerifySave('Configuración de aplicación',s.id);else eeMsg('Configuración actualizada.');
  }catch(error){eeMsg(error.message,true);}
