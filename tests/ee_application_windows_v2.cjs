@@ -14,10 +14,17 @@ for(const path of ['src/modules/encuestas/motor.js','src/modules/encuestas/progr
  vm.runInContext(read(path),ctx);
 const template=vm.runInContext("EE.template('CNPS')",ctx);
 assert.equal(template.length,10,'El banco Excel contiene exactamente diez preguntas');
-assert.equal(template.filter(q=>q.type==='scale').length,7);
-assert.equal(template.filter(q=>q.type==='choice').length,2);
+assert.equal(template.filter(q=>q.type==='scale').length,6);
+assert.equal(template.filter(q=>q.type==='choice').length,3);
 assert.equal(template.filter(q=>q.type==='text').length,1);
-assert.equal(template.filter(q=>q.missingChoiceOptions).length,2,'Excel no trae alternativas para P5/P7');
+assert.equal(template.filter(q=>q.missingChoiceOptions).length,0,'Las alternativas originales ya están completas');
+for(const index of [4,6,7]){
+ assert.equal(template[index].type,'choice');
+ assert.equal(template[index].options.length,4,'La pregunta '+(index+1)+' tiene cuatro alternativas');
+ assert.match(ctx.eeQuestionInput(template[index]),/ee-choice-option/,'Opciones visibles para pregunta '+(index+1));
+}
+assert.match(template[7].options[0],/muchos riesgos/);
+assert.match(template[4].options[0],/Estoy en pausa/);
 assert.equal(template.filter(q=>q.type==='cnps').length,0,'No inventar una pregunta CNPS ausente del archivo');
 assert.match(template[0].label,/Tengo claridad sobre qué está cambiando/);
 assert.match(template[9].label,/¿Qué necesitarías para avanzar un paso más/);
@@ -28,7 +35,7 @@ const html=ctx.eePage(x);
 for(const text of ['Inicio de aplicación','Fin de aplicación','name="audienceIds"','name="waveMode"',
   'Antes','Durante','Después','Todas','ee-question-fold'])
  assert.ok(html.includes(text),'Falta control '+text);
-assert.equal(vm.runInContext('eeHasUnfinishedChoices',ctx)(survey),true);
+assert.equal(vm.runInContext('eeHasUnfinishedChoices',ctx)(survey),false);
 survey.applicationStart=vm.runInContext('eeParseApplicationTime',ctx)('2026-11-04T08:00');
 survey.applicationEnd=vm.runInContext('eeParseApplicationTime',ctx)('2026-11-04T10:00');
 const check=vm.runInContext('eeApplicationCheck',ctx);
@@ -51,6 +58,7 @@ ctx.eeRestoreCnpsBank();
 assert.equal(old.questions.length,10,'Puede restaurar plantillas anteriores sin respuestas');
 assert.equal(old.status,'draft','Exige validar alternativas antes de activar');
 assert.equal(old.questionBankHistory.length,1,'Conserva el respaldo del banco anterior');
-assert.ok(read('responder.html').includes('responder.js?v=2.35.0'),'Formulario externo actualizado');
+assert.ok(read('responder.html').includes('responder.js?v=2.36.0'),'Formulario externo actualizado');
+assert.match(read('src/modules/encuestas/responder.js'),/ee-choice-option/,'Formulario público presenta las opciones');
 assert.ok(read('index.html').includes('programacion.js?v=2.35.0'),'Módulo cargado en la plataforma');
 console.log('Encuestas: 10 preguntas Excel, programación, 4 olas, selección múltiple y compatibilidad OK.');
