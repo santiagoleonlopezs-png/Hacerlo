@@ -67,6 +67,7 @@ function priorityEditableResponse(s){
  return [...(s?.responses||[])].reverse().find(r=>r.source==='initiative-home')||null;
 }
 function priorityStoreResponse(x,s,answers,source='initiative-home',editResponseId=null){
+ if(typeof eeApplicationCheck==='function'){const schedule=eeApplicationCheck(s);if(!schedule.ok)throw Error(schedule.message);}
  const check=EE.validateResponse(s,answers);
  if(check.errors.length)throw Error(check.errors.join(' · '));
  if(!priorityScoreReady(s))throw Error('El instrumento necesita preguntas y valores válidos para Impacto y Esfuerzo.');
