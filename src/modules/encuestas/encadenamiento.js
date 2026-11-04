@@ -94,7 +94,7 @@ function eeChainPanel(x,s){
  const members=eeChainMembers(x,s),linked=members.length>1,invalid=eeChainInvalid(x,s);
  const others=EE.init(x).filter(z=>z.id!==s.id);
  const options=others.map(z=>{
-  const reason=eeChainIssue(s,z)||(z.measurementGroupId&&z.measurementGroupId!==s.measurementGroupId?'Ya vinculada a otro seguimiento.':'');
+  const reason=eeChainIssue(s,z)||(z.measurementGroupId?'Ya conectada a un seguimiento.':'');
   return '<option value="'+safe(z.id)+'"'+(reason?' disabled':'')+'>'+safe(z.title)+' · '+safe(eeChainMoment(z))+(reason?' · No compatible':'')+'</option>';
  }).join('');
  const usable=others.filter(z=>!eeChainIssue(s,z)&&!z.measurementGroupId);
