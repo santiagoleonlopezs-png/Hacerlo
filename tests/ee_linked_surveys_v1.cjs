@@ -69,7 +69,7 @@ assert.equal(next.measurementGroupId,during.measurementGroupId,'Crear ya vincula
 assert.equal(next.status,'draft');
 assert.equal(next.questions.length,during.questions.length);
 assert.equal(next.publication,undefined);
-assert.match(read('index.html'),/encadenamiento\.js\?v=1\.0\.0/);
+assert.match(read('index.html'),/encadenamiento\.js\?v=1\.1\.0/);
 assert.match(read('src/modules/encuestas/encuestas.js'),/eeChainEvolution\(x,s,eeFilter\.audienceId\)/);
 f.eeChainUnlink(x,during,base.id);
 assert.equal(f.eeChainMembers(x,during).length,3);
