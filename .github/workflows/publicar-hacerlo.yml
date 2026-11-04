@@ -35,7 +35,11 @@ jobs:
           test -f admin/index.html
           test -f admin/analytics.js
           test -f admin/analytics.css
+          test -f admin/members.js
+          test -f admin/members.css
           node --check admin/analytics.js
+          node --check admin/members.js
+          node tests/admin_members_v1.cjs
           test -f src/core/app.js
           test -f src/modules/encuestas/encuestas.js
           node --check src/core/app.js
