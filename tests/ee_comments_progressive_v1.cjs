@@ -23,7 +23,7 @@ const elements={
 };
 const ctx={
  console,current:()=>x,
- EE:{optionScore:()=>null},
+ EE:{init:()=>x.surveys,optionScore:()=>null},
  safe:v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])),
  $:id=>elements[id],
 };
