@@ -46,6 +46,12 @@ Deno.serve(async(request:Request)=>{
    return json({error:'Esta persona ya pertenece a la fábrica. Puedes cambiar su rol en la lista.'},409);
 
  const service=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+ // Nombre real de la fábrica para personalizar el correo de invitación.
+ const {data:organization,error:orgError}=await service.from('organizations')
+   .select('id,name').eq('id',organization_id).single();
+ if(orgError||!organization?.name)return json({error:'No se pudo validar el nombre de la fábrica'},400);
+ const organizationName=String(organization.name).slice(0,120);
+ const roleLabel={admin:'Administrador',editor:'Editor',viewer:'Consulta'}[role];
  let found:any=null;
  // Buscar usuarios en el servidor; las direcciones no se envían al navegador.
  for(let page=1;page<=50;page++){
@@ -57,7 +63,9 @@ Deno.serve(async(request:Request)=>{
  let invited=false;
  if(!found){
   const {data,error}=await service.auth.admin.inviteUserByEmail(email,{
-    redirectTo:'https://santiagoleonlopezs-png.github.io/Hacerlo/'
+    redirectTo:'https://santiagoleonlopezs-png.github.io/Hacerlo/',
+    // Estas propiedades están disponibles en la plantilla de Auth como {{ .Data.organization_name }}.
+    data:{organization_name:organizationName,role_label:roleLabel,invited_from:'HACERLO Admin'}
   });
   if(error)return json({error:'No se pudo enviar la invitación: '+error.message},400);
   found=data.user;
@@ -73,7 +81,7 @@ Deno.serve(async(request:Request)=>{
    invitation_sent:invited
  },400);
  return json({
-  ok:true,organization_id,email,role,user_id:found.id,
+  ok:true,organization_id,organization_name:organizationName,email,role,user_id:found.id,
   invitation_sent:invited,existing_account:!invited
  });
 });
