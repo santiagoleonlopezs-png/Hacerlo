@@ -5,6 +5,35 @@ function eeChainNorm(value){
 }
 function eeChainWaves(s){return [...new Set((s.responses||[]).map(r=>String(r.wave||s.wave||'Base')))];}
 function eeChainMoment(s){return String(s.measurementMoment||eeChainWaves(s)[0]||s.wave||'Base').trim();}
+/* Fecha desde el instrumento, sin inventar una fecha cuando no existe. */
+let eeChainExpanded=false;
+function eeChainDateValue(raw){
+ const value=String(raw||'').trim();
+ if(!value)return '';
+ if(/^\d{4}-\d{2}-\d{2}$/.test(value))return Number.isFinite(Date.parse(value+'T12:00:00Z'))?value:'';
+ const parsed=new Date(value);
+ if(!Number.isFinite(parsed.getTime()))return '';
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(parsed);
+ const p=Object.fromEntries(parts.map(v=>[v.type,v.value]));
+ return p.year+'-'+p.month+'-'+p.day;
+}
+function eeChainDateInfo(s){
+ const manual=eeChainDateValue(s?.measurementDate);
+ if(manual)return {date:manual,source:'Fecha ajustada'};
+ const application=eeChainDateValue(s?.applicationStart);
+ if(application)return {date:application,source:'Inicio de aplicación'};
+ const responseDates=(s?.responses||[]).map(r=>eeChainDateValue(r.date)).filter(Boolean).sort();
+ if(responseDates.length)return {date:responseDates[0],source:'Primera respuesta'};
+ const end=eeChainDateValue(s?.applicationEnd);
+ if(end)return {date:end,source:'Fin de aplicación'};
+ return {date:'',source:'Sin fecha registrada'};
+}
+function eeChainMomentOptions(moment){
+ const value=String(moment||'Base').trim();
+ const options=['Base','Durante','Después'];
+ if(value&&!options.includes(value))options.push(value);
+ return options.map(v=>'<option value="'+safe(v)+'"'+(v===value?' selected':'')+'>'+safe(v)+'</option>').join('');
+}
 function eeChainRank(moment){
  const name=eeChainNorm(moment);
  return /^(base|antes|diagnostico|linea base)/.test(name)?0:/^(durante|seguimiento)/.test(name)?1:/^(despues|cierre|final|resultado)/.test(name)?2:3;
@@ -95,7 +124,7 @@ function eeChainEvolution(x,s,audienceId=''){
   return {...r,id:source.id+':'+r.id,answers,wave:eeChainMoment(source),measurementSurveyId:source.id};
  }));
  const momentSettings=Object.fromEntries(members.map((m,i)=>[
-  eeChainMoment(m),{order:i+1,date:m.measurementDate||''}
+  eeChainMoment(m),{order:i+1,date:eeChainDateInfo(m).date}
  ]));
  const baseline=members.find(m=>eeChainRank(eeChainMoment(m))===0)||members[0];
  const composite={...master,responses:rows,momentSettings,baselineMoment:eeChainMoment(baseline)};
@@ -105,28 +134,31 @@ function eeChainPanel(x,s){
  const members=eeChainMembers(x,s),linked=members.length>1,invalid=eeChainInvalid(x,s);
  const others=EE.init(x).filter(z=>z.id!==s.id);
  const options=others.map(z=>{
-  const reason=eeChainIssue(s,z)||(z.measurementGroupId?'Ya conectada a un seguimiento.':'');
-  return '<option value="'+safe(z.id)+'"'+(reason?' disabled':'')+'>'+safe(z.title)+' · '+safe(eeChainMoment(z))+(reason?' · '+safe(reason):eeChainStrictCompatibility(s,z)?' · Escalas equivalentes':' · Revisión por resultados')+'</option>';
+  const reason=eeChainIssue(s,z)||(z.measurementGroupId?'Ya vinculada a otro seguimiento.':'');
+  return '<option value="'+safe(z.id)+'"'+(reason?' disabled':'')+'>'+safe(z.title)+(reason?' · No disponible':'')+'</option>';
  }).join('');
  const usable=others.filter(z=>!eeChainIssue(s,z)&&!z.measurementGroupId);
- const rows=linked?'<form onsubmit="eeChainSave(event)"><div class="ee-chain-list">'+members.map((z,i)=>
-  '<div class="ee-chain-line"><div><b>'+safe(z.title)+'</b><small>'+z.responses.length+' respuestas</small></div>'+
-  '<label>Momento<input name="moment_'+i+'" value="'+safe(eeChainMoment(z))+'" maxlength="80" required></label>'+
-  '<label>Orden<input name="order_'+i+'" type="number" min="1" max="50" step="1" value="'+(i+1)+'" required></label>'+
-  '<label>Fecha<input name="date_'+i+'" type="date" value="'+safe(z.measurementDate||'')+'"></label>'+
-  '<button class="secondary" type="button" onclick="eeChainRemove(\''+safe(z.id)+'\')" aria-label="Desvincular '+safe(z.title)+'">Quitar</button></div>'
- ).join('')+'</div><button class="secondary" type="submit">Guardar momentos y orden</button></form>':'';
- return '<details class="ee-chain"'+(linked?' open':'')+'><summary>↗ Conectar encuestas para comparar momentos'+(linked?' · '+members.length+' vinculadas':'')+'</summary>'+
-  '<p class="muted">Conecta encuestas de esta iniciativa aunque sus preguntas sean diferentes. HACERLO mostrará la secuencia de momentos y solo calculará diferencias en los resultados verdaderamente comparables.</p>'+
-  (invalid?'<p class="notice">Comparación pausada: '+safe(invalid)+'</p>':'')+rows+
+ const rows=linked?'<form class="ee-chain-edit" onsubmit="eeChainSave(event)"><div class="ee-chain-list">'+members.map((z,i)=>{
+  const info=eeChainDateInfo(z);
+  return '<div class="ee-chain-line"><div class="ee-chain-survey"><b>'+safe(z.title)+'</b><small>'+z.responses.length+' respuestas</small></div>'+
+    '<label>Momento<select name="moment_'+i+'" required>'+eeChainMomentOptions(eeChainMoment(z))+'</select></label>'+
+    '<label>Orden<input name="order_'+i+'" type="number" min="1" max="50" step="1" value="'+(i+1)+'" required></label>'+
+    '<label>Fecha<input name="date_'+i+'" type="date" value="'+safe(info.date)+'" aria-label="Fecha de '+safe(z.title)+'"><small class="ee-chain-date-source">'+safe(info.source)+'</small></label>'+
+    '<button class="secondary ee-chain-remove" type="button" onclick="eeChainRemove(\''+safe(z.id)+'\')" aria-label="Desvincular '+safe(z.title)+'">Quitar</button></div>';
+ }).join('')+'</div><button class="secondary ee-chain-save" type="submit">Guardar ajustes</button></form>':'';
+ return '<details class="ee-chain"'+(eeChainExpanded?' open':'')+' ontoggle="eeChainExpanded=this.open">'+
+  '<summary><span>Conectar y comparar encuestas</span><small>'+(linked?members.length+' mediciones vinculadas':'Configurar seguimiento')+'</small></summary>'+
+  '<div class="ee-chain-body"><p class="muted">Organiza las encuestas de esta iniciativa en una secuencia de medición. Los resultados del instrumento seleccionado permanecen arriba.</p>'+
+  (invalid?'<p class="notice">'+safe(invalid)+'</p>':'')+
+  (linked?eeChainOverview(x,s):'')+
+  rows+
   (usable.length?'<form class="ee-chain-add" onsubmit="eeChainAdd(event)">'+
-   '<label>Esta encuesta corresponde a<input name="firstMoment" value="'+safe(eeChainMoment(s))+'" required maxlength="80" list="ee-chain-stages"></label>'+
-   '<label>Encuesta que deseas conectar<select name="otherId" required><option value="">Selecciona otra encuesta</option>'+options+'</select></label>'+
-   '<label>Momento de la otra encuesta<input name="otherMoment" value="" required maxlength="80" list="ee-chain-stages" placeholder="Ej. Base, Durante o Después"></label>'+
-   '<datalist id="ee-chain-stages"><option value="Base"><option value="Durante"><option value="Después"></datalist>'+
-   '<button class="primary" type="submit">Conectar encuesta</button></form>':
-   '<p class="muted">No hay otras encuestas disponibles para conectar. Puedes crear la siguiente medición desde la encuesta actual.</p>')+
-  '<p class="ee-chain-note">El vínculo organiza una misma historia de medición. Si las preguntas no coinciden, cada encuesta conserva sus resultados y no se calculan cambios artificiales. Ningún vínculo demuestra causalidad.</p></details>';
+   '<label>Momento actual<select name="firstMoment" required>'+eeChainMomentOptions(eeChainMoment(s))+'</select></label>'+
+   '<label>Encuesta para conectar<select name="otherId" required><option value="">Seleccionar encuesta</option>'+options+'</select></label>'+
+   '<label>Momento de la otra<select name="otherMoment" required>'+eeChainMomentOptions(eeChainRank(eeChainMoment(s))===0?'Durante':eeChainRank(eeChainMoment(s))===1?'Después':'Base')+'</select></label>'+
+   '<button class="primary" type="submit">Conectar</button></form>':
+   '<p class="muted ee-chain-quiet">No hay otras encuestas disponibles para vincular. Usa «Crear siguiente medición» para continuar con el instrumento.</p>')+
+  '<p class="ee-chain-note">Las fechas se obtienen del instrumento cuando existen; puedes ajustarlas. Solo se comparan preguntas equivalentes, sin inferir causalidad.</p></div></details>';
 }
 function eeChainAdd(event){
  event.preventDefault();const x=current(),s=eeSurvey();if(!x||!s)return;
@@ -154,7 +186,7 @@ function eeChainSave(event){
   if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date))return eeMsg('Revisa las fechas de medición.',true);
   names.add(eeChainNorm(moment));orders.add(order);changes.push({survey:list[i],moment,order,date});
  }
- changes.forEach(v=>{v.survey.measurementMoment=v.moment;v.survey.measurementOrder=v.order;v.survey.measurementDate=v.date;});
+ changes.forEach(v=>{v.survey.measurementMoment=v.moment;v.survey.measurementOrder=v.order;if(v.date!==eeChainDateInfo(v.survey).date)v.survey.measurementDate=v.date;});
  eeFilter.wave='';save();render();eeMsg('Momentos y orden guardados.');
  if(typeof eeVerifySave==='function')void eeVerifySave('Orden del seguimiento',s.id);
 }
@@ -259,7 +291,7 @@ function eeChainOverview(x,s){
  const list=members.map((survey,i)=>{
   const count=(survey.responses||[]).filter(r=>!eeFilter.audienceId||String(r.audienceId)===String(eeFilter.audienceId)).length;
   return '<article class="ee-chain-stage"><span class="ee-chain-step">'+(i+1)+'</span>'+
-   '<div><small>'+safe(eeChainMoment(survey))+(survey.measurementDate?' · '+safe(survey.measurementDate):'')+'</small>'+
+   '<div><small>'+safe(eeChainMoment(survey))+(eeChainDateInfo(survey).date?' · '+safe(eeChainDateInfo(survey).date):'')+'</small>'+
    '<strong>'+safe(survey.title)+'</strong><span>'+count+' '+(count===1?'respuesta':'respuestas')+'</span></div>'+
    '<button class="secondary" type="button" onclick="eeChainSelectSurvey(\''+safe(survey.id)+'\')">Ver resultados</button></article>';
  }).join('');
@@ -273,14 +305,13 @@ function eeChainOverview(x,s){
    members.map(m=>'<th>'+safe(eeChainMoment(m))+'</th>').join('')+
    '</tr></thead><tbody>'+linkedQuestionRows+'</tbody></table></div></details>':
    '<p class="notice">Las encuestas ya están conectadas, pero todavía no tienen preguntas cuantitativas equivalentes. Puedes seguir cada momento por separado; HACERLO no calculará una diferencia entre resultados distintos.</p>';
- return '<section class="panel ee-evolution ee-chain-overview"><div class="flex" style="justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'+
-  '<div><h2>Así va tu medición</h2><p class="muted">'+members.length+' encuestas conectadas · '+
+ return '<div class="ee-chain-overview">'+
+  '<div><h3>Secuencia vinculada</h3><p class="muted">'+members.length+' encuestas conectadas · '+
   safe(eeChainMoment(members[0]))+' → '+safe(eeChainMoment(members.at(-1)))+'</p></div>'+
-  '<button class="primary" type="button" onclick="eeChainCreateNext()">＋ Crear siguiente medición</button></div>'+
-  eeChainPanel(x,s)+
-  '<label class="ee-chain-audience">Audiencia<select onchange="eeFilter.audienceId=this.value;render()">'+eeAudienceOptions(x,eeFilter.audienceId)+'</select></label>'+
+  '</div>'+
+
   '<h3>Secuencia de medición</h3><div class="ee-chain-timeline">'+list+'</div>'+
   metrics+
   (count?'<button class="secondary" type="button" onclick="eeChainExportComparison()">↓ Descargar preguntas comparables</button>':'')+
-  '<p class="muted">El vínculo es descriptivo. No implica seguimiento pareado de las mismas personas ni atribuye causalidad.</p></section>';
+  '<p class="muted">La conexión es descriptiva: no prueba causalidad ni seguimiento individual pareado.</p></div>';
 }
