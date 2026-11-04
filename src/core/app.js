@@ -3,6 +3,7 @@ const dims=['Entendimiento','Disposición','Aprendizaje','Habilitación','Apropi
 let db={initiatives:[],selected:null};let page='Inicio',phase=0;
 const SUPABASE_URL='https://mflakxgdkpuhemgslgsa.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_LK085bNiIRbeQ0uuMOozWw_jYrAiXuk';
+const HACERLO_INITIAL_AUTH_FLOW=new URLSearchParams(location.hash.replace(/^#/,''))?.get('type')||new URLSearchParams(location.search).get('type')||'';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const HACERLO_ENGINE_URL='https://hacerlo-engine.onrender.com';
 let cloudOrgId=null, cloudReady=false, syncTimer=null, syncing=false, syncPending=false, initiativeDeleteBusy=false;
@@ -67,11 +68,83 @@ async function deleteInitiative(id){
   if(syncPending){clearTimeout(syncTimer);syncTimer=setTimeout(syncAll,450);}
  }
 }
-let recoveryMode=false;
-function showRecoveryForm(){recoveryMode=true;$('login-form').classList.add('hide');$('recovery-form').classList.remove('hide');$('auth-gate').style.display='flex'}
-async function requestPasswordRecovery(){let email=$('login-email').value.trim(),msg=$('login-msg');if(!email){msg.textContent='Escribe primero tu correo.';return}msg.textContent='Enviando enlace…';let {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://santiagoleonlopezs-png.github.io/Hacerlo/'});msg.textContent=error?error.message:'Revisa tu correo. Abre el enlace y HACERLO te pedirá crear una nueva contraseña.'}
-async function bootAuth(){let hash=new URLSearchParams(location.hash.replace(/^#/,'')),query=new URLSearchParams(location.search),isRecovery=hash.get('type')==='recovery'||query.get('type')==='recovery';if(isRecovery)showRecoveryForm();let {data:{session}}=await sb.auth.getSession();if(session&&!recoveryMode){$('auth-gate').style.display='none';try{await loadCloud()}catch(e){setCloudStatus(e.message,true)}}}
-document.addEventListener('DOMContentLoaded',()=>{sb.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showRecoveryForm()});$('login-form').addEventListener('submit',async e=>{e.preventDefault();let msg=$('login-msg');msg.textContent='Ingresando…';let {error}=await sb.auth.signInWithPassword({email:$('login-email').value.trim(),password:$('login-password').value});if(error){msg.textContent=error.message;return}$('auth-gate').style.display='none';msg.textContent='';try{await loadCloud()}catch(x){setCloudStatus(x.message,true)}});$('recovery-form').addEventListener('submit',async e=>{e.preventDefault();let msg=$('recovery-msg'),p=$('new-password').value,c=$('confirm-password').value;if(p!==c){msg.textContent='Las contraseñas no coinciden.';return}if(p.length<8){msg.textContent='Usa al menos 8 caracteres.';return}msg.textContent='Guardando…';let {error}=await sb.auth.updateUser({password:p});if(error){msg.textContent=error.message;return}await sb.auth.signOut();history.replaceState({},document.title,location.pathname);recoveryMode=false;$('recovery-form').classList.add('hide');$('login-form').classList.remove('hide');$('login-password').value='';$('new-password').value='';$('confirm-password').value='';$('login-msg').textContent='Contraseña actualizada. Ya puedes iniciar sesión con la nueva contraseña.'});bootAuth()});
+let recoveryMode=false,inviteMode=false;
+function showRecoveryForm(flow='recovery'){
+ const isInvite=flow==='invite';
+ recoveryMode=true;inviteMode=isInvite;
+ $('login-form').classList.add('hide');
+ const form=$('recovery-form');form.classList.remove('hide');
+ form.querySelector('h2').textContent=isInvite?'Activar invitación a HACERLO':'Crear nueva contraseña';
+ form.querySelector('p').textContent=isInvite?
+  'Tu empresa te invitó a HACERLO. Define una contraseña para poder ingresar también en futuras sesiones.':
+  'Define una nueva contraseña para tu cuenta.';
+ form.querySelector('button[type="submit"]').textContent=isInvite?'Crear contraseña y activar acceso':'Guardar nueva contraseña';
+ $('auth-gate').style.display='flex';
+}
+async function requestPasswordRecovery(){
+ const email=$('login-email').value.trim(),msg=$('login-msg');
+ if(!email){msg.textContent='Escribe primero tu correo.';return}
+ msg.textContent='Enviando enlace…';
+ const {error}=await sb.auth.resetPasswordForEmail(email,{
+  redirectTo:'https://santiagoleonlopezs-png.github.io/Hacerlo/'
+ });
+ msg.textContent=error?error.message:'Revisa tu correo. Abre el enlace y HACERLO te pedirá crear una nueva contraseña.';
+}
+async function bootAuth(){
+ const isInvite=HACERLO_INITIAL_AUTH_FLOW==='invite';
+ const isRecovery=HACERLO_INITIAL_AUTH_FLOW==='recovery';
+ if(isInvite||isRecovery)showRecoveryForm(isInvite?'invite':'recovery');
+ const {data:{session},error}=await sb.auth.getSession();
+ if(error)console.warn('No se pudo validar la sesión:',error.message);
+ if(recoveryMode){
+  if(!session)$('recovery-msg').textContent='Validando enlace de invitación o recuperación…';
+  return;
+ }
+ if(session){
+  $('auth-gate').style.display='none';
+  try{await loadCloud()}catch(e){setCloudStatus(e.message,true)}
+ }
+}
+document.addEventListener('DOMContentLoaded',()=>{
+ sb.auth.onAuthStateChange((event)=>{
+  if(event==='PASSWORD_RECOVERY')showRecoveryForm('recovery');
+  else if(HACERLO_INITIAL_AUTH_FLOW==='invite' && event==='SIGNED_IN')showRecoveryForm('invite');
+ });
+ $('login-form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const msg=$('login-msg');msg.textContent='Ingresando…';
+  const {error}=await sb.auth.signInWithPassword({
+    email:$('login-email').value.trim(),password:$('login-password').value
+  });
+  if(error){msg.textContent=error.message;return}
+  $('auth-gate').style.display='none';msg.textContent='';
+  try{await loadCloud()}catch(x){setCloudStatus(x.message,true)}
+ });
+ $('recovery-form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const msg=$('recovery-msg'),p=$('new-password').value,c=$('confirm-password').value;
+  if(p!==c){msg.textContent='Las contraseñas no coinciden.';return}
+  if(p.length<8){msg.textContent='Usa al menos 8 caracteres.';return}
+  msg.textContent='Guardando…';
+  const {data,error}=await sb.auth.updateUser({password:p});
+  if(error){msg.textContent='No se pudo actualizar la contraseña: '+error.message;return}
+  const wasInvite=inviteMode;
+  const accountEmail=data?.user?.email||'';
+  await sb.auth.signOut();
+  history.replaceState({},document.title,location.pathname);
+  recoveryMode=false;inviteMode=false;
+  $('recovery-form').classList.add('hide');
+  $('login-form').classList.remove('hide');
+  $('auth-gate').style.display='flex';
+  if(accountEmail)$('login-email').value=accountEmail;
+  $('login-password').value='';$('new-password').value='';$('confirm-password').value='';
+  $('recovery-msg').textContent='';
+  $('login-msg').textContent=wasInvite?
+    'Invitación activada. Ya puedes iniciar sesión con tu correo y la contraseña que acabas de crear.':
+    'Contraseña actualizada. Ya puedes iniciar sesión con la nueva contraseña.';
+ });
+ bootAuth();
+});
 async function logoutHacerlo(){await syncAll();await sb.auth.signOut();cloudReady=false;cloudOrgId=null;db={initiatives:[],selected:null};document.getElementById('auth-gate').style.display='flex';setCloudStatus('Sesión cerrada')}
 const current=()=>db.initiatives.find(x=>x.id===db.selected);
 // Navegación jerárquica: RDAIM es un marco integrado, no una pantalla superpuesta.
