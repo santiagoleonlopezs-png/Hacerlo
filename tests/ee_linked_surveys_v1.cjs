@@ -25,6 +25,17 @@ const many=create('Dos olas internas','many','Antes',1,'x4');many.responses.push
 x.surveys=[during,base,incompatible,many];
 const methods=['eeChainLink','eeChainMembers','eeChainEvolution','eeChainIssue','eeChainStrictCompatibility','eeChainFullCompatible','eeChainUnlink','eeChainPanel','eeChainOverview','eeChainCreateNext','eeChainComparableMetrics'];
 const f=Object.fromEntries(methods.map(k=>[k,vm.runInContext(k,ctx)]));
+const dateInfo=vm.runInContext('eeChainDateInfo',ctx);
+assert.equal(dateInfo(base).date,'2026-11-04');
+assert.equal(dateInfo(base).source,'Primera respuesta');
+base.applicationStart='2026-10-28T10:00:00-05:00';
+assert.equal(dateInfo(base).date,'2026-10-28');
+assert.equal(dateInfo(base).source,'Inicio de aplicación');
+base.measurementDate='2026-10-29';
+assert.equal(dateInfo(base).date,'2026-10-29');
+assert.equal(dateInfo(base).source,'Fecha ajustada');
+delete base.applicationStart;delete base.measurementDate;
+
 assert.equal(f.eeChainIssue(during,base),'','IDs diferentes pero mismo banco deben enlazar');
 assert.equal(f.eeChainIssue(during,incompatible),'','Permitir conexión conceptual aunque los instrumentos sean distintos');
 assert.equal(f.eeChainIssue(during,many),'','No limitar la agrupación por etiqueta interna de ola');
@@ -72,7 +83,7 @@ assert.equal(next.measurementGroupId,during.measurementGroupId,'Crear ya vincula
 assert.equal(next.status,'draft');
 assert.equal(next.questions.length,during.questions.length);
 assert.equal(next.publication,undefined);
-assert.match(read('index.html'),/encadenamiento\.js\?v=1\.1\.0/);
+assert.match(read('index.html'),/encadenamiento\.js\?v=1\.2\.0/);
 assert.match(read('src/modules/encuestas/encuestas.js'),/function eeEvolutionResults\(x,s\)\{const e=EE\.evolution\(s,eeFilter\.audienceId\)/,'La encuesta seleccionada conserva sus resultados principales');
 assert.doesNotMatch(read('src/modules/encuestas/encuestas.js'),/return eeChainOverview\(x,s\)/,'El seguimiento no sustituye el panel');
 assert.match(read('src/modules/encuestas/encuestas.js'),/\$\{eeChainPanel\(x,s\)\}/,'La vinculación aparece después de resultados propios');
