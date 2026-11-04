@@ -122,3 +122,27 @@
 .ee-question-fold>summary span{font-weight:600}
 .ee-question-fold .hcx-more>summary{font-size:12px;color:#aed1db}
 .ee-question-fold[open]{border-color:#467385!important}
+
+
+/* Respuestas de selección visibles y escalas de 0–10, internas y públicas. */
+.ee-response-question{margin:22px 0 26px;min-width:0}
+.ee-response-question-label{font-size:15px;font-weight:650;color:#e2eff6;margin:0 0 13px;line-height:1.5}
+.ee-response-question-label span{color:#e8bf58}
+.ee-choice-options{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;margin-top:5px}
+.ee-choice-option{display:flex!important;align-items:center;gap:12px;margin:0!important;padding:13px 15px;border:1px solid #31576e;border-radius:12px;background:#09283b;color:#d9ebf4;cursor:pointer;min-width:0;line-height:1.5;font-size:14px}
+.ee-choice-option:hover,.ee-choice-option:focus-within{border-color:#d7b25d;background:#143747}
+.ee-choice-option:has(input:checked){border-color:#e2b548;background:#223e48;box-shadow:inset 0 0 0 1px #b99336}
+.ee-choice-option input[type=radio]{width:18px!important;min-width:18px;height:18px;flex:0 0 18px;accent-color:#e2b548;margin:0;cursor:pointer}
+.ee-choice-option span{min-width:0;overflow-wrap:anywhere}
+.ee-scale-wrap{max-width:100%;min-width:0;margin:8px 0 12px}
+.ee-scale-options{display:grid;grid-template-columns:repeat(var(--ee-scale-count,11),minmax(0,1fr));border:1px solid #3c6178;border-radius:11px;overflow:hidden;background:#09283b}
+.ee-scale-option{display:block!important;position:relative;margin:0!important;min-width:0;text-align:center;cursor:pointer}
+.ee-scale-option+.ee-scale-option{border-left:1px solid #31576e}
+.ee-scale-option input[type=radio]{position:absolute;opacity:0;width:100%;height:100%;inset:0;margin:0;cursor:pointer}
+.ee-scale-option span{display:flex;align-items:center;justify-content:center;min-height:49px;color:#d8e8f0;font-size:14px;font-weight:550}
+.ee-scale-option:hover span,.ee-scale-option:focus-within span{background:#17455b;color:white}
+.ee-scale-option:has(input:checked) span{background:#e2b548;color:#072131;font-weight:850}
+.ee-scale-option:focus-within{outline:2px solid #ffe39a;outline-offset:-2px}
+.ee-scale-ends{display:flex;justify-content:space-between;gap:12px;color:#a9c4d2;font-size:12px;margin-top:8px}
+.ee-scale-ends span:last-child{text-align:right}
+@media(max-width:580px){.ee-scale-options{grid-template-columns:repeat(var(--ee-scale-count,11),minmax(0,1fr))}.ee-scale-option span{font-size:12px;min-height:43px}.ee-response-question{margin:17px 0 22px}.ee-choice-option{padding:12px}}
