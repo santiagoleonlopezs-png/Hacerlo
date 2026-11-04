@@ -2,8 +2,7 @@
 const EE_APPLICATION_WAVES=['Antes','Durante','Después','Todas'];
 function eeApplicationMode(s){
  return EE_APPLICATION_WAVES.includes(s?.waveMode)?s.waveMode:
-   EE_APPLICATION_WAVES.includes(s?.wave)?s.wave:
-   (s?.wave==='Base'?'Base':(s?.wave||'Antes'));
+   EE_APPLICATION_WAVES.includes(s?.wave)?s.wave:'Antes';
 }
 function eeAssignedAudiences(x,s){
  const all=x?.audiences||[];
@@ -52,7 +51,7 @@ function eeApplicationWaveOptions(s){
 }
 function eeAppConfigPanel(x,s){
  const ids=eeAssignedAudiences(x,s),all=x.audiences||[],mode=eeApplicationMode(s);
- const options=EE_APPLICATION_WAVES.includes(mode)?EE_APPLICATION_WAVES:[mode,...EE_APPLICATION_WAVES];
+ const options=EE_APPLICATION_WAVES;
  return '<section class="panel ee-app-config">'+
  '<div class="ee-app-top"><div><h3>Aplicación del instrumento</h3><p class="muted">Define a quién, cuándo y en qué ola se aplica.</p></div>'+
  '<span class="ee-app-state">'+(s.applicationStart&&s.applicationEnd?'Programada':'Sin fecha definida')+'</span></div>'+
@@ -70,7 +69,7 @@ async function eeSaveApplication(event){
  const x=current(),s=eeSurvey();if(!x||!s)return;
  const form=event.target,fd=new FormData(form),mode=String(fd.get('waveMode')||'Antes');
  try{
-  if(![...EE_APPLICATION_WAVES,'Base',s.wave].includes(mode))throw Error('Selecciona una ola permitida.');
+  if(!EE_APPLICATION_WAVES.includes(mode))throw Error('Selecciona una ola permitida.');
   const start=eeParseApplicationTime(fd.get('applicationStart'));
   const end=eeParseApplicationTime(fd.get('applicationEnd'));
   if(Boolean(start)!==Boolean(end))throw Error('Selecciona ambas fechas: inicio y fin.');
