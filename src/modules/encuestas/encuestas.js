@@ -163,7 +163,7 @@ function eeRestoreCnpsBank(){
 }
 function eeClone(){const x=current(),s=eeSurvey(),z=structuredClone(s);Object.assign(z,{id:EE.uid(),previousSurveyId:s.id,familyId:s.familyId||s.id,title:s.title+' · nueva versión',version:s.version+1,status:'draft',responses:[],createdAt:EE.now()});delete z.publication;delete z.syncedAt;delete z.metricLinks;delete z.importHistory;delete z.lastImportedAt;EE.init(x).push(z);eeSelected=z.id;eeTab='diseño';save();render();}
 async function eeStatus(status){const s=eeSurvey();if(s.status==='draft'){const form=document.querySelector('form[onsubmit="eeSaveDesign(event)"]');if(form&&(!form.reportValidity()||!eeSaveDesign({preventDefault(){},target:form})))return;}try{EE.validateQuestions(s.questions);if(status==='active'&&eeHasUnfinishedChoices(s))throw Error('Completa las alternativas de selección de todas las preguntas antes de activar.');if(eeHasUnfinishedChoices(s))throw Error('Completa las alternativas pendientes de las preguntas 5 y 7 antes de publicar.');if(eeIsPriority(s)&&(typeof priorityScoreReady!=='function'||!priorityScoreReady(s)))throw Error('Revisa Impacto, Esfuerzo y los valores de las opciones antes de activar el instrumento.');if(s.publication){eeMsg('Actualizando captura pública…');const {error}=await sb.from('ee_publications').update({active:status==='active'&&!s.publication.revoked}).eq('id',s.publication.id);if(error)throw error;}s.status=status;save();render();void eeVerifySave('Estado de encuesta',s.id);}catch(e){eeMsg(e.message,true);}}
-function eeQuestionInput(q){const attrs=`name="${safe(q.id)}" ${q.required?'required':''}`;if(q.type==='text')return `<textarea ${attrs} maxlength="5000"></textarea>`;if(['choice','knowledge'].includes(q.type))return `<select ${attrs}><option value="">Seleccionar</option>${EE.shuffleChoices(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select>`;return `<input ${attrs} type="number" min="${q.min}" max="${q.max}" step="${q.type==='scale'?'any':'1'}" placeholder="${q.min} a ${q.max}">`;}
+function eeQuestionInput(q){const attrs=`name="${safe(q.id)}" ${q.required?'required':''}`;if(q.type==='text')return `<textarea ${attrs} maxlength="5000"></textarea>`;if(['choice','knowledge'].includes(q.type))return `<select ${attrs}><option value="">Seleccionar</option>${EE.shuffleChoices(q).map(o=>`<option value="${safe(o)}">${safe(o)}</option>`).join('')}</select>`;return EE.scaleMarkup(q,safe);}
 
 function eeResponsePanel(x,s){
  if(s.status!=='active')return '<section class="panel empty">Activa el instrumento en Diseño antes de registrar respuestas.</section>';
@@ -176,7 +176,7 @@ function eeResponsePanel(x,s){
  '<label>Audiencia<select name="audienceId" '+(audiences.length?'required':'')+'>'+eeApplicationAudienceOptions(x,s)+'</select></label>'+
  '<label>Ola<select name="wave" required>'+eeApplicationWaveOptions(s)+'</select></label></div>'+
  (eeIsPriority(s)&&typeof priorityQuestionMarkup==='function'?priorityQuestionMarkup(s):
- s.questions.map(q=>'<label>'+safe(q.label)+(q.required?' *':'')+eeQuestionInput(q)+'</label>').join(''))+
+ s.questions.map(q=>'<div class="ee-response-question"><p class="ee-response-question-label">'+safe(q.label)+(q.required?' <span aria-hidden="true">*</span>':'')+'</p>'+eeQuestionInput(q)+'</div>').join(''))+
  '<button class="primary">Guardar respuesta</button></form></section>';
 }
 function eeSubmit(e){
