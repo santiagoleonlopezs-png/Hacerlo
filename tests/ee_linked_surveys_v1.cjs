@@ -12,7 +12,7 @@ const ctx={
  $:()=>({textContent:'',setAttribute(){}})
 };
 vm.createContext(ctx);
-for(const path of ['src/modules/encuestas/motor.js','src/modules/encuestas/encuestas.js','src/modules/encuestas/encadenamiento.js'])vm.runInContext(read(path),ctx);
+for(const path of ['src/modules/encuestas/motor.js','src/modules/encuestas/encuestas.js','src/modules/encuestas/encadenamiento.js','src/modules/encuestas/comparacion-vinculada.js'])vm.runInContext(read(path),ctx);
 const create=(title,id,moment,score,qid='q001',scaleMax=10)=>({
  id,title,kind:'SENTIR',status:'active',version:1,createdAt:'2026-11-01T00:00:00Z',
  questions:[{id:qid,label:'Tengo claridad sobre el cambio.',type:'scale',dimension:'Preparación',min:0,max:scaleMax}],
@@ -66,13 +66,38 @@ f.eeChainLink(x,during,incompatible.id,'Durante','Después');
 assert.equal(f.eeChainMembers(x,during).length,3,'Vincula encuesta diferente cuando es parte de la serie');
 assert.equal(f.eeChainFullCompatible(x,during),false);
 const separate=f.eeChainOverview(x,during);
-assert.match(separate,/Secuencia de medición/);
+assert.match(separate,/Secuencia vinculada/);
 assert.match(separate,/Escala diferente/);
-assert.match(separate,/Solo se contrastan preguntas/,'Comparar solamente preguntas iguales, sin inventar índices globales');
+assert.match(separate,/Comparación entre momentos/,'Una vinculación tiene resultados comparados, no solo una lista de encuestas');
+assert.match(separate,/Índice global propio/,'Presenta resultados de cada instrumento sin interpretar índices distintos como iguales');
 assert.equal(f.eeChainComparableMetrics(x,during).rows.length,1,'Solo preguntas realmente comparables entre base y durante');
 assert.match(f.eeChainPanel(x,during),/Primera respuesta/,'El formulario identifica la fecha de la primera respuesta');
 assert.match(f.eeChainPanel(x,during),/value="2026-11-04"/,'La fecha se carga automáticamente del instrumento');
 assert.match(f.eeChainPanel(x,during),/<select name="moment_0"/,'Selector de momento compacto');
+const compare=vm.runInContext('eeLinkedRows',ctx);
+const diff=vm.runInContext('eeLinkedDiff',ctx);
+const canCompare=vm.runInContext('eeLinkedCanCompare',ctx);
+assert.equal(compare(x,during).rows.length,1);
+const alternative=create('Medición reformulada','alt','Seguimiento',7,'altq');
+alternative.questions[0].label='Percibo claridad sobre el cambio.';
+x.surveys.push(alternative);
+f.eeChainLink(x,during,alternative.id,'Durante','Seguimiento');
+assert.equal(compare(x,during).rows.length,1,'Redacción diferente no se asume comparable automáticamente');
+assert.equal(canCompare(base.questions[0],alternative.questions[0]),true);
+assert.equal(canCompare(base.questions[0],incompatible.questions[0]),true,'Escalas 0–10 y 0–5 pueden normalizarse con confirmación manual');
+const wrongDirection={...alternative.questions[0],reverse:true};
+assert.equal(canCompare(base.questions[0],wrongDirection),false,'No mezclar escalas de direcciones opuestas');
+x.measurementQuestionLinks=[{id:'link1',groupId:during.measurementGroupId,
+ firstSurveyId:base.id,firstQuestionId:base.questions[0].id,
+ secondSurveyId:alternative.id,secondQuestionId:alternative.questions[0].id,label:'Claridad frente al cambio'}];
+const outcome=compare(x,during).rows;
+assert.equal(outcome.length,2,'Debe mostrar comparación automática y manual');
+const manuallyMapped=outcome.find(r=>r.source==='manual');
+assert.ok(manuallyMapped);
+assert.equal(diff(manuallyMapped),50,'El cambio se calcula usando puntuación normalizada 0–100');
+assert.match(f.eeChainOverview(x,during),/Claridad frente al cambio/);
+assert.match(f.eeChainOverview(x,during),/↑ \+50/);
+
 vm.runInContext('eeSelected='+JSON.stringify(during.id),ctx);
 vm.runInContext('eeVerifySave = async ()=>true',ctx);
 f.eeChainCreateNext();
@@ -83,12 +108,13 @@ assert.equal(next.measurementGroupId,during.measurementGroupId,'Crear ya vincula
 assert.equal(next.status,'draft');
 assert.equal(next.questions.length,during.questions.length);
 assert.equal(next.publication,undefined);
-assert.match(read('index.html'),/encadenamiento\.js\?v=1\.2\.0/);
+assert.match(read('index.html'),/encadenamiento\.js\?v=1\.3\.0/);
+assert.match(read('index.html'),/comparacion-vinculada\.js\?v=1\.0\.0/);
 assert.match(read('src/modules/encuestas/encuestas.js'),/function eeEvolutionResults\(x,s\)\{const e=EE\.evolution\(s,eeFilter\.audienceId\)/,'La encuesta seleccionada conserva sus resultados principales');
 assert.doesNotMatch(read('src/modules/encuestas/encuestas.js'),/return eeChainOverview\(x,s\)/,'El seguimiento no sustituye el panel');
 assert.match(read('src/modules/encuestas/encuestas.js'),/\$\{eeChainPanel\(x,s\)\}/,'La vinculación aparece después de resultados propios');
 f.eeChainUnlink(x,during,base.id);
-assert.equal(f.eeChainMembers(x,during).length,3);
+assert.equal(f.eeChainMembers(x,during).length,4);
 assert.equal(base.measurementGroupId,undefined);
 assert.equal(JSON.stringify(base.responses),origBefore);
 console.log('Encuestas vinculadas OK: banco compatible, conexión libre, siguiente medición vinculada y datos intactos.');
