@@ -65,3 +65,51 @@
 .ee-single-column fieldset{min-width:0}
 .ee-single-column textarea{min-height:75px}
 .ee-single-column summary{cursor:pointer}
+
+
+/* Encuestas V2.35 · Configuración ligera, programación clara y preguntas desplegables */
+.ee-single-column .ee-active-toolbar{padding:16px 18px 10px}
+.ee-single-column .ee-tabs{border-top:1px solid #27495c;padding-top:12px}
+.ee-single-column .ee-tabs .active{background:#d9ad48;color:#091f2b;border-color:#d9ad48;font-weight:750}
+.ee-single-column .ee-tabs button{font-size:13px;border-radius:9px}
+.ee-app-config{padding:20px 22px;background:linear-gradient(155deg,#113247,#0a2535);border-color:#366173}
+.ee-app-top{display:flex;align-items:start;justify-content:space-between;gap:15px}
+.ee-app-top h3{font-size:19px;margin:0 0 5px}
+.ee-app-top p{font-size:13px;margin:0 0 14px}
+.ee-app-state{font-size:11px;color:#f0d188;border:1px solid #755e2c;border-radius:99px;padding:5px 11px;white-space:nowrap}
+.ee-app-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ee-app-grid label{font-size:12px;color:#b6cad5;min-width:0}
+.ee-app-grid input,.ee-app-grid select{font-size:14px;margin-top:6px;width:100%;min-height:44px;background:#071f2e;border-color:#396378}
+.ee-app-audiences{padding:14px 16px;margin:16px 0 0;border-radius:13px;border:1px solid #335468;background:#0a2739}
+.ee-app-audiences legend{font-size:13px;color:#cddfe7;font-weight:700;padding:0 8px}
+.ee-app-audlist{display:flex;flex-wrap:wrap;gap:9px}
+.ee-app-auditem{display:flex;align-items:center;gap:9px;border:1px solid #35596d;background:#102f43;border-radius:12px;padding:9px 12px;font-size:13px;cursor:pointer;margin:0!important;min-width:125px}
+.ee-app-auditem:has(input:checked){border-color:#d9b24e;background:#3e3c29;color:#ffe6ad}
+.ee-app-auditem input{margin:0;accent-color:#e2b548;flex-shrink:0}
+.ee-app-audiences .muted{font-size:11px;margin:10px 0 0}
+.ee-app-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-top:16px;flex-wrap:wrap}
+.ee-app-footer .muted{font-size:11px;max-width:650px}
+.ee-app-footer button{margin-left:auto}
+.ee-single-column .ee-measure-note{margin-bottom:14px;padding:9px 12px;background:#0b2a3c;border:1px solid #294f62;border-radius:9px;font-size:12px}
+.ee-measure-note>summary{color:#afc8d6;font-size:12px}
+.ee-measure-note p{font-size:12px;margin:10px 0}
+.ee-question-fold{padding:0!important;overflow:hidden;border-color:#2d5364!important;background:#082536;margin:9px 0!important}
+.ee-question-fold>summary{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:15px 17px;color:#e3eff7;list-style:none}
+.ee-question-fold>summary::-webkit-details-marker{display:none}
+.ee-question-fold>summary strong{font-size:13px;font-weight:650;line-height:1.4;min-width:0;overflow-wrap:anywhere}
+.ee-question-fold>summary span{color:#d9b65d;font-size:12px;white-space:nowrap}
+.ee-question-fold[open]>summary{border-bottom:1px solid #2d5364;background:#0c3145}
+.ee-question-fold>label,.ee-question-fold>.grid,.ee-question-fold>.flex,.ee-question-fold>details,.ee-question-fold>.ee-q-actions{margin:12px 17px!important}
+.ee-question-fold .ee-q-actions{display:flex;justify-content:flex-end}
+.ee-question-fold textarea{min-height:66px}
+.ee-advanced{border:1px solid #2d5061;border-radius:13px;margin:0;background:#092537;padding:13px}
+.ee-advanced>summary{padding:9px 5px;color:#d3dce2;font-size:13px;font-weight:700}
+.ee-advanced>.panel{padding:10px;background:transparent;border:none;margin:6px 0}
+.ee-advanced details{min-width:0}
+.ee-response-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.ee-response-meta label{font-size:12px;min-width:0}
+.ee-response-meta input,.ee-response-meta select{width:100%;min-width:0}
+.ee-public .ee-public-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.ee-public .ee-public-meta label{margin:0}
+@media(max-width:900px){.ee-app-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ee-response-meta{grid-template-columns:1fr 1fr}}
+@media(max-width:580px){.ee-app-grid,.ee-response-meta,.ee-public .ee-public-meta{grid-template-columns:minmax(0,1fr)}.ee-app-footer button{width:100%}.ee-question-fold>summary{padding:13px}.ee-app-config{padding:15px}.ee-app-state{white-space:normal}}
