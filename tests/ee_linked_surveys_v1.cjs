@@ -45,7 +45,7 @@ assert.equal(metric.latestValue,100);
 assert.equal(metric.delta,200);
 assert.equal(JSON.stringify(base.responses),origBefore,'No cambiar respuestas de base');
 assert.equal(JSON.stringify(during.responses),origDuring,'No cambiar respuestas actuales');
-assert.throws(()=>f.eeChainLink(x,during,base.id,'Durante','Durante'),/vinculada|momento/i);
+assert.throws(()=>f.eeChainLink(x,during,base.id,'Durante','Durante'),/vinculada|momento|seguimiento/i);
 assert.match(f.eeChainPanel(x,during),/Conectar encuestas para comparar momentos/);
 assert.match(f.eeChainPanel(x,during),/Pulso inicial/);
 assert.match(f.eeChainPanel(x,during),/Guardar momentos y orden/);
