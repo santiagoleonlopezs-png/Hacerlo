@@ -69,6 +69,8 @@ function eeAppConfigPanel(x,s){
  '<option value="false"'+(s.anonymous===false?' selected':'')+'>Identificada · solicitar un dato</option></select></label>'+
  '<label data-ee-identity-field '+(s.anonymous!==false?'hidden':'')+'>Nombre del dato a solicitar<input name="identityLabel" maxlength="80" value="'+safe(s.identityLabel||'Nombre o identificación')+'" '+(s.anonymous===false?'required':'')+' placeholder="Ej. Nombre, cédula o código"></label></div>'+
  '<fieldset class="ee-app-audiences"><legend>Audiencias de la aplicación</legend>'+
+ '<label class="ee-audience-toggle"><input type="checkbox" name="collectAudience" value="true" '+(s.collectAudience===true?'checked':'')+
+ '><span><strong>Solicitar audiencia a quien responde</strong><small>Opcional. Si está desactivado, se comparte un enlace general y no se pregunta por audiencia.</small></span></label>'+
  (all.length?'<div class="ee-app-audlist">'+all.map(a=>'<label class="ee-app-auditem"><input type="checkbox" name="audienceIds" value="'+safe(a.id)+'"'+(ids.includes(String(a.id))?' checked':'')+'><span>'+safe(a.name)+'</span></label>').join('')+'</div><p class="muted">Marca una o varias. Sin marcas: disponible para todas las audiencias.</p>':'<p class="muted">No tienes audiencias creadas. El instrumento se registra sin segmentación.</p>')+
  '</fieldset><div class="ee-app-footer"><span class="muted">Horario de Colombia (UTC−5). El intervalo limita la recepción pública e interna; las respuestas históricas permanecen.</span>'+
  '<button class="primary" type="submit">Guardar aplicación</button></div></form></section>';
@@ -89,7 +91,8 @@ async function eeSaveApplication(event){
   const anonymous=fd.get('anonymous')!=='false';
   const identityLabel=String(fd.get('identityLabel')||'Nombre o identificación').trim();
   if(!anonymous&&(identityLabel.length<2||identityLabel.length>80))throw Error('Define el nombre del dato que solicitarás a la persona.');
-  const updated={...s,anonymous,identityLabel,audienceIds,audienceId:audienceIds.length===1?audienceIds[0]:'',
+  const collectAudience=fd.get('collectAudience')==='true';
+  const updated={...s,anonymous,identityLabel,collectAudience,audienceIds,audienceId:audienceIds.length===1?audienceIds[0]:'',
     waveMode:mode,wave:mode==='Todas'?(EE_APPLICATION_WAVES.includes(s.wave)?s.wave:'Antes'):mode,
     applicationStart:start,applicationEnd:end,
     updatedAt:EE.now()};
