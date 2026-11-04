@@ -287,29 +287,19 @@ function eeChainSelectSurvey(id){
  eeTab='resultados';render();
 }
 function eeChainOverview(x,s){
- const report=eeChainComparableMetrics(x,s,eeFilter.audienceId),members=report.members;
+ const members=eeChainMembers(x,s);
  const list=members.map((survey,i)=>{
   const count=(survey.responses||[]).filter(r=>!eeFilter.audienceId||String(r.audienceId)===String(eeFilter.audienceId)).length;
+  const date=eeChainDateInfo(survey).date;
   return '<article class="ee-chain-stage"><span class="ee-chain-step">'+(i+1)+'</span>'+
-   '<div><small>'+safe(eeChainMoment(survey))+(eeChainDateInfo(survey).date?' · '+safe(eeChainDateInfo(survey).date):'')+'</small>'+
+   '<div><small>'+safe(eeChainMoment(survey))+(date?' · '+safe(date):'')+'</small>'+
    '<strong>'+safe(survey.title)+'</strong><span>'+count+' '+(count===1?'respuesta':'respuestas')+'</span></div>'+
    '<button class="secondary" type="button" onclick="eeChainSelectSurvey(\''+safe(survey.id)+'\')">Ver resultados</button></article>';
  }).join('');
- const linkedQuestionRows=report.rows.map(row=>'<tr><th scope="row">'+safe(row.label)+'<small>'+safe(row.unit)+'</small></th>'+
-  row.values.map(metric=>'<td>'+(metric?.value==null?'—':eeNumber(metric.value))+
-   '<small>n = '+(metric?.n||0)+'</small></td>').join('')+'</tr>').join('');
- const count=report.rows.length;
- const metrics=count?'<details class="ee-chain-questions" open><summary>Preguntas comparables · '+count+'</summary>'+
-   '<p class="muted">Solo se contrastan preguntas con el mismo texto, tipo, dirección, escala y puntuación. No se combinan resultados globales de instrumentos distintos.</p>'+
-   '<div style="overflow-x:auto"><table class="ee-evolution-table"><thead><tr><th>Pregunta</th>'+
-   members.map(m=>'<th>'+safe(eeChainMoment(m))+'</th>').join('')+
-   '</tr></thead><tbody>'+linkedQuestionRows+'</tbody></table></div></details>':
-   '<p class="notice">Las encuestas ya están conectadas, pero todavía no tienen preguntas cuantitativas equivalentes. Puedes seguir cada momento por separado; HACERLO no calculará una diferencia entre resultados distintos.</p>';
  return '<div class="ee-chain-overview">'+
   '<div><h3>Secuencia vinculada</h3><p class="muted">'+members.length+' encuestas conectadas · '+
   safe(eeChainMoment(members[0]))+' → '+safe(eeChainMoment(members.at(-1)))+'</p></div>'+
-  '<h3>Secuencia de medición</h3><div class="ee-chain-timeline">'+list+'</div>'+
-  metrics+
-  (count?'<button class="secondary" type="button" onclick="eeChainExportComparison()">↓ Descargar preguntas comparables</button>':'')+
-  '<p class="muted">La conexión es descriptiva: no prueba causalidad ni seguimiento individual pareado.</p></div>';
+  '<div class="ee-chain-timeline">'+list+'</div>'+
+  (typeof eeChainComparisonView==='function'?eeChainComparisonView(x,s):'')+
+  '</div>';
 }
