@@ -34,4 +34,13 @@ assert.match(main,/showRecoveryForm\(isInvite\?'invite':'recovery'\)/,'Abrir cre
 assert.match(main,/sb\.auth\.updateUser\(\{password:p\}\)/,'Guardar contraseña del usuario invitado');
 assert.match(main,/Invitación activada/,'Confirmar la activación al usuario');
 
+const invitation=read('supabase/templates/invite.html');
+assert.match(invitation,/HACERLO/,'La plantilla utiliza el nombre de marca');
+assert.match(invitation,/Fábrica del Comportamiento/);
+assert.match(invitation,/Creamos sistemas organizacionales inteligentes/);
+assert.match(invitation,/{{ \\.ConfirmationURL }}/,'Conserva el enlace seguro para activar el acceso');
+assert.match(invitation,/{{ \\.Data.organization_name }}/,'La invitación muestra la empresa');
+assert.match(invitation,/{{ \\.Data.role_label }}/,'La invitación muestra el rol');
+assert.match(edge,/organization_name:organizationName/,'La función envía el nombre de la empresa');
+assert.match(edge,/role_label:roleLabel/,'La función envía el rol traducido');
 console.log('Administración de usuarios: scripts, acciones, roles, protección del propietario y enlace de invitación OK.');
