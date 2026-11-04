@@ -49,6 +49,11 @@ function eeApplicationWaveOptions(s){
  const waves=eeResponseWaves(s);
  return waves.map(w=>'<option value="'+safe(w)+'">'+safe(w)+'</option>').join('');
 }
+function eeIdentityControls(form){
+ const anonymous=form?.elements?.namedItem('anonymous')?.value!=='false';
+ const label=form?.querySelector('[data-ee-identity-field]');
+ if(label){label.hidden=anonymous;const input=label.querySelector('input');if(input)input.required=!anonymous;}
+}
 function eeAppConfigPanel(x,s){
  const ids=eeAssignedAudiences(x,s),all=x.audiences||[],mode=eeApplicationMode(s);
  const options=EE_APPLICATION_WAVES;
@@ -59,6 +64,10 @@ function eeAppConfigPanel(x,s){
  '<div class="ee-app-grid"><label>Inicio de aplicación (Colombia)<input type="datetime-local" name="applicationStart" value="'+safe(eeLocalApplicationTime(s.applicationStart))+'"></label>'+
  '<label>Fin de aplicación (Colombia)<input type="datetime-local" name="applicationEnd" value="'+safe(eeLocalApplicationTime(s.applicationEnd))+'"></label>'+
  '<label>Ola<select name="waveMode">'+options.map(w=>'<option value="'+safe(w)+'"'+(w===mode?' selected':'')+'>'+safe(w)+'</option>').join('')+'</select></label></div>'+
+ '<div class="ee-app-identity"><label>Identificación de respuestas<select name="anonymous" onchange="eeIdentityControls(this.form)">'+
+ '<option value="true"'+(s.anonymous!==false?' selected':'')+'>Anónima · no solicitar identificación</option>'+
+ '<option value="false"'+(s.anonymous===false?' selected':'')+'>Identificada · solicitar un dato</option></select></label>'+
+ '<label data-ee-identity-field '+(s.anonymous!==false?'hidden':'')+'>Nombre del dato a solicitar<input name="identityLabel" maxlength="80" value="'+safe(s.identityLabel||'Nombre o identificación')+'" '+(s.anonymous===false?'required':'')+' placeholder="Ej. Nombre, cédula o código"></label></div>'+
  '<fieldset class="ee-app-audiences"><legend>Audiencias de la aplicación</legend>'+
  (all.length?'<div class="ee-app-audlist">'+all.map(a=>'<label class="ee-app-auditem"><input type="checkbox" name="audienceIds" value="'+safe(a.id)+'"'+(ids.includes(String(a.id))?' checked':'')+'><span>'+safe(a.name)+'</span></label>').join('')+'</div><p class="muted">Marca una o varias. Sin marcas: disponible para todas las audiencias.</p>':'<p class="muted">No tienes audiencias creadas. El instrumento se registra sin segmentación.</p>')+
  '</fieldset><div class="ee-app-footer"><span class="muted">Horario de Colombia (UTC−5). El intervalo limita la recepción pública e interna; las respuestas históricas permanecen.</span>'+
@@ -77,7 +86,10 @@ async function eeSaveApplication(event){
   const validIds=new Set((x.audiences||[]).map(a=>String(a.id)));
   const audienceIds=[...new Set(fd.getAll('audienceIds').map(String))];
   if(audienceIds.some(id=>!validIds.has(id)))throw Error('Hay una audiencia que ya no existe.');
-  const updated={...s,audienceIds,audienceId:audienceIds.length===1?audienceIds[0]:'',
+  const anonymous=fd.get('anonymous')!=='false';
+  const identityLabel=String(fd.get('identityLabel')||'Nombre o identificación').trim();
+  if(!anonymous&&(identityLabel.length<2||identityLabel.length>80))throw Error('Define el nombre del dato que solicitarás a la persona.');
+  const updated={...s,anonymous,identityLabel,audienceIds,audienceId:audienceIds.length===1?audienceIds[0]:'',
     waveMode:mode,wave:mode==='Todas'?(EE_APPLICATION_WAVES.includes(s.wave)?s.wave:'Antes'):mode,
     applicationStart:start,applicationEnd:end,
     updatedAt:EE.now()};
@@ -86,6 +98,6 @@ async function eeSaveApplication(event){
    const {error}=await sb.from('ee_publications').update({snapshot}).eq('id',s.publication.id);
    if(error)throw Error('No fue posible sincronizar el enlace público: '+error.message);
   }
-  Object.assign(s,updated);save();render();eeMsg('Aplicación guardada: fechas, olas y audiencias actualizadas.');
+  Object.assign(s,updated);save();render();if(typeof eeVerifySave==='function')void eeVerifySave('Configuración de aplicación',s.id);else eeMsg('Configuración actualizada.');
  }catch(error){eeMsg(error.message,true);}
 }
