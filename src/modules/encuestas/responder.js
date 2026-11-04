@@ -21,16 +21,17 @@ function localPublicTime(value){
  return d.toLocaleString('es-CO',{timeZone:'America/Bogota',dateStyle:'medium',timeStyle:'short'});
 }
 function publicApplicationFields(s){
- const audiences=Array.isArray(s.audiences)?s.audiences.filter(a=>a?.id&&a?.name):[];
- const audienceField=audiences.length?
- '<label>Audiencia<select name="_audienceId" required><option value="">Selecciona tu audiencia</option>'+
- audiences.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('')+'</select></label>':'';
- const mode=s.waveMode||s.wave||'Antes';
- const waveField=mode==='Todas'?
- '<label>Momento de la medición<select name="_wave" required><option value="">Selecciona un momento</option>'+
- ['Antes','Durante','Después'].map(w=>'<option value="'+w+'">'+w+'</option>').join('')+'</select></label>':
- '<input type="hidden" name="_wave" value="'+esc(mode)+'">';
- return '<div class="ee-public-meta">'+audienceField+waveField+'</div>';
+ const params=new URLSearchParams(location.search);
+ const selectedAudience=params.get('a')||'';
+ const selectedWave=params.get('w')||s.wave||'Antes';
+ const audiences=Array.isArray(s.audiences)?s.audiences.filter(a=>a?.id):[];
+ const allowed=Array.isArray(s.audienceIds)&&s.audienceIds.length?s.audienceIds.map(String):audiences.map(a=>String(a.id));
+ const audience=selectedAudience||s.audienceId||(allowed.length===1?allowed[0]:'');
+ if(allowed.length&&(!audience||!allowed.includes(audience)))throw Error('Necesitas el enlace de tu audiencia. Solicita el enlace correspondiente al equipo que te convocó.');
+ const allowedWaves=(s.waveMode==='Todas')?['Antes','Durante','Después']:[s.waveMode||s.wave||'Antes'];
+ if(!allowedWaves.includes(selectedWave))throw Error('Este enlace no corresponde a una ola de aplicación habilitada.');
+ return '<input type="hidden" name="_audienceId" value="'+esc(audience)+'">'+
+        '<input type="hidden" name="_wave" value="'+esc(selectedWave)+'">';
 }
 async function load(){
  try{
@@ -42,9 +43,8 @@ async function load(){
     '<p class="muted">Disponible del '+esc(localPublicTime(s.applicationStart))+' al '+esc(localPublicTime(s.applicationEnd))+' (hora de Colombia).</p>':'';
   root.innerHTML='<h1>'+esc(s.title)+'</h1><p>'+esc(s.description)+'</p>'+windowText+
     '<p class="muted">Versión '+esc(s.version)+'</p>'+
-    '<details><summary>Sobre esta medición</summary><p class="notice">'+esc(s.instrumentNote||'Instrumento de trabajo editable.')+'</p></details>'+
-    '<p>Las respuestas se utilizarán para mejorar el acompañamiento al cambio. Evita incluir nombres o datos sensibles en tus relatos.</p>'+
-    '<form id="response-form"><label>Código o alias (opcional)<input name="respondent" maxlength="100"></label>'+
+    '<p>Las respuestas se utilizarán para mejorar el acompañamiento al cambio. '+(s.anonymous===false?'Esta aplicación solicita un dato de identificación.':'Esta aplicación es anónima.')+'</p>'+
+    '<form id="response-form">'+(s.anonymous===false?'<label>'+esc(s.identityLabel||'Nombre o identificación')+'<input name="respondent" maxlength="100" autocomplete="off" required></label>':'')+
     publicApplicationFields(s)+
     s.questions.map(q=>'<div class="ee-response-question"><p class="ee-response-question-label">'+esc(q.label)+(q.required?' <span aria-hidden="true">*</span>':'')+'</p>'+responseControl(q)+'</div>').join('')+
     '<label><input type="checkbox" required> Acepto enviar mis respuestas para el análisis de esta iniciativa.</label>'+
@@ -64,7 +64,7 @@ async function submit(e){
  try{
   await rpc('ee_submit',{p_token:token,p_response_id:id,
     p_answers:{...v.answers,_audienceId:data._audienceId||'',_wave:data._wave||formDefinition.wave||'Antes'},
-    p_respondent:data.respondent||''});
+    p_respondent:formDefinition.anonymous===false?(data.respondent||''):''});
   try{sessionStorage.removeItem(key);}catch{}
   root.innerHTML='<h1>Gracias por compartir tu experiencia.</h1><p>Tu respuesta quedó registrada. Ya puedes cerrar esta página.</p>';
  }catch(err){msg.textContent=err.message+' Puedes volver a intentar.';submitting=false;document.getElementById('submit-response').disabled=false;}
