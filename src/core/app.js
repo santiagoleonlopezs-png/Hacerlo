@@ -68,7 +68,8 @@ async function deleteInitiative(id){
   if(syncPending){clearTimeout(syncTimer);syncTimer=setTimeout(syncAll,450);}
  }
 }
-let recoveryMode=false,inviteMode=false;
+let recoveryMode=false;
+let inviteMode=false;
 function showRecoveryForm(flow='recovery'){
  const isInvite=flow==='invite';
  recoveryMode=true;inviteMode=isInvite;
