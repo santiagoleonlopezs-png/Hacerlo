@@ -233,14 +233,15 @@ async function eePreviewImport(){const state=eeImport,s=eeSurvey(),x=current();i
 function eeCommitImport(){const s=eeSurvey();if(!eeImport?.accepted||eeImport.errors.length||eeImport.surveyId!==s.id||eeImport.initiativeId!==current().id||s.status!=='active')return;const seen=new Set(s.responses.flatMap(r=>[r.id,r.externalId,r.importKey].filter(Boolean)));const rows=eeImport.accepted.filter(r=>!seen.has(r.importKey)&&!seen.has(r.id));eeStampImport(s,rows,eeImport.fileName||'',eeImport.importMoment||s.wave);s.responses.push(...rows);eeIntegrate(current(),s);eeImport=null;save();eeTab='resultados';render();eeMsg(rows.length+' respuestas importadas.');}
 function eeSummaryPanel(x){if(typeof page==='string'&&page==='Indicadores')return '';const list=EE.init(x).filter(s=>s.responses.length);if(!list.length)return '';return `<section class="panel"><div class="flex" style="justify-content:space-between"><h2>Evidencia de encuestas y experiencias</h2><button class="secondary" onclick="go('Encuestas y experiencias')">Abrir módulo →</button></div>${list.map(s=>{const a=EE.summarize(s);return `<p><b>${safe(s.title)}</b> · ${a.n} respuestas · ${a.metrics.map(m=>safe(m.label)+': '+(m.value??'—')+safe(m.unit)).join(' · ')}</p>`;}).join('')}${(x.surveyPriorities||[]).length?`<h3>Señales para priorizar</h3>${x.surveyPriorities.map(p=>`<p>${safe(p.label)}: ${p.value} · ${safe(p.reason)} · n=${p.n}</p>`).join('')}<p class="muted">Señales descriptivas; conservan la priorización manual de impacto y esfuerzo.</p>`:''}<button class="secondary" onclick="eeExportSimulation()">↓ Entradas para Simulación de Capacidad de Cambio</button></section>`;}
 function eeSharePanel(s){
- const visible=s.status==='active';
+ const active=s.status==='active';
  return '<section class="panel ee-share-panel"><h3>Compartir instrumento</h3>'+
- '<p class="muted">Genera enlaces específicos por audiencia y ola. Quien responde no tiene que escoger esos datos.</p>'+
- '<div class="flex"><button class="primary" '+(!visible?'disabled':'')+' onclick="eePublish()">'+(s.publication?'Ver enlaces de aplicación':'Generar enlaces de aplicación')+'</button>'+
+ '<p class="muted">Un enlace general para todas las personas. Si activas la segmentación en Diseño, cada persona puede elegir su audiencia.</p>'+
+ '<div class="flex"><button class="primary" '+(!active?'disabled':'')+' onclick="eePublish()">'+
+ (s.publication&&!s.publication.revoked?'Actualizar enlace':'Generar enlace')+'</button>'+
  '<button class="secondary" '+(!s.publication?'disabled':'')+' onclick="eePull()">Recuperar respuestas</button>'+
- (s.publication?'<button class="secondary" onclick="eeRevoke()">Cerrar enlaces</button>':'')+'</div>'+
- '<div id="ee-public-link"></div>'+
- '<p class="muted ee-share-footnote">La audiencia y el momento se asocian al enlace utilizado. Los enlaces no verifican por sí mismos la identidad de quien responde. Comparte cada enlace únicamente con el grupo correspondiente.</p></section>';
+ (s.publication?'<button class="secondary" onclick="eeRevoke()">Cerrar enlace</button>':'')+'</div>'+
+ '<div id="ee-public-link">'+(s.publication&&!s.publication.revoked?eePublishLinks(s):'')+'</div>'+
+ '<p class="muted ee-share-footnote">Comparte el enlace general. Los enlaces específicos por audiencia y ola permanecen disponibles como opción avanzada.</p></section>';
 }
 function eePublicSnapshot(s){
  const x=current();
@@ -248,29 +249,67 @@ function eePublicSnapshot(s){
  description:s.description,wave:s.wave,waveMode:eeApplicationMode(s),
  audienceId:s.audienceId,audienceIds:eeAssignedAudiences(x,s),
  audiences:eeTargetAudiences(x,s).map(a=>({id:String(a.id),name:String(a.name)})),
+ collectAudience:s.collectAudience===true,
  anonymous:s.anonymous!==false,identityLabel:s.identityLabel||'Nombre o identificación',
  applicationStart:s.applicationStart||null,applicationEnd:s.applicationEnd||null,
- questions:s.questions.map(q=>{const z={...q};delete z.correct;if(eeIsPriority(s)&&z.type==='choice')z.priorityRandomized=true;if(z.priorityRandomized)delete z.optionScoring;return z;})};
+ questions:s.questions.map(q=>{
+  const z={...q};
+  // La puntuación por opción es solo interna; nunca enviarla al formulario público.
+  delete z.correct;delete z.optionScoring;delete z.missingChoiceOptions;
+  if(eeIsPriority(s)&&z.type==='choice')z.priorityRandomized=true;
+  return z;
+ })};
 }
 function eePublishLinks(s){
  const x=current(),audiences=eeTargetAudiences(x,s);
  const groups=audiences.length?audiences.map(a=>({id:String(a.id),name:String(a.name)})):[{id:'',name:'Sin segmentación'}];
  const waves=eeResponseWaves(s);
- return '<h4>Enlaces listos para distribuir</h4><p class="muted">Cada enlace lleva la audiencia y ola configuradas.</p>'+
- groups.map((a,index)=>'<details class="ee-share-group" '+(index===0?'open':'')+'><summary>'+safe(a.name)+' · '+waves.length+' '+(waves.length===1?'enlace':'enlaces')+'</summary>'+
- waves.map(w=>{
- const url=new URL('responder.html',location.href);url.searchParams.set('t',s.publication.token);
- if(a.id)url.searchParams.set('a',a.id);
- url.searchParams.set('w',w);
- return '<div class="ee-share-link"><span>'+safe(w)+'</span><input aria-label="Enlace para '+safe(a.name)+' en '+safe(w)+'" type="text" readonly value="'+safe(url.href)+'">'+
+ const general=new URL('responder.html',location.href);general.searchParams.set('t',s.publication.token);
+ const row=(label,url,description)=>'<div class="ee-share-link"><span>'+safe(label)+'</span>'+
+ '<input type="text" readonly value="'+safe(url.href)+'" aria-label="'+safe(description)+'">'+
  '<button type="button" class="secondary" onclick="eeCopyLink(this)">Copiar</button>'+
- '<a class="secondary" href="'+safe(url.href)+'" target="_blank" rel="noopener">Abrir</a></div>';
- }).join('')+'</details>').join('');
+ '<a href="'+safe(url.href)+'" target="_blank" rel="noopener">Abrir</a></div>';
+ let html='<div class="ee-share-general"><h4>Enlace general</h4>'+
+ '<p class="muted">Un único enlace. '+(s.collectAudience===true?'La persona selecciona su audiencia.':'No se solicita audiencia.')+
+ (waves.length>1?' La persona selecciona la ola.':'')+'</p>'+
+ row('General',general,'Enlace general de respuesta')+'</div>';
+ if(audiences.length){
+  html+='<details class="ee-share-advanced"><summary>Opcional · enlaces por audiencia y ola</summary>'+
+  '<p class="muted">Úsalos solo si quieres distribuir enlaces diferenciados; ya llevan esos datos seleccionados.</p>'+
+  groups.map(a=>'<details class="ee-share-group"><summary>'+safe(a.name)+' · '+waves.length+' '+(waves.length===1?'enlace':'enlaces')+'</summary>'+
+    waves.map(w=>{const url=new URL('responder.html',location.href);url.searchParams.set('t',s.publication.token);
+     if(a.id)url.searchParams.set('a',a.id);url.searchParams.set('w',w);
+     return row(w,url,'Enlace de '+a.name+' en '+w);
+    }).join('')+'</details>').join('')+'</details>';
+ }
+ return html;
 }
-async function eePublish(){const s=eeSurvey(),x=current();if(s.status!=='active')return;try{if(eeIsPriority(s)&&(typeof priorityScoreReady!=='function'||!priorityScoreReady(s)))throw Error('Antes de compartir, completa los valores de las opciones en ambas dimensiones.');if(!x._cloudId||!cloudOrgId)throw Error('Espera a que la iniciativa se guarde en Supabase.');if(!s.publication){eeMsg('Creando enlace…');const {data,error}=await sb.from('ee_publications').insert({initiative_id:x._cloudId,organization_id:cloudOrgId,survey_local_id:s.id,snapshot:eePublicSnapshot(s),active:true}).select('id,token').single();if(error)throw error;s.publication=data;save();}
- if(s.publication.revoked){const {error}=await sb.from('ee_publications').update({active:true}).eq('id',s.publication.id);if(error)throw error;s.publication.revoked=false;save();}
- $('ee-public-link').innerHTML=eePublishLinks(s);
- }catch(e){eeMsg('No se pudo publicar: '+e.message+'. Verifica la instalación SQL V2.4.',true);}}
+async function eePublish(){
+ const s=eeSurvey(),x=current();if(s.status!=='active')return;
+ try{
+  if(eeHasUnfinishedChoices(s))throw Error('Completa las opciones de las preguntas antes de publicar.');
+  if(eeIsPriority(s)&&(typeof priorityScoreReady!=='function'||!priorityScoreReady(s)))
+   throw Error('Completa los valores de respuesta para Impacto y Esfuerzo.');
+  if(!x._cloudId||!cloudOrgId)throw Error('Espera a que la iniciativa se guarde en Supabase.');
+  const snapshot=eePublicSnapshot(s);
+  if(!s.publication){
+   eeMsg('Creando enlace…');
+   const {data,error}=await sb.from('ee_publications')
+    .insert({initiative_id:x._cloudId,organization_id:cloudOrgId,survey_local_id:s.id,snapshot,active:true})
+    .select('id,token').single();
+   if(error)throw error;
+   s.publication=data;save();
+  }else{
+   // Actualizar la configuración del enlace existente sin cambiar token ni respuestas.
+   const {error}=await sb.from('ee_publications').update({snapshot,active:true}).eq('id',s.publication.id);
+   if(error)throw error;
+   if(s.publication.revoked){s.publication.revoked=false;save();}
+  }
+  const container=$('ee-public-link');
+  if(container)container.innerHTML=eePublishLinks(s);
+  eeMsg('Enlace general listo para compartir.');
+ }catch(e){eeMsg('No se pudo compartir: '+e.message,true);}
+}
 async function eeCopyLink(button){const input=button?.closest('.ee-share-link')?.querySelector('input');if(!input)return;try{await navigator.clipboard.writeText(input.value);eeMsg('Enlace de aplicación copiado.');}catch{input.select();eeMsg('Selecciona y copia el enlace.');}}
 async function eeRevoke(){const s=eeSurvey();if(!s.publication)return;try{const token=EE.uid();const {error}=await sb.from('ee_publications').update({active:false,token}).eq('id',s.publication.id);if(error)throw error;s.publication.token=token;s.publication.revoked=true;save();render();eeMsg('Enlace revocado. Todas las respuestas se conservan y pueden recuperarse.');}catch(e){eeMsg(e.message,true);}}
 let eePulling=false;
