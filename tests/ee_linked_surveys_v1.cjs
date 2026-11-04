@@ -98,6 +98,28 @@ assert.equal(diff(manuallyMapped),50,'El cambio se calcula usando puntuación no
 assert.match(f.eeChainOverview(x,during),/Claridad frente al cambio/);
 assert.match(f.eeChainOverview(x,during),/↑ \+50/);
 
+/* Prueba de interacción: el facilitador debe poder guardar la equivalencia
+   desde el formulario real, sin modificar respuestas originales. */
+ctx.FormData=class {constructor(form){this.values=form.values;}get(k){return this.values[k]??null;}};
+vm.runInContext('eeSelected='+JSON.stringify(during.id),ctx);
+const mapAction=vm.runInContext('eeLinkedSaveQuestionMap',ctx);
+const entriesBefore=x.measurementQuestionLinks.length;
+const mapEvent={preventDefault(){},target:{values:{
+ first:base.id+'|'+base.questions[0].id,
+ second:incompatible.id+'|'+incompatible.questions[0].id,
+ label:'Claridad normalizada',
+ equivalent:'yes'
+}}};
+mapAction(mapEvent);
+assert.equal(x.measurementQuestionLinks.length,entriesBefore+1,'Guardar desde formulario crea un vínculo persistente');
+const normalizedRow=compare(x,during).rows.find(row=>row.label==='Claridad normalizada');
+assert.ok(normalizedRow,'El vínculo aparece inmediatamente en resultados');
+assert.equal(normalizedRow.unit,'%');
+assert.equal(diff(normalizedRow),60,'Una escala 0–10 y otra 0–5 se comparan normalizadas al rango porcentual');
+assert.equal(JSON.stringify(base.responses),origBefore);
+assert.equal(JSON.stringify(during.responses),origDuring);
+
+
 vm.runInContext('eeSelected='+JSON.stringify(during.id),ctx);
 vm.runInContext('eeVerifySave = async ()=>true',ctx);
 f.eeChainCreateNext();
