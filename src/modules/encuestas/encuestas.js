@@ -66,7 +66,7 @@ function eePage(x){
        '<button class="secondary '+(eeTab===t?'active':'')+'" type="button" onclick="eeSetTab(&quot;'+t+'&quot;)">'+
        t[0].toUpperCase()+t.slice(1)+'</button>').join('')+
    '</div></section>'+
-   (eeTab==='diseño'||eeTab==='compartir'?eeAppConfigPanel(x,s):'')+
+   (eeTab==='diseño'||eeTab==='compartir'?(typeof eeAppConfigPanel==='function'?eeAppConfigPanel(x,s):''):'')+
    (eeTab==='diseño'?eeDesigner(x,s)+'<details class="ee-advanced"><summary>Configuración avanzada · tipos, análisis y fuentes</summary>'+eeSurveyKindPanel(s)+eeHomeSourcesPanel(x)+eeQuestionTypePanel(s)+eeDirectionPanel(s)+eeOptionScoringPanel(s)+'</details>':
     eeTab==='responder'?eeResponsePanel(x,s):
     eeTab==='importar'?eeImportPanel(s):
@@ -77,7 +77,7 @@ function eePage(x){
    '<div><span class="pill">RDAIM · RESULTADOS · DIAGNÓSTICO · '+safe(x.name)+'</span>'+
    '<h2>Encuestas y experiencias</h2>'+
    '<p class="muted">Escucha, comprende y conecta la evidencia con tus decisiones.</p></div>'+
-   '<span class="ee-orbit" aria-hidden="true">◎</span></div>'+
+   '</div>'+
    '<p id="ee-message" role="status"></p></section>'+
    diagModuleMenu('encuestas')+
    '<div class="ee-single-column">'+selector+(eeQuickState?eeQuickPanel():'')+active+'</div>';
