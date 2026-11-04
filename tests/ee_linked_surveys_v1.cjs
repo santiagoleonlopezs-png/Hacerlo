@@ -57,7 +57,7 @@ assert.equal(f.eeChainFullCompatible(x,during),false);
 const separate=f.eeChainOverview(x,during);
 assert.match(separate,/Secuencia de medición/);
 assert.match(separate,/Escala diferente/);
-assert.match(separate,/no se calculan diferencias artificiales|no calculará una diferencia/i);
+assert.match(separate,/Solo se contrastan preguntas/,'Comparar solamente preguntas iguales, sin inventar índices globales');
 assert.equal(f.eeChainComparableMetrics(x,during).rows.length,1,'Solo preguntas realmente comparables entre base y durante');
 vm.runInContext('eeSelected='+JSON.stringify(during.id),ctx);
 vm.runInContext('eeVerifySave = async ()=>true',ctx);
