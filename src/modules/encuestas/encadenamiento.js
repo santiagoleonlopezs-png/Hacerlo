@@ -27,6 +27,7 @@ function eeChainIssue(a,b){
  if(!a||!b||a.id===b.id)return 'Elige otra encuesta.';
  if(a.instrumentKey||b.instrumentKey)return 'El instrumento de priorización se analiza por separado.';
  if(!a.responses?.length||!b.responses?.length)return 'Ambas encuestas deben tener respuestas.';
+ if(new Set((a.questions||[]).map(eeChainQuestionKey)).size!==a.questions?.length||new Set((b.questions||[]).map(eeChainQuestionKey)).size!==b.questions?.length)return 'Hay preguntas con textos repetidos; no es seguro hacer la correspondencia.';
  if(eeChainWaves(a).length!==1||eeChainWaves(b).length!==1)return 'Utiliza encuestas con un solo momento cada una; las olas internas ya se comparan por separado.';
  if(eeChainSignature(a)!==eeChainSignature(b))return 'Las preguntas, dimensiones, tipos o escalas no coinciden.';
  if(JSON.stringify(a.compositionConfig||{})!==JSON.stringify(b.compositionConfig||{}))return 'La configuración del índice global es diferente.';
@@ -52,12 +53,12 @@ function eeChainLink(x,s,otherId,firstMoment,secondMoment){
  const other=EE.init(x).find(z=>z.id===otherId);
  const reason=eeChainIssue(s,other);
  if(reason)throw Error(reason);
- if(other.measurementGroupId&&other.measurementGroupId!==s.measurementGroupId)throw Error('La otra encuesta ya pertenece a otro seguimiento. Desvincúlala allí primero.');
+ if(other.measurementGroupId)throw Error('La otra encuesta ya pertenece a un seguimiento. Desvincúlala allí primero.');
  const names=[firstMoment,secondMoment].map(v=>String(v||'').trim());
  if(names.some(v=>!v||v.length>80))throw Error('Define un momento de hasta 80 caracteres por encuesta.');
  const members=eeChainMembers(x,s);
  const existing=members.filter(m=>m.id!==s.id).map(m=>eeChainNorm(eeChainMoment(m)));
- if(eeChainNorm(names[0])===eeChainNorm(names[1])||existing.includes(eeChainNorm(names[1])))
+ if(eeChainNorm(names[0])===eeChainNorm(names[1])||existing.includes(eeChainNorm(names[0]))||existing.includes(eeChainNorm(names[1])))
   throw Error('Cada encuesta debe tener un momento diferente. Por ejemplo: Durante · noviembre.');
  const group=s.measurementGroupId||EE.uid();
  s.measurementGroupId=group;s.measurementMoment=names[0];
@@ -96,7 +97,7 @@ function eeChainPanel(x,s){
   const reason=eeChainIssue(s,z)||(z.measurementGroupId&&z.measurementGroupId!==s.measurementGroupId?'Ya vinculada a otro seguimiento.':'');
   return '<option value="'+safe(z.id)+'"'+(reason?' disabled':'')+'>'+safe(z.title)+' · '+safe(eeChainMoment(z))+(reason?' · No compatible':'')+'</option>';
  }).join('');
- const usable=others.filter(z=>!eeChainIssue(s,z)&&(!z.measurementGroupId||z.measurementGroupId===s.measurementGroupId));
+ const usable=others.filter(z=>!eeChainIssue(s,z)&&!z.measurementGroupId);
  const rows=linked?'<form onsubmit="eeChainSave(event)"><div class="ee-chain-list">'+members.map((z,i)=>
   '<div class="ee-chain-line"><div><b>'+safe(z.title)+'</b><small>'+z.responses.length+' respuestas</small></div>'+
   '<label>Momento<input name="moment_'+i+'" value="'+safe(eeChainMoment(z))+'" maxlength="80" required></label>'+
