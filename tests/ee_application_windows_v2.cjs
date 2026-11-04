@@ -86,9 +86,9 @@ ctx.eeRestoreCnpsBank();
 assert.equal(old.questions.length,10,'Puede restaurar plantillas anteriores sin respuestas');
 assert.equal(old.status,'draft','Exige validar alternativas antes de activar');
 assert.equal(old.questionBankHistory.length,1,'Conserva el respaldo del banco anterior');
-assert.ok(read('responder.html').includes('responder.js?v=2.37.0'),'Formulario externo actualizado');
+assert.ok(read('responder.html').includes('responder.js?v=2.38.0'),'Formulario externo actualizado');
 assert.match(read('src/modules/encuestas/responder.js'),/ee-choice-option/,'Formulario público presenta las opciones');
-assert.ok(read('index.html').includes('programacion.js?v=2.37.0'),'Módulo cargado en la plataforma');
+assert.ok(read('index.html').includes('programacion.js?v=2.38.0'),'Módulo cargado en la plataforma');
 assert.ok(read('src/modules/encuestas/responder.js').includes('type="hidden" name="_audienceId"'),'La audiencia no se pregunta al usuario');
 assert.ok(!read('src/modules/encuestas/responder.js').includes('<details><summary>Sobre esta medición'),'No mostrar desplegable innecesario');
 
