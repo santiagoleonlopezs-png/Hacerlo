@@ -14,17 +14,27 @@ for(const path of ['src/modules/encuestas/motor.js','src/modules/encuestas/progr
  vm.runInContext(read(path),ctx);
 const template=vm.runInContext("EE.template('CNPS')",ctx);
 assert.equal(template.length,10,'El banco Excel contiene exactamente diez preguntas');
-assert.equal(template.filter(q=>q.type==='scale').length,6);
-assert.equal(template.filter(q=>q.type==='choice').length,3);
+assert.equal(template.filter(q=>q.type==='scale').length,5);
+assert.equal(template.filter(q=>q.type==='choice').length,4);
 assert.equal(template.filter(q=>q.type==='text').length,1);
 assert.equal(template.filter(q=>q.missingChoiceOptions).length,0,'Las alternativas originales ya están completas');
-for(const index of [4,6,7]){
+for(const index of [4,5,6,7]){
  assert.equal(template[index].type,'choice');
  assert.equal(template[index].options.length,4,'La pregunta '+(index+1)+' tiene cuatro alternativas');
  assert.match(ctx.eeQuestionInput(template[index]),/ee-choice-option/,'Opciones visibles para pregunta '+(index+1));
 }
 assert.match(template[7].options[0],/muchos riesgos/);
 assert.match(template[4].options[0],/Estoy en pausa/);
+assert.match(template[5].label,/me quita tiempo/);
+assert.deepEqual(Array.from(template[5].options),['Nada o muy poco','Algo','Bastante','Totalmente']);
+assert.equal(template[5].optionScoring,undefined,'Sin puntuación no especificada en P6');
+for(const n of [4,6]){
+ const q=template[n];
+ assert.equal(q.optionScoring.enabled,true);
+ assert.deepEqual(Array.from(q.optionScoring.options,x=>x.value),[6,8,9,10]);
+ assert.equal(ctx.EE.optionScore(q,q.options[0]),6);
+ assert.equal(ctx.EE.optionScore(q,q.options[3]),10);
+}
 assert.equal(template.filter(q=>q.type==='cnps').length,0,'No inventar una pregunta CNPS ausente del archivo');
 assert.match(template[0].label,/Tengo claridad sobre qué está cambiando/);
 assert.match(template[9].label,/¿Qué necesitarías para avanzar un paso más/);
@@ -50,6 +60,8 @@ assert.equal(snapshot.audiences.length,2);
 assert.equal(snapshot.audienceIds.length,2);
 assert.equal(snapshot.applicationStart,survey.applicationStart);
 assert.equal(snapshot.waveMode,'Todas');
+assert.equal(snapshot.collectAudience,false,'La audiencia es opcional por defecto');
+assert.ok(snapshot.questions.every(q=>!('optionScoring' in q)),'Puntuaciones no se filtran al público');
 assert.equal(snapshot.anonymous,true,'Las encuestas nuevas son anónimas por defecto');
 survey.anonymous=false;survey.identityLabel='Cédula';
 const identified=ctx.eePublicSnapshot(survey);
@@ -58,7 +70,10 @@ assert.equal(identified.identityLabel,'Cédula');
 survey.publication={token:'77daac42-5e6f-4510-8dc0-17ed03be2add'};
 ctx.URL=URL;ctx.location={href:'https://example.org/Hacerlo/index.html'};
 const links=ctx.eePublishLinks(survey);
-assert.equal((links.match(/class="ee-share-link"/g)||[]).length,6,'Dos audiencias por tres olas producen seis enlaces');
+assert.equal((links.match(/class="ee-share-link"/g)||[]).length,7,'Un enlace general más seis enlaces segmentados opcionales');
+assert.match(links,/Enlace general/);
+assert.match(links,/Opcional · enlaces por audiencia y ola/);
+assert.equal((links.match(/Enlace general/g)||[]).length>=1,true);
 assert.match(links,/a=g1/);
 assert.match(links,/w=Durante/);
 assert.doesNotMatch(links,/Selecciona tu audiencia/);
