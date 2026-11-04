@@ -2,6 +2,31 @@
 const EE = (() => {
  const uid=()=>crypto.randomUUID(), now=()=>new Date().toISOString();
  const scale=(id,label,dimension,min=1,max=5)=>({id,label,type:'scale',dimension,min,max,required:true});
+ function scaleLabels(q){
+  if(q.minLabel||q.maxLabel)return [q.minLabel||'Valor mínimo',q.maxLabel||'Valor máximo'];
+  const label=String(q.label||'').toLowerCase();
+  if(/claridad|entiendo|identifico/.test(label))return ['Nada claro','Muy claro'];
+  if(/compite con otras prioridades/.test(label))return ['No compite','Compite mucho'];
+  if(/riesgos o costos/.test(label))return ['Ningún riesgo','Muchos riesgos'];
+  if(/recomiend|probable/.test(label))return ['Nada probable','Muy probable'];
+  if(/en qué medida/.test(label))return ['En ninguna medida','En gran medida'];
+  return ['Valor mínimo','Valor máximo'];
+ }
+ function scaleMarkup(q,escapeText){
+  const esc=escapeText||String,min=Number(q.min),max=Number(q.max),count=max-min;
+  const attrs='name="'+esc(q.id)+'"';
+  if(!Number.isInteger(min)||!Number.isInteger(max)||count<1||count>10)
+    return '<input '+attrs+' type="number" min="'+min+'" max="'+max+'" step="'+(q.type==='scale'?'any':'1')+'" '+(q.required?'required':'')+'>';
+  const labels=scaleLabels(q);
+  return '<div class="ee-scale-wrap" role="group" aria-label="'+esc(q.label)+'">'+
+  '<div class="ee-scale-options" style="--ee-scale-count:'+String(count+1)+'">'+
+    Array.from({length:count+1},(_,i)=>{
+     const n=min+i;
+     return '<label class="ee-scale-option"><input type="radio" '+attrs+' value="'+n+'" '+(q.required?'required':'')+'><span>'+n+'</span></label>';
+    }).join('')+'</div>'+
+   '<div class="ee-scale-ends"><span>'+esc(labels[0])+'</span><span>'+esc(labels[1])+'</span></div>'+
+  '</div>';
+ }
  function template(kind){
   const q=[];
   if(kind==='SENTIR'){
@@ -149,5 +174,5 @@ const EE = (() => {
  }
  function records(rows){if(rows.length<2)throw Error('El archivo necesita encabezados y al menos una respuesta.');const headers=rows[0].map(v=>String(v??'').trim());if(headers.some(v=>!v)||new Set(headers).size!==headers.length)throw Error('Encabezados vacíos o duplicados.');return {headers,rows:rows.slice(1).map((r,i)=>{if(r.length>headers.length)throw Error('Fila '+(i+2)+': más celdas que encabezados.');return Object.fromEntries(headers.map((h,j)=>[h,String(r[j]??'')]));})};}
  function csv(rows){return '\uFEFF'+rows.map(r=>r.map(v=>{v=String(v??'');if(/^[=+\-@\t\r]/.test(v)&&!/^[-+]?\d+(\.\d+)?$/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"';}).join(';')).join('\r\n');}
- return {optionScore,shuffleChoices,validateOptionScoring,evolution,composition,detailed,uid,now,init,create,template,validateQuestions,validateResponse,summarize,simulation,parseCSV,records,csv};
+ return {optionScore,shuffleChoices,validateOptionScoring,evolution,composition,detailed,uid,now,init,create,template,scaleMarkup,validateQuestions,validateResponse,summarize,simulation,parseCSV,records,csv};
 })();
