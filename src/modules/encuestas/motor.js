@@ -34,7 +34,7 @@ const EE = (() => {
    for(const [d,labels] of Object.entries(groups))labels.forEach((l,j)=>q.push(scale(d.toLowerCase()+'_'+(j+1),l,d)));
    q.push({...scale('cnps','¿Qué tan dispuesto estás a apoyar esta iniciativa de cambio?','CNPS',0,10),type:'cnps'});
   }else if(kind==='CNPS'){
-   // Banco «Voces del Cambio»: las alternativas de P5, P7 y P8
+   // Banco «Voces del Cambio»: las alternativas de P5, P6, P7 y P8
    // fueron suministradas por el usuario en capturas del instrumento original.
    const definitions=[
     {label:'Tengo claridad sobre qué está cambiando.',type:'scale'},
@@ -46,14 +46,16 @@ const EE = (() => {
       'Estoy explorando: necesito entender mejor antes de involucrarme',
       'Estoy abierto(a): tengo disposición, aunque aún tengo dudas',
       'Estoy involucrado(a): ya he empezado a moverme frente al cambio'
+    ],scores:[6,8,9,10]},
+    {label:'Este cambio me quita tiempo para atender otras tareas de mi día a día.',type:'choice',options:[
+      'Nada o muy poco','Algo','Bastante','Totalmente'
     ]},
-    {label:'Este cambio compite con otras prioridades de mi día a día.',type:'scale',reverse:true},
     {label:'Con lo que hoy percibo de beneficios que trae este cambio, para mí:',type:'choice',options:[
       'No justifica dedicarle tiempo o esfuerzo adicional',
       'Podría justificarlo, pero aún no es suficiente',
       'Justifica dedicarle tiempo y esfuerzo desde mi rol',
       'Justifica claramente dedicarle tiempo o esfuerzo adicional'
-    ]},
+    ],scores:[6,8,9,10]},
     {label:'Percibo riesgos o costos personales asociados a este cambio.',type:'choice',options:[
       'Percibo muchos riesgos o costos personales',
       'Percibo algunos riesgos o costos personales',
@@ -66,7 +68,11 @@ const EE = (() => {
    definitions.forEach((item,i)=>{
     const id='voces_'+String(i+1).padStart(2,'0');
     const base={id,label:item.label,type:item.type,dimension:'Voces del Cambio',required:item.required!==false};
-    if(item.type==='choice')base.options=[...item.options];
+    if(item.type==='choice'){
+      base.options=[...item.options];
+      if(item.scores)base.optionScoring={enabled:true,min:0,max:10,direction:'higher',
+        options:item.options.map((option,j)=>({option,value:item.scores[j]}))};
+    }
     if(item.type==='scale')Object.assign(base,{min:0,max:10,reverse:item.reverse===true});
     q.push(base);
    });
