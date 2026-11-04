@@ -12,6 +12,7 @@ function eeLinkedScoreStructure(q){
 function eeLinkedCanCompare(a,b){
  if(!eeLinkedNumericQuestion(a)||!eeLinkedNumericQuestion(b))return false;
  if(a.type!==b.type)return false;
+ if(a.type==='scale')return Number.isFinite(Number(a.min))&&Number.isFinite(Number(a.max))&&Number(a.max)>Number(a.min)&&Number.isFinite(Number(b.min))&&Number.isFinite(Number(b.max))&&Number(b.max)>Number(b.min)&&!!a.reverse===!!b.reverse;
  return eeLinkedScoreStructure(a)===eeLinkedScoreStructure(b);
 }
 function eeLinkedStoredMappings(x,s){
@@ -73,7 +74,7 @@ function eeLinkedSaveQuestionMap(event){
  };
  const first=locate(fd.get('first')),second=locate(fd.get('second'));
  if(!first.survey||!second.survey||first.survey.id===second.survey.id)return eeMsg('Elige preguntas de dos encuestas diferentes.',true);
- if(!eeLinkedCanCompare(first.q,second.q))return eeMsg('Las preguntas no tienen el mismo tipo, escala o dirección. No se puede calcular un cambio válido.',true);
+ if(!eeLinkedCanCompare(first.q,second.q))return eeMsg('Las preguntas no tienen un tipo de resultado o dirección compatible. No se puede calcular un cambio válido.',true);
  const label=String(fd.get('label')||'').trim();
  if(!label||label.length>100)return eeMsg('Escribe un nombre de hasta 100 caracteres para el resultado comparable.',true);
  const key=[first.survey.id,first.q.id,second.survey.id,second.q.id].sort().join('|');
@@ -124,13 +125,13 @@ function eeChainComparisonView(x,s){
   '<div class="ee-linked-map"><span>'+safe(m.label)+'</span><button class="secondary" type="button" onclick="eeLinkedRemoveQuestionMap(\''+safe(m.id)+'\')">Quitar</button></div>').join('')+'</div>':'';
  const questionOptions=eeLinkedQuestionOptions(linked);
  const mappingForm='<details class="ee-linked-mapping"><summary>Relacionar preguntas equivalentes</summary>'+
-  '<p class="muted">Puedes enlazar preguntas con redacción diferente si realmente miden el mismo atributo y conservan la misma escala. La plataforma valida tipos y rangos antes de calcular diferencias.</p>'+
+  '<p class="muted">Puedes enlazar preguntas con redacción diferente si realmente miden el mismo atributo y conservan el mismo sentido de respuesta. Si sus escalas numéricas son distintas, se normalizan a 0–100 antes de calcular diferencias. La plataforma valida tipos y rangos antes de calcular diferencias.</p>'+
   mapSummary+
   '<form onsubmit="eeLinkedSaveQuestionMap(event)" class="ee-linked-mapping-form">'+
   '<label>Pregunta del primer momento<select name="first" required><option value="">Elegir pregunta</option>'+questionOptions+'</select></label>'+
   '<label>Pregunta del otro momento<select name="second" required><option value="">Elegir pregunta</option>'+questionOptions+'</select></label>'+
   '<label>Nombre de la variable comparable<input name="label" maxlength="100" required placeholder="Ej. Claridad frente al cambio"></label>'+
-  '<label class="ee-linked-confirm"><input type="checkbox" name="equivalent" value="yes" required> Confirmo que ambas preguntas evalúan el mismo atributo con escalas y sentidos equivalentes.</label>'+
+  '<label class="ee-linked-confirm"><input type="checkbox" name="equivalent" value="yes" required> Confirmo que ambas preguntas evalúan el mismo atributo y con el mismo sentido de respuesta. Acepto la normalización de escalas cuando corresponda.</label>'+
   '<button class="primary" type="submit">Guardar correspondencia</button></form></details>';
  return '<div class="ee-linked-comparison"><h3>Comparación entre momentos</h3>'+
   '<p class="muted">Resultados de cada encuesta vinculada. Los índices propios se muestran para consulta, sin considerarlos automáticamente equivalentes.</p>'+
