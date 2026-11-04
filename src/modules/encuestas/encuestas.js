@@ -87,7 +87,7 @@ function eePage(x){
      '<details class="ee-instrument-options"><summary>Opciones del instrumento</summary>'+
        '<div class="ee-options-content"><div class="ee-options-actions">'+
          '<button class="secondary" type="button" onclick="eeClone()">Duplicar / nueva versión</button>'+ 
-          (s.kind==='CNPS'&&!(s.questions||[]).some(q=>q.id==='voces_01')?'<button class="secondary" type="button" onclick="eeRestoreCnpsBank()">Cargar banco de Voces del Cambio (10 preguntas)</button>':'')+
+          (s.kind==='CNPS'&&!(s.questions||[]).some(q=>q.id==='voces_01')?'<button class="secondary" type="button" onclick="eeRestoreCnpsBank()">Cargar plantilla CNPS (10 preguntas)</button>':'')+
          '<button class="secondary" type="button" onclick="eeDeleteSurvey()">Eliminar encuesta</button>'+
        '</div>'+eeMomentEditor(s)+eeImportHistory(s)+
        '<details><summary>Cambiar nombre</summary><form onsubmit="eeRenameSurvey(event)">'+
@@ -152,11 +152,11 @@ function eeRestoreCnpsBank(){
  const s=eeSurvey();
  if(!s||s.kind!=='CNPS')return eeMsg('Esta acción solo aplica a la plantilla CNPS.',true);
  if(s.responses?.length||s.publication?.id)return eeMsg('Este instrumento tiene respuestas o un enlace. Duplica la encuesta y restaura el banco en la nueva versión.',true);
- if(!confirm('¿Cargar las 10 preguntas del Excel Voces del Cambio? Las preguntas actuales quedarán respaldadas en el historial.'))return;
+ if(!confirm('¿Cargar las 10 preguntas de la plantilla CNPS? Las preguntas actuales quedarán respaldadas en el historial.'))return;
  s.questionBankHistory ||= [];
  s.questionBankHistory.push({savedAt:EE.now(),reason:'Restaurar banco desde archivo Excel',questions:structuredClone(s.questions||[])});
  s.questions=EE.template('CNPS');
- s.instrumentNote='Banco Voces del Cambio: preguntas 5, 6, 7 y 8 con opciones. Las puntuaciones 6/8/9/10 de las preguntas 5 y 7 son internas. No se calcula automáticamente un CNPS.';
+ s.instrumentNote='Instrumento CNPS: preguntas 5, 6, 7 y 8 con opciones. Los valores 6, 8, 9 y 10 de las preguntas 5 y 7 son internos y no se muestran a quienes responden.';
  s.status='draft';
  s.updatedAt=EE.now();
  save();render();eeMsg('Se cargaron las 10 preguntas. Completa las alternativas 5 y 7 y guarda el diseño.');
