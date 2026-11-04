@@ -257,3 +257,19 @@
 .ee-chain-note{color:#9dbbc9}
 @media(max-width:920px){.ee-chain-add{grid-template-columns:repeat(2,minmax(0,1fr))}.ee-chain-line{grid-template-columns:repeat(2,minmax(0,1fr))}.ee-chain-line>div{grid-column:1/-1}}
 @media(max-width:580px){.ee-chain-add,.ee-chain-line{grid-template-columns:minmax(0,1fr)}.ee-chain-line>div{grid-column:auto}.ee-chain-add button,.ee-chain-line button{width:100%}}
+
+/* Seguimientos creados a partir de varias encuestas. */
+.ee-chain-timeline{display:grid;gap:10px;margin:13px 0 22px}
+.ee-chain-stage{display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:12px;background:#0d2a3d;border:1px solid #34566d}
+.ee-chain-step{display:flex;justify-content:center;align-items:center;flex:0 0 31px;width:31px;height:31px;border-radius:50%;background:#e6b84a;color:#122c3e;font-weight:800;font-size:13px}
+.ee-chain-stage>div{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.ee-chain-stage>div small{color:#e8c46e;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.ee-chain-stage>div strong{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.ee-chain-stage>div span{font-size:12px;color:#99b9c8}
+.ee-chain-stage button{flex:0 0 auto}
+.ee-chain-audience{display:block;max-width:400px;margin:14px 0 18px}
+.ee-chain-questions{margin:18px 0;padding:14px;border:1px solid #31566a;border-radius:12px;background:#0b2739}
+.ee-chain-questions summary{font-size:14px;font-weight:700;color:#e1bd69;cursor:pointer}
+.ee-chain-questions th small,.ee-chain-questions td small{display:block;margin:4px 0;color:#9abcca;font-weight:400}
+.ee-chain-overview .ee-chain-questions th{text-align:left}
+@media(max-width:580px){.ee-chain-stage{align-items:flex-start;flex-wrap:wrap}.ee-chain-stage>div{flex-basis:calc(100% - 60px)}.ee-chain-stage>button{width:100%}}
