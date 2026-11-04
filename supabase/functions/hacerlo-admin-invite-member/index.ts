@@ -1,16 +1,21 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 
-const cors={
- 'Access-Control-Allow-Origin':'https://santiagoleonlopezs-png.github.io',
- 'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
- 'Access-Control-Allow-Methods':'POST, OPTIONS',
- 'Vary':'Origin'
-};
-const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{
- status,headers:{...cors,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}
-});
+const LEGACY_ORIGIN='https://santiagoleonlopezs-png.github.io';
+const NEW_ORIGIN='https://app.hacerlofc.com';
+const allowedOrigins=new Set([LEGACY_ORIGIN,NEW_ORIGIN]);
 Deno.serve(async(request:Request)=>{
+ const origin=request.headers.get('Origin')||'';
+ const trustedOrigin=allowedOrigins.has(origin)?origin:LEGACY_ORIGIN;
+ const cors={
+  'Access-Control-Allow-Origin':trustedOrigin,
+  'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods':'POST, OPTIONS',
+  'Vary':'Origin'
+ };
+ const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{
+  status,headers:{...cors,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}
+ });
  if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
  if(request.method!=='POST')return json({error:'Método no permitido'},405);
  const authorization=request.headers.get('Authorization')||'';
@@ -63,7 +68,7 @@ Deno.serve(async(request:Request)=>{
  let invited=false;
  if(!found){
   const {data,error}=await service.auth.admin.inviteUserByEmail(email,{
-    redirectTo:'https://santiagoleonlopezs-png.github.io/Hacerlo/',
+    redirectTo:origin===NEW_ORIGIN?NEW_ORIGIN+'/':LEGACY_ORIGIN+'/Hacerlo/',
     // Estas propiedades están disponibles en la plantilla de Auth como {{ .Data.organization_name }}.
     data:{organization_name:organizationName,role_label:roleLabel,invited_from:'HACERLO Admin'}
   });
