@@ -12,10 +12,10 @@ permissions:
   pages: write
   id-token: write
 
-# Evitar publicaciones simultaneas: una activa y la siguiente pendiente.
+# Publicar solo la version mas reciente: cancela despliegues obsoletos.
 concurrency:
   group: hacerlo-pages-produccion
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   publicar:
