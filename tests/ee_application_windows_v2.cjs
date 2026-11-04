@@ -1,4 +1,4 @@
-/* HACERLO: regresiones de programacion y banco Voces del Cambio. */
+/* HACERLO: regresiones de programacion y banco CNPS. */
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
