@@ -163,3 +163,124 @@ function eeChainGoMoment(moment){
  if(!found){eeFilter.wave=moment;render();return;}
  eeSelected=found.id;eeFilter.wave=eeChainWaves(found)[0]||'';eeTab='resultados';render();
 }
+
+
+/* Crear la próxima aplicación del mismo banco: nace vinculada, pero sin respuestas. */
+function eeChainNextMoment(x,s){
+ const stages=eeChainMembers(x,s).map(m=>eeChainNorm(eeChainMoment(m)));
+ const last=eeChainNorm(eeChainMoment(s));
+ const preferred=last==='antes'||last==='base'||last.startsWith('diagnostico')?'Durante':
+   last.startsWith('durante')?'Después':!stages.some(v=>v==='durante')?'Durante':
+   !stages.some(v=>v==='despues')?'Después':'Seguimiento '+(stages.length+1);
+ if(!stages.includes(eeChainNorm(preferred)))return preferred;
+ return 'Seguimiento '+(stages.length+1);
+}
+function eeChainCreateNext(){
+ const x=current(),s=eeSurvey();
+ if(!x||!s)return;
+ if(s.instrumentKey)return eeMsg('El instrumento de priorización conserva su propio seguimiento.',true);
+ if(!Array.isArray(s.questions)||!s.questions.length)return eeMsg('Define primero las preguntas del instrumento.',true);
+ const members=eeChainMembers(x,s),nextMoment=eeChainNextMoment(x,s);
+ const group=s.measurementGroupId||EE.uid();
+ const root=String(s.title||'Encuesta').replace(/\s*·\s*(Antes|Base|Durante|Después|Seguimiento \d+)$/i,'');
+ const title=(root+' · '+nextMoment).slice(0,160);
+ const newSurvey=structuredClone(s);
+ Object.assign(newSurvey,{
+  id:EE.uid(),title,previousSurveyId:s.id,familyId:s.familyId||s.id,
+  version:Number(s.version||1)+1,status:'draft',responses:[],
+  createdAt:EE.now(),updatedAt:EE.now(),measurementGroupId:group,
+  measurementMoment:nextMoment,measurementOrder:members.length+1,measurementDate:'',
+  wave:nextMoment==='Base'?'Antes':nextMoment,
+  waveMode:['Antes','Durante','Después'].includes(nextMoment)?nextMoment:'Antes',
+  applicationStart:null,applicationEnd:null
+ });
+ for(const prop of ['publication','syncedAt','metricLinks','importHistory','lastImportedAt',
+  'momentSettings','baselineMoment','momentHistory','questionBankHistory','titleHistory',
+  'lastIntegratedAt','importBatchId'])delete newSurvey[prop];
+ for(const [index,member] of members.entries()){
+  member.measurementGroupId=group;
+  member.measurementMoment ||=eeChainMoment(member);
+  member.measurementOrder ||=index+1;
+ }
+ EE.init(x).push(newSurvey);
+ eeSelected=newSurvey.id;eePickerOpen=false;eeTab='diseño';
+ eeFilter={wave:'',audienceId:''};eeImport=null;
+ save();render();eeMsg('Nueva medición vinculada a '+members.length+' anterior(es). Conserva preguntas y escalas, sin copiar respuestas.');
+ if(typeof eeVerifySave==='function')void eeVerifySave('Nueva medición vinculada',newSurvey.id);
+}
+function eeChainMetricSignature(q){
+ const scoring=q.optionScoring?.enabled?{
+  min:q.optionScoring.min,max:q.optionScoring.max,direction:q.optionScoring.direction||'higher',
+  values:(q.optionScoring.options||[]).map(o=>[eeChainNorm(o.option),o.value]).sort((a,b)=>a[0].localeCompare(b[0]))
+ }:null;
+ return JSON.stringify({
+  label:eeChainQuestionKey(q),type:q.type,dimension:eeChainNorm(q.dimension),
+  min:q.min??null,max:q.max??null,reverse:!!q.reverse,
+  correct:q.type==='knowledge'?eeChainNorm(q.correct):null,
+  options:q.type==='knowledge'?(q.options||[]).map(eeChainNorm).sort():null,
+  scoring
+ });
+}
+function eeChainComparableMetrics(x,s,audienceId=''){
+ const members=eeChainMembers(x,s),columns=members.map(survey=>{
+  const d=EE.detailed(survey,{audienceId}),numeric=new Map();
+  for(const q of survey.questions||[]){
+   const m=d.questions.find(row=>row.questionId===q.id);
+   if(!m?.unit||!['scale','nps','cnps','knowledge'].includes(q.type)&&!q.optionScoring?.enabled)continue;
+   const signature=eeChainMetricSignature(q);
+   if(numeric.has(signature))continue;
+   numeric.set(signature,{label:q.label,unit:m.unit,value:m.value??null,n:m.n||0});
+  }
+  return numeric;
+ });
+ const registry=new Map();
+ columns.forEach((column,i)=>column.forEach((metric,signature)=>{
+  if(!registry.has(signature))registry.set(signature,{signature,label:metric.label,unit:metric.unit,count:0});
+  registry.get(signature).count++;
+ }));
+ const rows=[...registry.values()].filter(item=>item.count>=2).map(item=>({
+  ...item,values:columns.map(column=>column.get(item.signature)||null)
+ }));
+ return {members,rows};
+}
+function eeChainExportComparison(){
+ const x=current(),s=eeSurvey(),report=eeChainComparableMetrics(x,s,eeFilter.audienceId);
+ const headers=['Pregunta comparable','Unidad',...report.members.map(m=>eeChainMoment(m))];
+ const lines=report.rows.map(row=>[row.label,row.unit,...row.values.map(v=>v?.value??'')]);
+ eeDownload('mediciones-vinculadas-'+s.id+'.csv',EE.csv([headers,...lines]),'text/csv;charset=utf-8');
+}
+function eeChainSelectSurvey(id){
+ const x=current(),s=EE.init(x).find(z=>z.id===id);if(!s)return;
+ eeSelected=s.id;eeFilter={wave:'',audienceId:eeFilter.audienceId};
+ eeTab='resultados';render();
+}
+function eeChainOverview(x,s){
+ const report=eeChainComparableMetrics(x,s,eeFilter.audienceId),members=report.members;
+ const list=members.map((survey,i)=>{
+  const count=(survey.responses||[]).filter(r=>!eeFilter.audienceId||String(r.audienceId)===String(eeFilter.audienceId)).length;
+  return '<article class="ee-chain-stage"><span class="ee-chain-step">'+(i+1)+'</span>'+
+   '<div><small>'+safe(eeChainMoment(survey))+(survey.measurementDate?' · '+safe(survey.measurementDate):'')+'</small>'+
+   '<strong>'+safe(survey.title)+'</strong><span>'+count+' '+(count===1?'respuesta':'respuestas')+'</span></div>'+
+   '<button class="secondary" type="button" onclick="eeChainSelectSurvey(\''+safe(survey.id)+'\')">Ver resultados</button></article>';
+ }).join('');
+ const linkedQuestionRows=report.rows.map(row=>'<tr><th scope="row">'+safe(row.label)+'<small>'+safe(row.unit)+'</small></th>'+
+  row.values.map(metric=>'<td>'+(metric?.value==null?'—':eeNumber(metric.value))+
+   '<small>n = '+(metric?.n||0)+'</small></td>').join('')+'</tr>').join('');
+ const count=report.rows.length;
+ const metrics=count?'<details class="ee-chain-questions" open><summary>Preguntas comparables · '+count+'</summary>'+
+   '<p class="muted">Solo se contrastan preguntas con el mismo texto, tipo, dirección, escala y puntuación. No se combinan resultados globales de instrumentos distintos.</p>'+
+   '<div style="overflow-x:auto"><table class="ee-evolution-table"><thead><tr><th>Pregunta</th>'+
+   members.map(m=>'<th>'+safe(eeChainMoment(m))+'</th>').join('')+
+   '</tr></thead><tbody>'+linkedQuestionRows+'</tbody></table></div></details>':
+   '<p class="notice">Las encuestas ya están conectadas, pero todavía no tienen preguntas cuantitativas equivalentes. Puedes seguir cada momento por separado; HACERLO no calculará una diferencia entre resultados distintos.</p>';
+ return '<section class="panel ee-evolution ee-chain-overview"><div class="flex" style="justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'+
+  '<div><h2>Así va tu medición</h2><p class="muted">'+members.length+' encuestas conectadas · '+
+  safe(eeChainMoment(members[0]))+' → '+safe(eeChainMoment(members.at(-1)))+'</p></div>'+
+  '<button class="primary" type="button" onclick="eeChainCreateNext()">＋ Crear siguiente medición</button></div>'+
+  eeChainPanel(x,s)+
+  '<label class="ee-chain-audience">Audiencia<select onchange="eeFilter.audienceId=this.value;render()">'+eeAudienceOptions(x,eeFilter.audienceId)+'</select></label>'+
+  '<h3>Secuencia de medición</h3><div class="ee-chain-timeline">'+list+'</div>'+
+  metrics+
+  (count?'<button class="secondary" type="button" onclick="eeChainExportComparison()">↓ Descargar preguntas comparables</button>':'')+
+  '<p class="muted">El vínculo es descriptivo. No implica seguimiento pareado de las mismas personas ni atribuye causalidad.</p></section>';
+}
