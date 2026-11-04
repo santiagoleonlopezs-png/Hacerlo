@@ -4,7 +4,15 @@ const EE_PUBLIC_KEY='sb_publishable_LK085bNiIRbeQ0uuMOozWw_jYrAiXuk';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let formDefinition,submitting=false;const token=new URLSearchParams(location.search).get('t'),root=document.getElementById('form-root');
 async function rpc(name,body){const res=await fetch(EE_PUBLIC_URL+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:EE_PUBLIC_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();if(!res.ok)throw Error(data.message||'No se pudo conectar.');return data;}
-function responseControl(q){let attr=`name="${esc(q.id)}" ${q.required?'required':''}`;if(q.type==='text')return `<textarea ${attr} maxlength="5000"></textarea>`;if(['choice','knowledge'].includes(q.type))return `<select ${attr}><option value="">Seleccionar</option>${EE.shuffleChoices(q).map(o=>`<option>${esc(o)}</option>`).join('')}</select>`;return `<input ${attr} type="number" min="${q.min}" max="${q.max}" step="${q.type==='scale'?'any':'1'}" placeholder="${q.min} a ${q.max}">`;}
+function responseControl(q){
+ const attrs='name="'+esc(q.id)+'" '+(q.required?'required':'');
+ if(q.type==='text')return '<textarea '+attrs+' maxlength="5000"></textarea>';
+ if(['choice','knowledge'].includes(q.type))
+  return '<div class="ee-choice-options" role="radiogroup" aria-label="'+esc(q.label)+'">'+
+   EE.shuffleChoices(q).map(o=>'<label class="ee-choice-option"><input type="radio" name="'+esc(q.id)+'" value="'+esc(o)+'" '+(q.required?'required':'')+'><span>'+esc(o)+'</span></label>').join('')+
+   '</div>';
+ return EE.scaleMarkup(q,esc);
+}
 
 function localPublicTime(value){
  if(!value)return '';
@@ -38,7 +46,7 @@ async function load(){
     '<p>Las respuestas se utilizarán para mejorar el acompañamiento al cambio. Evita incluir nombres o datos sensibles en tus relatos.</p>'+
     '<form id="response-form"><label>Código o alias (opcional)<input name="respondent" maxlength="100"></label>'+
     publicApplicationFields(s)+
-    s.questions.map(q=>'<label>'+esc(q.label)+(q.required?' *':'')+responseControl(q)+'</label>').join('')+
+    s.questions.map(q=>'<div class="ee-response-question"><p class="ee-response-question-label">'+esc(q.label)+(q.required?' <span aria-hidden="true">*</span>':'')+'</p>'+responseControl(q)+'</div>').join('')+
     '<label><input type="checkbox" required> Acepto enviar mis respuestas para el análisis de esta iniciativa.</label>'+
     '<button class="primary" id="submit-response">Enviar respuesta</button>'+
     '<p id="response-message" role="status"></p></form>';
