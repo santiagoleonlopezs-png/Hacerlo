@@ -34,7 +34,7 @@ const EE = (() => {
    for(const [d,labels] of Object.entries(groups))labels.forEach((l,j)=>q.push(scale(d.toLowerCase()+'_'+(j+1),l,d)));
    q.push({...scale('cnps','¿Qué tan dispuesto estás a apoyar esta iniciativa de cambio?','CNPS',0,10),type:'cnps'});
   }else if(kind==='CNPS'){
-   // Banco «Voces del Cambio»: las alternativas de P5, P6, P7 y P8
+   // Banco «CNPS»: las alternativas de P5, P6, P7 y P8
    // fueron suministradas por el usuario en capturas del instrumento original.
    const definitions=[
     {label:'Tengo claridad sobre qué está cambiando.',type:'scale'},
@@ -67,7 +67,7 @@ const EE = (() => {
    ];
    definitions.forEach((item,i)=>{
     const id='voces_'+String(i+1).padStart(2,'0');
-    const base={id,label:item.label,type:item.type,dimension:'Voces del Cambio',required:item.required!==false};
+    const base={id,label:item.label,type:item.type,dimension:'CNPS',required:item.required!==false};
     if(item.type==='choice'){
       base.options=[...item.options];
       if(item.scores)base.optionScoring={enabled:true,min:0,max:10,direction:'higher',
@@ -94,7 +94,7 @@ const EE = (() => {
   return values;
  }
  function init(x){x.surveys ||= [];return x.surveys;}
- function create(kind,title){return {id:uid(),kind,title,status:'draft',version:1,createdAt:now(),questions:template(kind),responses:[],audienceId:'',wave:'Base',period:'',description:'',instrumentNote:kind==='CNPS'?'Banco Voces del Cambio: 10 preguntas; opciones originales de las preguntas 5, 7 y 8. Las preguntas del banco no contienen una pregunta CNPS explícita, por lo que no se calcula un CNPS automáticamente.':'Plantilla de trabajo editable. No es un instrumento psicométrico validado.'};}
+ function create(kind,title){return {id:uid(),kind,title,status:'draft',version:1,createdAt:now(),questions:template(kind),responses:[],audienceId:'',wave:'Base',period:'',description:'',instrumentNote:kind==='CNPS'?'Instrumento CNPS de 10 preguntas. Las preguntas 5 y 7 tienen puntuación interna; las demás conservan sus escalas y opciones. No se calcula un índice CNPS automáticamente sin una pregunta específica de CNPS.':'Plantilla de trabajo editable. No es un instrumento psicométrico validado.'};}
  function validateQuestions(qs){
   if(!Array.isArray(qs)||!qs.length||qs.length>100)throw Error('Define entre 1 y 100 preguntas.');
   const ids=new Set();for(const q of qs){
