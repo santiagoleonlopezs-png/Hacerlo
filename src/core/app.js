@@ -87,7 +87,7 @@ async function requestPasswordRecovery(){
  if(!email){msg.textContent='Escribe primero tu correo.';return}
  msg.textContent='Enviando enlace…';
  const {error}=await sb.auth.resetPasswordForEmail(email,{
-  redirectTo:'https://santiagoleonlopezs-png.github.io/Hacerlo/'
+  redirectTo:new URL('.',location.href).href
  });
  msg.textContent=error?error.message:'Revisa tu correo. Abre el enlace y HACERLO te pedirá crear una nueva contraseña.';
 }
