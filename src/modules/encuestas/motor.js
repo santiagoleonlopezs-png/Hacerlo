@@ -8,10 +8,33 @@ const EE = (() => {
    const groups={Desgaste:['La carga de cambios supera el tiempo que tengo disponible.','Me siento agotado por las demandas del cambio.','Las iniciativas simultáneas dificultan mi trabajo.'],Preparación:['Comprendo qué cambia y por qué.','Sé cómo realizar las nuevas tareas.','Cuento con los recursos para aplicar el cambio.'],Apertura:['Estoy dispuesto a probar nuevas formas de trabajo.','Puedo expresar dudas sobre el cambio.','Veo oportunidades para aprender con este cambio.'],Experiencia:['Recibo acompañamiento cuando lo necesito.','Mis experiencias recientes con el cambio han sido favorables.','Las dificultades que reporto reciben atención.']};
    for(const [d,labels] of Object.entries(groups))labels.forEach((l,j)=>q.push(scale(d.toLowerCase()+'_'+(j+1),l,d)));
    q.push({...scale('cnps','¿Qué tan dispuesto estás a apoyar esta iniciativa de cambio?','CNPS',0,10),type:'cnps'});
-  }else if(kind==='NPS'||kind==='CNPS')q.push({...scale(kind.toLowerCase(),kind==='NPS'?'¿Qué tan probable es que recomiendes esta experiencia a otra persona?':'¿Qué tan dispuesto estás a apoyar esta iniciativa de cambio?',kind,0,10),type:kind.toLowerCase()});
+  }else if(kind==='CNPS'){
+   // Banco transcrito de «Voces del Cambio_ APP de Salones y Uso de Espacios(1-19).xlsx»,
+   // hoja Preguntas, filas 2–11. El archivo NO contiene opciones para P5/P7,
+   // ni identifica una pregunta de apoyo CNPS: no inferir equivalencias ni inventar datos.
+   const labels=[
+    'Tengo claridad sobre qué está cambiando.',
+    'Entiendo por qué se está impulsando este cambio ahora.',
+    'Tengo claridad sobre los comportamientos que se esperan de mí en este cambio.',
+    'Identifico qué va a cambiar en mi trabajo a partir de este cambio.',
+    'Hoy, frente a este cambio, me ubico más cerca de:',
+    'Este cambio compite con otras prioridades de mi día a día.',
+    'Con lo que hoy percibo de beneficios que trae este cambio, para mí:',
+    'Veo riesgos o costos personales asociados a este cambio.',
+    '¿En qué medida este espacio te ayudó a entender mejor el cambio y tu rol frente a él?',
+    'Opcional. Recomendaciones, preguntas para el espacio, reconocimiento o ¿Qué necesitarías para avanzar un paso más frente a este cambio?'
+   ];
+   labels.forEach((label,i)=>{
+    const id='voces_'+String(i+1).padStart(2,'0');
+    if(i===4||i===6)q.push({id,label,type:'choice',dimension:'Voces del Cambio',required:true,
+      options:['Completar opción 1','Completar opción 2'],missingChoiceOptions:true});
+    else if(i===9)q.push({id,label,type:'text',required:false,dimension:'Voces del Cambio'});
+    else q.push({id,label,type:'scale',dimension:'Voces del Cambio',min:0,max:10,required:true,reverse:[5,7].includes(i)});
+   });
+  }else if(kind==='NPS')q.push({...scale('nps','¿Qué tan probable es que recomiendes esta experiencia a otra persona?','NPS',0,10),type:'nps'});
   else if(kind==='Conocimiento')q.push({id:'conocimiento_1',label:'Edita esta pregunta y define la respuesta correcta antes de activar.',type:'knowledge',options:['Opción A','Opción B','Opción C'],correct:'Opción A',dimension:'Conocimiento',required:true});
   else q.push({id:'experiencia',label:'Cuéntanos una experiencia relacionada con esta iniciativa.',type:'text',required:true});
-  if(kind!=='Libre')q.push({id:'relato',label:'¿Qué experiencia explica tu respuesta? ¿Qué ayudaría a mejorar?',type:'text',required:false});
+  if(!['Libre','CNPS'].includes(kind))q.push({id:'relato',label:'¿Qué experiencia explica tu respuesta? ¿Qué ayudaría a mejorar?',type:'text',required:false});
   return q;
  }
  // Presentación sin valores numéricos; la puntuación queda asociada al texto.
@@ -26,7 +49,7 @@ const EE = (() => {
   return values;
  }
  function init(x){x.surveys ||= [];return x.surveys;}
- function create(kind,title){return {id:uid(),kind,title,status:'draft',version:1,createdAt:now(),questions:template(kind),responses:[],audienceId:'',wave:'Base',period:'',description:'',instrumentNote:'Plantilla de trabajo editable. No es un instrumento psicométrico validado.'};}
+ function create(kind,title){return {id:uid(),kind,title,status:'draft',version:1,createdAt:now(),questions:template(kind),responses:[],audienceId:'',wave:'Base',period:'',description:'',instrumentNote:kind==='CNPS'?'Banco de 10 preguntas transcrito de Voces del Cambio (Excel). Debes definir las alternativas de las preguntas 5 y 7. El archivo no incluye una pregunta CNPS explícita; no se calcula CNPS automáticamente.':'Plantilla de trabajo editable. No es un instrumento psicométrico validado.'};}
  function validateQuestions(qs){
   if(!Array.isArray(qs)||!qs.length||qs.length>100)throw Error('Define entre 1 y 100 preguntas.');
   const ids=new Set();for(const q of qs){
