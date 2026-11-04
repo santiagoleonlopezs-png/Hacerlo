@@ -34,27 +34,41 @@ const EE = (() => {
    for(const [d,labels] of Object.entries(groups))labels.forEach((l,j)=>q.push(scale(d.toLowerCase()+'_'+(j+1),l,d)));
    q.push({...scale('cnps','¿Qué tan dispuesto estás a apoyar esta iniciativa de cambio?','CNPS',0,10),type:'cnps'});
   }else if(kind==='CNPS'){
-   // Banco transcrito de «Voces del Cambio_ APP de Salones y Uso de Espacios(1-19).xlsx»,
-   // hoja Preguntas, filas 2–11. El archivo NO contiene opciones para P5/P7,
-   // ni identifica una pregunta de apoyo CNPS: no inferir equivalencias ni inventar datos.
-   const labels=[
-    'Tengo claridad sobre qué está cambiando.',
-    'Entiendo por qué se está impulsando este cambio ahora.',
-    'Tengo claridad sobre los comportamientos que se esperan de mí en este cambio.',
-    'Identifico qué va a cambiar en mi trabajo a partir de este cambio.',
-    'Hoy, frente a este cambio, me ubico más cerca de:',
-    'Este cambio compite con otras prioridades de mi día a día.',
-    'Con lo que hoy percibo de beneficios que trae este cambio, para mí:',
-    'Veo riesgos o costos personales asociados a este cambio.',
-    '¿En qué medida este espacio te ayudó a entender mejor el cambio y tu rol frente a él?',
-    'Opcional. Recomendaciones, preguntas para el espacio, reconocimiento o ¿Qué necesitarías para avanzar un paso más frente a este cambio?'
+   // Banco «Voces del Cambio»: las alternativas de P5, P7 y P8
+   // fueron suministradas por el usuario en capturas del instrumento original.
+   const definitions=[
+    {label:'Tengo claridad sobre qué está cambiando.',type:'scale'},
+    {label:'Entiendo por qué se está impulsando este cambio ahora.',type:'scale'},
+    {label:'Tengo claridad sobre los comportamientos que se esperan de mí en este cambio.',type:'scale'},
+    {label:'Identifico qué va a cambiar en mi trabajo a partir de este cambio.',type:'scale'},
+    {label:'Hoy, frente a este cambio, me ubico más cerca de:',type:'choice',options:[
+      'Estoy en pausa: hoy tengo otras prioridades más urgentes',
+      'Estoy explorando: necesito entender mejor antes de involucrarme',
+      'Estoy abierto(a): tengo disposición, aunque aún tengo dudas',
+      'Estoy involucrado(a): ya he empezado a moverme frente al cambio'
+    ]},
+    {label:'Este cambio compite con otras prioridades de mi día a día.',type:'scale',reverse:true},
+    {label:'Con lo que hoy percibo de beneficios que trae este cambio, para mí:',type:'choice',options:[
+      'No justifica dedicarle tiempo o esfuerzo adicional',
+      'Podría justificarlo, pero aún no es suficiente',
+      'Justifica dedicarle tiempo y esfuerzo desde mi rol',
+      'Justifica claramente dedicarle tiempo o esfuerzo adicional'
+    ]},
+    {label:'Percibo riesgos o costos personales asociados a este cambio.',type:'choice',options:[
+      'Percibo muchos riesgos o costos personales',
+      'Percibo algunos riesgos o costos personales',
+      'Percibo muy pocos riesgos o costos personales',
+      'No percibo riesgos o costos personales'
+    ]},
+    {label:'¿En qué medida este espacio te ayudó a entender mejor el cambio y tu rol frente a él?',type:'scale'},
+    {label:'Opcional. Recomendaciones, preguntas para el espacio, reconocimiento o ¿Qué necesitarías para avanzar un paso más frente a este cambio?',type:'text',required:false}
    ];
-   labels.forEach((label,i)=>{
+   definitions.forEach((item,i)=>{
     const id='voces_'+String(i+1).padStart(2,'0');
-    if(i===4||i===6)q.push({id,label,type:'choice',dimension:'Voces del Cambio',required:true,
-      options:['Completar opción 1','Completar opción 2'],missingChoiceOptions:true});
-    else if(i===9)q.push({id,label,type:'text',required:false,dimension:'Voces del Cambio'});
-    else q.push({id,label,type:'scale',dimension:'Voces del Cambio',min:0,max:10,required:true,reverse:[5,7].includes(i)});
+    const base={id,label:item.label,type:item.type,dimension:'Voces del Cambio',required:item.required!==false};
+    if(item.type==='choice')base.options=[...item.options];
+    if(item.type==='scale')Object.assign(base,{min:0,max:10,reverse:item.reverse===true});
+    q.push(base);
    });
   }else if(kind==='NPS')q.push({...scale('nps','¿Qué tan probable es que recomiendes esta experiencia a otra persona?','NPS',0,10),type:'nps'});
   else if(kind==='Conocimiento')q.push({id:'conocimiento_1',label:'Edita esta pregunta y define la respuesta correcta antes de activar.',type:'knowledge',options:['Opción A','Opción B','Opción C'],correct:'Opción A',dimension:'Conocimiento',required:true});
@@ -74,7 +88,7 @@ const EE = (() => {
   return values;
  }
  function init(x){x.surveys ||= [];return x.surveys;}
- function create(kind,title){return {id:uid(),kind,title,status:'draft',version:1,createdAt:now(),questions:template(kind),responses:[],audienceId:'',wave:'Base',period:'',description:'',instrumentNote:kind==='CNPS'?'Banco de 10 preguntas transcrito de Voces del Cambio (Excel). Debes definir las alternativas de las preguntas 5 y 7. El archivo no incluye una pregunta CNPS explícita; no se calcula CNPS automáticamente.':'Plantilla de trabajo editable. No es un instrumento psicométrico validado.'};}
+ function create(kind,title){return {id:uid(),kind,title,status:'draft',version:1,createdAt:now(),questions:template(kind),responses:[],audienceId:'',wave:'Base',period:'',description:'',instrumentNote:kind==='CNPS'?'Banco Voces del Cambio: 10 preguntas; opciones originales de las preguntas 5, 7 y 8. Las preguntas del banco no contienen una pregunta CNPS explícita, por lo que no se calcula un CNPS automáticamente.':'Plantilla de trabajo editable. No es un instrumento psicométrico validado.'};}
  function validateQuestions(qs){
   if(!Array.isArray(qs)||!qs.length||qs.length>100)throw Error('Define entre 1 y 100 preguntas.');
   const ids=new Set();for(const q of qs){
