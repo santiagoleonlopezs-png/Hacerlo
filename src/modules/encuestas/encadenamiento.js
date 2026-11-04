@@ -26,12 +26,20 @@ function eeChainSignature(s){
 function eeChainIssue(a,b){
  if(!a||!b||a.id===b.id)return 'Elige otra encuesta.';
  if(a.instrumentKey||b.instrumentKey)return 'El instrumento de priorización se analiza por separado.';
- if(!a.responses?.length||!b.responses?.length)return 'Ambas encuestas deben tener respuestas.';
- if(new Set((a.questions||[]).map(eeChainQuestionKey)).size!==a.questions?.length||new Set((b.questions||[]).map(eeChainQuestionKey)).size!==b.questions?.length)return 'Hay preguntas con textos repetidos; no es seguro hacer la correspondencia.';
- if(eeChainWaves(a).length!==1||eeChainWaves(b).length!==1)return 'Utiliza encuestas con un solo momento cada una; las olas internas ya se comparan por separado.';
- if(eeChainSignature(a)!==eeChainSignature(b))return 'Las preguntas, dimensiones, tipos o escalas no coinciden.';
- if(JSON.stringify(a.compositionConfig||{})!==JSON.stringify(b.compositionConfig||{}))return 'La configuración del índice global es diferente.';
  return '';
+}
+function eeChainStrictCompatibility(a,b){
+ return !eeChainIssue(a,b)
+  && a.responses?.length>0 && b.responses?.length>0
+  && eeChainWaves(a).length===1 && eeChainWaves(b).length===1
+  && new Set((a.questions||[]).map(eeChainQuestionKey)).size===a.questions?.length
+  && new Set((b.questions||[]).map(eeChainQuestionKey)).size===b.questions?.length
+  && eeChainSignature(a)===eeChainSignature(b)
+  && JSON.stringify(a.compositionConfig||{})===JSON.stringify(b.compositionConfig||{});
+}
+function eeChainFullCompatible(x,s){
+ const members=eeChainMembers(x,s);
+ return members.length>1&&members.every(m=>eeChainStrictCompatibility(members[0],m));
 }
 function eeChainMembers(x,s){
  const all=EE.init(x);
@@ -47,7 +55,10 @@ function eeChainMembers(x,s){
 function eeChainConnected(x,s){return eeChainMembers(x,s).length>1;}
 function eeChainInvalid(x,s){
  const members=eeChainMembers(x,s);
- return members.length<2?'':members.slice(1).map(m=>eeChainIssue(members[0],m)).find(Boolean)||'';
+ if(members.length<2)return '';
+ const names=members.map(m=>eeChainNorm(eeChainMoment(m)));
+ if(new Set(names).size!==names.length)return 'Dos encuestas tienen el mismo momento. Edita sus etiquetas para distinguirlas.';
+ return members.slice(1).map(m=>eeChainIssue(members[0],m)).find(Boolean)||'';
 }
 function eeChainLink(x,s,otherId,firstMoment,secondMoment){
  const other=EE.init(x).find(z=>z.id===otherId);
@@ -73,7 +84,7 @@ function eeChainUnlink(x,s,id){
 }
 function eeChainEvolution(x,s,audienceId=''){
  const members=eeChainMembers(x,s);
- if(members.length<2||eeChainInvalid(x,s))return EE.evolution(s,audienceId);
+ if(members.length<2||eeChainInvalid(x,s)||!eeChainFullCompatible(x,s))return EE.evolution(s,audienceId);
  const master=members[0],canonical=new Map(master.questions.map(q=>[eeChainQuestionKey(q),q.id]));
  const rows=members.flatMap(source=>(source.responses||[]).map(r=>{
   const answers={};
@@ -95,7 +106,7 @@ function eeChainPanel(x,s){
  const others=EE.init(x).filter(z=>z.id!==s.id);
  const options=others.map(z=>{
   const reason=eeChainIssue(s,z)||(z.measurementGroupId?'Ya conectada a un seguimiento.':'');
-  return '<option value="'+safe(z.id)+'"'+(reason?' disabled':'')+'>'+safe(z.title)+' · '+safe(eeChainMoment(z))+(reason?' · No compatible':'')+'</option>';
+  return '<option value="'+safe(z.id)+'"'+(reason?' disabled':'')+'>'+safe(z.title)+' · '+safe(eeChainMoment(z))+(reason?' · '+safe(reason):eeChainStrictCompatibility(s,z)?' · Escalas equivalentes':' · Revisión por resultados')+'</option>';
  }).join('');
  const usable=others.filter(z=>!eeChainIssue(s,z)&&!z.measurementGroupId);
  const rows=linked?'<form onsubmit="eeChainSave(event)"><div class="ee-chain-list">'+members.map((z,i)=>
@@ -106,7 +117,7 @@ function eeChainPanel(x,s){
   '<button class="secondary" type="button" onclick="eeChainRemove(\''+safe(z.id)+'\')" aria-label="Desvincular '+safe(z.title)+'">Quitar</button></div>'
  ).join('')+'</div><button class="secondary" type="submit">Guardar momentos y orden</button></form>':'';
  return '<details class="ee-chain"'+(linked?' open':'')+'><summary>↗ Conectar encuestas para comparar momentos'+(linked?' · '+members.length+' vinculadas':'')+'</summary>'+
-  '<p class="muted">Elige encuestas de esta iniciativa que midan las mismas preguntas y escalas. Así podrás conectar Base, Durante y Después sin mover ni duplicar respuestas.</p>'+
+  '<p class="muted">Conecta encuestas de esta iniciativa aunque sus preguntas sean diferentes. HACERLO mostrará la secuencia de momentos y solo calculará diferencias en los resultados verdaderamente comparables.</p>'+
   (invalid?'<p class="notice">Comparación pausada: '+safe(invalid)+'</p>':'')+rows+
   (usable.length?'<form class="ee-chain-add" onsubmit="eeChainAdd(event)">'+
    '<label>Esta encuesta corresponde a<input name="firstMoment" value="'+safe(eeChainMoment(s))+'" required maxlength="80" list="ee-chain-stages"></label>'+
@@ -114,8 +125,8 @@ function eeChainPanel(x,s){
    '<label>Momento de la otra encuesta<input name="otherMoment" value="" required maxlength="80" list="ee-chain-stages" placeholder="Ej. Base, Durante o Después"></label>'+
    '<datalist id="ee-chain-stages"><option value="Base"><option value="Durante"><option value="Después"></datalist>'+
    '<button class="primary" type="submit">Conectar encuesta</button></form>':
-   '<p class="muted">No hay otras encuestas compatibles disponibles. Solo se pueden encadenar instrumentos con respuestas y preguntas equivalentes.</p>')+
-  '<p class="ee-chain-note">La comparación es descriptiva y no demuestra causalidad. Las encuestas y sus respuestas permanecen independientes.</p></details>';
+   '<p class="muted">No hay otras encuestas disponibles para conectar. Puedes crear la siguiente medición desde la encuesta actual.</p>')+
+  '<p class="ee-chain-note">El vínculo organiza una misma historia de medición. Si las preguntas no coinciden, cada encuesta conserva sus resultados y no se calculan cambios artificiales. Ningún vínculo demuestra causalidad.</p></details>';
 }
 function eeChainAdd(event){
  event.preventDefault();const x=current(),s=eeSurvey();if(!x||!s)return;
