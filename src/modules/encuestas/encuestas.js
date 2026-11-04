@@ -427,10 +427,64 @@ function eeShowQuestionResult(id){$('ee-question-result').innerHTML=eeOneQuestio
 function eeDistributionSelector(s){return `<details class="ee-detail"><summary>Distribución por pregunta</summary><label>Elige una pregunta<select onchange="eeShowDistribution(this.value)"><option value="">Selecciona una pregunta</option>${s.questions.map(q=>`<option value="${safe(q.id)}">${safe(q.label)}</option>`).join('')}</select></label><div id="ee-distribution-result"><p class="muted">Elige una pregunta para ver sus respuestas.</p></div></details>`;}
 function eeShowDistribution(id){$('ee-distribution-result').innerHTML=eeOneQuestion(eeSurvey(),id,true);}
 function eeTextSummary(s,filter=eeFilter){const normalize=v=>String(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(),shortAnswers=new Set(['si','no','ninguno','ninguna','nada','na','n/a','no aplica','sin comentarios','ninguna observacion','sin observaciones','ok','bien']),stop=new Set('a al algo alguna algunas algunos ante antes asi aun aunque bajo cada casi como con contra cual cuando de del desde donde durante e el ella ellas ellos en entre era es esa esas ese eso esos esta estaba estaban estar estas este esto estos fue fuera fueron ha habia hacia han hasta hay hice la las le les lo los mas me mi mis misma mismo muy ni no nos nosotros nuestra nuestro o otra otras otro otros para pero por porque pues que quien se sea ser si sido sin sobre son su sus tal tambien tan te tengo tener tiene tienen toda todas todo todos tras tu tus un una unas uno unos usted ustedes va vamos vez ya yo plataforma herramienta conectados crecer experiencia proceso'.split(' '));const entries=[],closed=new Map();s.responses.forEach((r,index)=>{if(filter.wave&&(r.wave||'Base')!==filter.wave||filter.audienceId&&String(r.audienceId)!==String(filter.audienceId))return;for(const q of s.questions.filter(q=>q.type==='text'||q.type==='choice'&&q.optionScoring?.enabled)){const text=String(r.answers[q.id]??'').trim();if(!text||EE.optionScore(q,text)!==null)continue;const n=normalize(text);if(shortAnswers.has(n)){closed.set(n,(closed.get(n)||0)+1);continue;}entries.push({responseId:r.id,responseIndex:index,questionId:q.id,question:q.label,text,wave:r.wave||'Base',respondent:r.respondent||''});}});const counts=new Map();entries.forEach(entry=>{const words=new Set(normalize(entry.text).match(/[a-zñ]{3,}/g)||[]);for(const word of words)if(!stop.has(word))counts.set(word,(counts.get(word)||0)+1);});return {entries,closed:[...closed].map(([label,count])=>({label,count})),words:[...counts].map(([word,count])=>({word,count})).sort((a,b)=>b.count-a.count||a.word.localeCompare(b.word)).slice(0,24),people:new Set(entries.map(e=>e.responseIndex)).size};}
-function eeCommentsDashboard(s){const t=eeTextSummary(s),max=t.words[0]?.count||1,participants=s.responses.map((r,i)=>({r,i})).filter(({r})=>(!eeFilter.wave||(r.wave||'Base')===eeFilter.wave)&&(!eeFilter.audienceId||String(r.audienceId)===String(eeFilter.audienceId))&&s.questions.some(q=>q.type==='text'&&String(r.answers[q.id]??'').trim()));return `<section class="panel ee-comments-board"><h3>Lo que cuentan las personas</h3><p class="muted">${t.entries.length} comentarios · ${t.people} participantes con comentarios.</p><div class="ee-word-cloud">${t.words.map(({word,count})=>`<span style="font-size:${14+Math.round(16*count/max)}px" title="Aparece en ${count} comentarios">${safe(word)} <small>${count}</small></span>`).join('')||'<p class="muted">Todavía no hay suficientes palabras para un resumen.</p>'}</div><small class="muted">El número indica en cuántos comentarios aparece la palabra.</small>${t.closed.length?`<details><summary>Respuestas cortas · ${t.closed.reduce((sum,v)=>sum+v.count,0)}</summary><div class="ee-short-answers">${t.closed.map(v=>`<span>${safe(v.label)}: <b>${v.count}</b></span>`).join('')}</div></details>`:''}<details class="ee-detail"><summary>Ver comentarios en detalle</summary><div class="grid"><label>Pregunta<select id="ee-comment-question" onchange="eeUpdateCommentDetail(true)"><option value="">Todas las preguntas</option>${s.questions.filter(q=>q.type==='text').map(q=>`<option value="${safe(q.id)}">${safe(q.label)}</option>`).join('')}</select></label><label>Participante / respuesta<select id="ee-comment-person" onchange="eeUpdateCommentDetail(true)"><option value="">Selecciona un participante o una pregunta</option>${participants.map(({r,i})=>`<option value="${i}">${safe(r.respondent?'Código '+r.respondent:'Respuesta '+(i+1))} · ${safe(r.wave||'Base')}</option>`).join('')}</select></label></div><div id="ee-comment-detail" data-page="0"><p class="muted">Selecciona una pregunta o participante para consultar el detalle.</p></div></details></section>`;}
-function eeCommentDetail(s,questionId,personIndex,page=0){if(!questionId&&personIndex==='')return '<p class="muted">Selecciona una pregunta o participante.</p>';const list=[];s.responses.forEach((r,i)=>{if(personIndex!==''&&i!==Number(personIndex)||eeFilter.wave&&(r.wave||'Base')!==eeFilter.wave||eeFilter.audienceId&&String(r.audienceId)!==String(eeFilter.audienceId))return;for(const q of s.questions){if(q.type!=='text'||questionId&&q.id!==questionId)continue;const text=String(r.answers[q.id]??'').trim();if(text)list.push({text,question:q.label,person:r.respondent?'Código '+r.respondent:'Respuesta '+(i+1),wave:r.wave||'Base'});}});const pages=Math.max(1,Math.ceil(list.length/5)),currentPage=Math.max(0,Math.min(page,pages-1));return `<p class="muted">${list.length} comentarios · página ${currentPage+1} de ${pages}</p>${list.slice(currentPage*5,currentPage*5+5).map(e=>`<article class="ee-question"><small>${safe(e.person)} · ${safe(e.wave)}</small><b>${safe(e.question)}</b><p>${safe(e.text)}</p></article>`).join('')||'<p>Sin comentarios para esta selección.</p>'}<div class="flex"><button class="secondary" ${currentPage===0?'disabled':''} onclick="eeCommentPage(${currentPage-1})">Anterior</button><button class="secondary" ${currentPage===pages-1?'disabled':''} onclick="eeCommentPage(${currentPage+1})">Siguiente</button></div>`;}
-function eeUpdateCommentDetail(reset=false){const target=$('ee-comment-detail');if(!target)return;const page=reset?0:Number(target.dataset.page||0);target.dataset.page=String(page);target.innerHTML=eeCommentDetail(eeSurvey(),$('ee-comment-question').value,$('ee-comment-person').value,page);}
-function eeCommentPage(page){const target=$('ee-comment-detail');target.dataset.page=String(page);eeUpdateCommentDetail();}
+function eeCommentsDashboard(s){const t=eeTextSummary(s),max=t.words[0]?.count||1,participants=s.responses.map((r,i)=>({r,i})).filter(({r})=>(!eeFilter.wave||(r.wave||'Base')===eeFilter.wave)&&(!eeFilter.audienceId||String(r.audienceId)===String(eeFilter.audienceId))&&s.questions.some(q=>q.type==='text'&&String(r.answers[q.id]??'').trim()));return `<section class="panel ee-comments-board"><h3>Lo que cuentan las personas</h3><p class="muted">${t.entries.length} comentarios · ${t.people} participantes con comentarios.</p><div class="ee-word-cloud">${t.words.map(({word,count})=>`<span style="font-size:${14+Math.round(16*count/max)}px" title="Aparece en ${count} comentarios">${safe(word)} <small>${count}</small></span>`).join('')||'<p class="muted">Todavía no hay suficientes palabras para un resumen.</p>'}</div><small class="muted">El número indica en cuántos comentarios aparece la palabra.</small>${t.closed.length?`<details><summary>Respuestas cortas · ${t.closed.reduce((sum,v)=>sum+v.count,0)}</summary><div class="ee-short-answers">${t.closed.map(v=>`<span>${safe(v.label)}: <b>${v.count}</b></span>`).join('')}</div></details>`:''}<details class="ee-detail ee-comment-accordion" ontoggle="if(this.open && $('ee-comment-detail')?.dataset.visible==='0')eeUpdateCommentDetail(true)"><summary>Ver comentarios en detalle</summary><div class="grid"><label>Pregunta<select id="ee-comment-question" onchange="eeUpdateCommentDetail(true)"><option value="">Todas las preguntas</option>${s.questions.filter(q=>q.type==='text').map(q=>`<option value="${safe(q.id)}">${safe(q.label)}</option>`).join('')}</select></label><label>Participante / respuesta<select id="ee-comment-person" onchange="eeUpdateCommentDetail(true)"><option value="">Selecciona un participante o una pregunta</option>${participants.map(({r,i})=>`<option value="${i}">${safe(r.respondent?'Código '+r.respondent:'Respuesta '+(i+1))} · ${safe(r.wave||'Base')}</option>`).join('')}</select></label></div><div id="ee-comment-detail" data-visible="0"><p class="muted">Abre el detalle para ver los comentarios de la encuesta.</p></div></details></section>`;}
+function eeCommentEntries(s,questionId='',personIndex=''){
+ const entries=[];
+ // Las respuestas se agregan a s.responses según llegan; conservar ese orden
+ // permite que los comentarios recientes aparezcan debajo de los anteriores.
+ s.responses.forEach((r,i)=>{
+  if(personIndex!==''&&i!==Number(personIndex))return;
+  if(eeFilter.wave&&(r.wave||'Base')!==eeFilter.wave||
+   eeFilter.audienceId&&String(r.audienceId)!==String(eeFilter.audienceId))return;
+  for(const q of s.questions){
+   if(q.type!=='text'||questionId&&q.id!==questionId)continue;
+   const value=String(r.answers?.[q.id]??'').trim();
+   if(!value)continue;
+   entries.push({text:value,question:q.label,
+    person:r.respondent?'Código '+r.respondent:'Respuesta '+(i+1),
+    wave:r.wave||'Base'});
+  }
+ });
+ return entries;
+}
+function eeCommentCard(entry){
+ return '<article class="ee-question ee-comment-card"><small>'+safe(entry.person)+' · '+safe(entry.wave)+'</small>'+
+  '<b>'+safe(entry.question)+'</b><p>'+safe(entry.text)+'</p></article>';
+}
+function eeCommentDetail(s,questionId='',personIndex='',visible=5){
+ const entries=eeCommentEntries(s,questionId,personIndex);
+ const shown=Math.min(entries.length,Math.max(5,Number(visible)||5));
+ const remaining=entries.length-shown;
+ return '<p class="muted ee-comment-progress" id="ee-comment-progress" role="status" aria-live="polite">'+
+  (entries.length?'Mostrando '+shown+' de '+entries.length+' comentarios · del más antiguo al más reciente':'No hay comentarios para esta selección.')+'</p>'+
+  '<div id="ee-comment-list" class="ee-comment-list">'+entries.slice(0,shown).map(eeCommentCard).join('')+'</div>'+
+  '<div class="ee-comment-more-actions"><button type="button" class="secondary" id="ee-comment-more"'+
+  (remaining?'':' hidden')+' onclick="eeCommentMore()">Ver '+Math.min(5,remaining)+' comentarios más ↓</button></div>';
+}
+function eeUpdateCommentDetail(reset=false){
+ const target=$('ee-comment-detail');if(!target)return;
+ const count=reset?5:Math.max(5,Number(target.dataset.visible)||5);
+ const entries=eeCommentEntries(eeSurvey(),$('ee-comment-question').value,$('ee-comment-person').value);
+ target.dataset.visible=String(Math.min(entries.length,count));
+ target.innerHTML=eeCommentDetail(eeSurvey(),$('ee-comment-question').value,$('ee-comment-person').value,count);
+}
+function eeCommentMore(){
+ const target=$('ee-comment-detail'),list=$('ee-comment-list');
+ if(!target||!list)return;
+ const entries=eeCommentEntries(eeSurvey(),$('ee-comment-question').value,$('ee-comment-person').value);
+ const previous=Math.min(entries.length,Math.max(0,Number(target.dataset.visible)||0));
+ const next=Math.min(entries.length,previous+5);
+ if(next===previous)return;
+ // Añadir al final del listado existente, sin reemplazar tarjetas ni desplazar al inicio.
+ list.insertAdjacentHTML('beforeend',entries.slice(previous,next).map(eeCommentCard).join(''));
+ target.dataset.visible=String(next);
+ $('ee-comment-progress').textContent='Mostrando '+next+' de '+entries.length+' comentarios · del más antiguo al más reciente';
+ const more=$('ee-comment-more');
+ if(more){
+  more.hidden=next>=entries.length;
+  if(!more.hidden)more.textContent='Ver '+Math.min(5,entries.length-next)+' comentarios más ↓';
+ }
+}
 
 function eeOptionScoringPanel(s){return `<section class="panel"><details><summary><b>Valores por opción</b></summary><p class="muted">Asigna un número a cada respuesta. También puedes hacerlo después de importar.</p><label>Pregunta<select onchange="eeShowOptionScoring(this.value)"><option value="">Selecciona una pregunta</option>${s.questions.filter(q=>['text','choice'].includes(q.type)).map(q=>`<option value="${safe(q.id)}">${safe(q.label)}${q.optionScoring?.enabled?' · Con valores':''}</option>`).join('')}</select></label><div id="ee-option-scoring"></div></details></section>`;}
 function eeScoreOptionRow(option='',value=''){return `<div class="grid" data-option-score><label>Opción<input data-option-text value="${safe(option)}" maxlength="5000"></label><label>Valor<input data-option-value type="number" step="any" value="${value}"></label><button type="button" class="secondary" onclick="this.closest('[data-option-score]').remove()">Quitar opción</button></div>`;}
