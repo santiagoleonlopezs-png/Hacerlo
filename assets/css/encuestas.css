@@ -146,3 +146,26 @@
 .ee-scale-ends{display:flex;justify-content:space-between;gap:12px;color:#a9c4d2;font-size:12px;margin-top:8px}
 .ee-scale-ends span:last-child{text-align:right}
 @media(max-width:580px){.ee-scale-options{grid-template-columns:repeat(var(--ee-scale-count,11),minmax(0,1fr))}.ee-scale-option span{font-size:12px;min-height:43px}.ee-response-question{margin:17px 0 22px}.ee-choice-option{padding:12px}}
+
+/* Aplicación sin carga al respondiente: anonimato, enlaces segmentados y captura del facilitador. */
+.ee-app-identity{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:15px 0 0}
+.ee-app-identity label{font-size:12px;color:#c5d7e4}
+.ee-app-identity input,.ee-app-identity select{width:100%;margin-top:6px}
+.ee-app-identity [data-ee-identity-field][hidden]{display:none!important}
+.ee-share-panel{padding:20px}
+.ee-share-panel .ee-share-footnote{font-size:12px;line-height:1.6;margin-top:14px}
+.ee-share-group{padding:12px 14px;border:1px solid #2e536a;border-radius:12px;margin:12px 0;background:#092638}
+.ee-share-group>summary{font-size:13px;color:#d9e6ef;font-weight:700}
+.ee-share-link{display:grid;grid-template-columns:minmax(65px,auto) minmax(0,1fr) auto auto;gap:8px;align-items:center;padding-top:12px;min-width:0}
+.ee-share-link span{font-size:12px;color:#b9cdd9}
+.ee-share-link input{width:100%;min-width:0;margin:0}
+.ee-share-link button,.ee-share-link a{margin:0;padding:10px 13px;font-size:12px;white-space:nowrap;text-decoration:none;border-radius:9px}
+.ee-share-link a{border:1px solid #40647a;color:#dceaf5}
+.ee-internal-scope{border:1px solid #32556d;border-radius:10px;padding:13px 15px;margin-bottom:19px;background:#092638}
+.ee-internal-scope summary{font-size:13px;color:#b9d7e5;font-weight:700}
+.ee-internal-scope .ee-response-meta{margin-top:12px}
+.ee-response-scope{color:#abc7d5;font-size:12px;margin-bottom:16px}
+.ee-internal-identity{display:block;max-width:520px;margin:12px 0 19px}
+.ee-internal-identity input{display:block;width:100%;margin-top:7px}
+@media(max-width:850px){.ee-share-link{grid-template-columns:1fr auto auto}.ee-share-link span{grid-column:1/-1}}
+@media(max-width:570px){.ee-app-identity{grid-template-columns:1fr}.ee-share-link{grid-template-columns:1fr 1fr}.ee-share-link input{grid-column:1/-1}.ee-share-link span{grid-column:1/-1}.ee-share-link button,.ee-share-link a{text-align:center}}
