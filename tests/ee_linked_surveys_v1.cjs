@@ -102,6 +102,7 @@ assert.match(f.eeChainOverview(x,during),/↑ \+50/);
    desde el formulario real, sin modificar respuestas originales. */
 ctx.FormData=class {constructor(form){this.values=form.values;}get(k){return this.values[k]??null;}};
 vm.runInContext('eeSelected='+JSON.stringify(during.id),ctx);
+vm.runInContext('eeVerifySave = async ()=>true',ctx);
 const mapAction=vm.runInContext('eeLinkedSaveQuestionMap',ctx);
 const entriesBefore=x.measurementQuestionLinks.length;
 const mapEvent={preventDefault(){},target:{values:{
