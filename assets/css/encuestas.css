@@ -474,3 +474,8 @@
 .ee-original-survey-heading{border-top:0;padding-top:0}
 .ee-linked-auto-label{font-size:11px;color:#b1ccd8;margin:0}
 @media(max-width:620px){.ee-linked-primary{padding:15px 13px;margin-bottom:20px}.ee-linked-primary-heading h3{font-size:16px}.ee-linked-primary-metrics{grid-template-columns:minmax(0,1fr)}}
+
+/* Correspondencias: respuesta junto al botón, sin obligar a buscar errores en la cabecera. */
+.ee-linked-form-feedback{font-size:12px;line-height:1.45;margin:8px 0 0;padding:10px 12px;border-radius:8px;border:1px solid #44756f;color:#caefe6;background:#123c3e}
+.ee-linked-form-feedback.is-error{border-color:#8b5655;color:#f3c1b8;background:#38282c}
+.ee-linked-form-feedback[hidden]{display:none!important}
