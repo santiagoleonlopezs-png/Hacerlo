@@ -448,3 +448,6 @@
 .ee-linked-mapping[open]>summary{margin-bottom:8px}
 @media(max-width:1000px){.ee-chain-manage .ee-chain-line{grid-template-columns:repeat(2,minmax(0,1fr))}.ee-chain-stage>.ee-chain-stage-actions{flex-direction:column;align-items:stretch}}
 @media(max-width:620px){.ee-chain-stage>.ee-chain-stage-actions{width:100%;flex-direction:row;flex-wrap:wrap}.ee-chain-manage .ee-chain-line{grid-template-columns:minmax(0,1fr)}.ee-chain-actionbar{align-items:flex-start}.ee-chain-actionbar>button{max-width:100%}}
+
+/* Explicación breve cuando se conectan seguimientos existentes. */
+.ee-chain-merge-hint{font-size:11px;color:#a9c6d4;line-height:1.5;margin:10px 13px 0}
