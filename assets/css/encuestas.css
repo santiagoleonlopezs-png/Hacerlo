@@ -423,3 +423,11 @@
 .ee-analysis-save small{font-size:11px;line-height:1.4;color:#a9c3cf}
 .ee-analysis-save button{margin:0;font-size:12px;padding:7px 13px}
 @media(max-width:600px){.ee-analysis-audiences-mini>summary{gap:8px;padding:7px 10px}.ee-analysis-save{align-items:flex-start;flex-direction:column;gap:9px}}
+
+/* Categoría editable como control compacto, junto al instrumento seleccionado. */
+.ee-toolbar-kind{flex:0 0 150px;min-width:120px;margin:0!important;display:flex!important;flex-direction:column;gap:7px;color:#a9c9d7;font-size:12px;font-weight:650}
+.ee-toolbar-kind>span{display:block}
+.ee-toolbar-kind>select{width:100%;min-height:41px;max-width:160px;margin:0;padding:8px 10px;border:1px solid #39697c;border-radius:9px;background:#0a293b;color:#e8f3f7;font-size:12px;cursor:pointer}
+.ee-toolbar-kind>select:focus-visible{outline:2px solid #73e6d2;outline-offset:2px}
+.ee-toolbar-kind>select:disabled{opacity:.65;cursor:not-allowed}
+@media(max-width:600px){.ee-toolbar-kind{flex:0 1 150px;min-width:125px}.ee-toolbar-kind>select{max-width:100%}}
