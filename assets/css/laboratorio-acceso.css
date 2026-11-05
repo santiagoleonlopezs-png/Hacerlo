@@ -1,0 +1,22 @@
+/* Acceso al Laboratorio de Aprendizaje y Decisión: plataforma externa e independiente. */
+.hcx-lab-hero{--hc-tint:#e4ad53;background:radial-gradient(ellipse at 91% 28%,rgba(222,159,62,.19),transparent 48%),linear-gradient(115deg,#12364d,#071c30 78%);}
+.hcx-lab-hero .hcx-eyebrow{color:#f1c27b}
+.hcx-lab-hero .hcx-hero-orbit{border-color:rgba(241,194,123,.34)}
+.hcx-lab-hero .hcx-hero-orbit:before,.hcx-lab-hero .hcx-hero-orbit:after{border-color:rgba(241,194,123,.24)}
+.hcx-lab-hero .hcx-hero-orbit>span{color:#f2c87f;text-shadow:0 0 32px rgba(241,194,123,.26)}
+.hcx-lab-hero .hcx-hero-orbit i{background:#f2bb65;box-shadow:0 0 0 5px rgba(241,194,123,.12)}
+.hcx-lab-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:22px}
+.hcx-lab-open{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:44px;padding:11px 17px;border:1px solid #e8ba77;border-radius:11px;background:#e3a648;color:#092135;text-decoration:none;font:inherit;font-size:14px;font-weight:800;transition:background .18s,transform .18s}
+.hcx-lab-open:hover{background:#f6c784;transform:translateY(-1px)}
+.hcx-lab-open:focus-visible,.hcx-lab-tile button:focus-visible{outline:3px solid #76d6e8;outline-offset:3px}
+.hcx-lab-hint{font-size:12px;color:#b9d2e0}
+.hcx-lab-tile{display:flex;align-items:center;gap:17px;flex-wrap:wrap;margin-top:14px!important;padding:19px 22px;background:linear-gradient(108deg,#102f42,#132a3e);border:1px solid #3e6679;border-radius:16px}
+.hcx-lab-tile-mark{width:48px;height:48px;display:grid;place-items:center;flex:none;border-radius:14px;border:1px solid #86683e;background:#473824;color:#f1c37a;font-size:26px}
+.hcx-lab-tile-copy{flex:1 1 260px;min-width:0}
+.hcx-lab-kicker{display:block;margin-bottom:5px;font-size:10px;line-height:1.4;font-weight:800;letter-spacing:1.25px;color:#f0c381}
+.hcx-lab-tile h2{margin:0 0 5px;font-size:clamp(17px,1.5vw,21px);line-height:1.25}
+.hcx-lab-tile p{font-size:13px;line-height:1.5;margin:0;color:#b9d0de}
+.hcx-lab-tile button{margin-left:auto;white-space:nowrap}
+.hcx-lab-note{border:1px solid #2a5066;border-radius:14px;padding:16px 19px;background:#0d293b;color:#bdd6e4;font-size:13px;line-height:1.65}
+.hcx-lab-note strong{color:#eaf5ff}
+@media(max-width:650px){.hcx-lab-tile{padding:17px}.hcx-lab-tile button{margin-left:0;width:100%}.hcx-lab-actions{align-items:stretch;flex-direction:column}.hcx-lab-open{width:100%}.hcx-lab-hint{text-align:center}}
