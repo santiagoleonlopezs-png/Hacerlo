@@ -431,3 +431,20 @@
 .ee-toolbar-kind>select:focus-visible{outline:2px solid #73e6d2;outline-offset:2px}
 .ee-toolbar-kind>select:disabled{opacity:.65;cursor:not-allowed}
 @media(max-width:600px){.ee-toolbar-kind{flex:0 1 150px;min-width:125px}.ee-toolbar-kind>select{max-width:100%}}
+
+/* Gestión visible y segura de las relaciones entre encuestas. */
+.ee-chain-actionbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:7px 0 12px;border-bottom:1px solid #315366;font-size:12px;color:#b4cdd8}
+.ee-chain-clear{font-size:11px!important;padding:7px 11px!important;color:#f3b9ad!important;border-color:#80544f!important;background:transparent!important}
+.ee-chain-stage>.ee-chain-stage-actions{display:flex;flex:0 0 auto;flex-direction:row;align-items:center;gap:7px;min-width:0}
+.ee-chain-stage-actions>button{margin:0;white-space:nowrap;font-size:11px!important;padding:7px 10px!important}
+.ee-chain-stage-actions>.ee-chain-remove{color:#f0b4a8;border-color:#775451;background:transparent}
+.ee-chain-manage{border:1px solid #345669;border-radius:10px;background:#0c293a;margin:12px 0;overflow:hidden}
+.ee-chain-manage>summary{padding:11px 13px;color:#dbbd76;font-size:12px;font-weight:700;cursor:pointer;list-style:none}
+.ee-chain-manage>summary::-webkit-details-marker{display:none}
+.ee-chain-manage>summary::before{content:"⌄";margin-right:8px}
+.ee-chain-manage[open]>summary{border-bottom:1px solid #345669}
+.ee-chain-manage>.ee-chain-edit,.ee-chain-manage>.ee-chain-add{margin:0;padding:12px}
+.ee-chain-manage .ee-chain-line{grid-template-columns:minmax(160px,2fr) minmax(105px,1fr) 70px minmax(135px,1fr)}
+.ee-linked-mapping[open]>summary{margin-bottom:8px}
+@media(max-width:1000px){.ee-chain-manage .ee-chain-line{grid-template-columns:repeat(2,minmax(0,1fr))}.ee-chain-stage>.ee-chain-stage-actions{flex-direction:column;align-items:stretch}}
+@media(max-width:620px){.ee-chain-stage>.ee-chain-stage-actions{width:100%;flex-direction:row;flex-wrap:wrap}.ee-chain-manage .ee-chain-line{grid-template-columns:minmax(0,1fr)}.ee-chain-actionbar{align-items:flex-start}.ee-chain-actionbar>button{max-width:100%}}
