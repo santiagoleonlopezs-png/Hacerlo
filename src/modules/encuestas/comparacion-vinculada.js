@@ -1,6 +1,7 @@
 /* HACERLO: comparación real entre encuestas conectadas.
    Las asociaciones manuales requieren escalas equivalentes y consentimiento
    explícito del usuario. No modifica respuestas ni índices originales. */
+let eeLinkedMappingOpen=false;
 function eeLinkedNumericQuestion(q){
  return !!q&&(['scale','nps','cnps','knowledge'].includes(q.type)
   ||['choice','text'].includes(q.type)&&q.optionScoring?.enabled);
@@ -202,7 +203,7 @@ function eeLinkedSaveQuestionMap(event){
  if(preview.rejectedLinkIds.includes(candidate.id))
   return fail('Las preguntas pertenecen a correspondencias incompatibles. Revisa las relaciones existentes.');
  x.measurementQuestionLinks.push(candidate);
- eeChainExpanded=true;save();render();
+ eeChainExpanded=true;eeLinkedMappingOpen=true;save();render();
  const visibleForm=typeof document!=='undefined'?document.querySelector('.ee-linked-mapping-form'):null;
  eeLinkedFormNotice(visibleForm||form,'Correspondencia guardada. Se conservará en el seguimiento.',false);
  if(typeof eeVerifySave==='function'){
@@ -327,7 +328,7 @@ function eeChainComparisonView(x,s){
  const mapSummary=mappings.length?'<div class="ee-linked-mappings">'+mappings.map(m=>
   '<div class="ee-linked-map"><span>'+safe(m.label)+'</span><button class="secondary" type="button" onclick="eeLinkedRemoveQuestionMap(\''+safe(m.id)+'\')">Quitar</button></div>').join('')+'</div>':'';
  const questionOptions=eeLinkedQuestionOptions(linked);
- const mappingForm='<details class="ee-linked-mapping"'+(!rows.length?' open':'')+'><summary>Relacionar preguntas equivalentes'+(mappings.length?' · '+mappings.length+' guardadas':'')+'</summary>'+
+ const mappingForm='<details class="ee-linked-mapping"'+(!rows.length||eeLinkedMappingOpen?' open':'')+' ontoggle="eeLinkedMappingOpen=this.open"><summary>Relacionar preguntas equivalentes'+(mappings.length?' · '+mappings.length+' guardadas':'')+'</summary>'+
   '<p class="muted">La categoría SENTIR/CNPS/NPS no vuelve equivalentes dos preguntas. Si miden lo mismo con tipos y sentidos compatibles, puedes relacionarlas. Las escalas numéricas compatibles se expresan en una unidad común; NPS y CNPS conservan sus índices propios.</p>'+
   mapSummary+
   '<form onsubmit="eeLinkedSaveQuestionMap(event)" class="ee-linked-mapping-form">'+
