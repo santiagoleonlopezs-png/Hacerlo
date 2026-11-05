@@ -292,22 +292,14 @@ function eeResultsAudienceScope(x,s){
  const configured=Array.isArray(s.analysisAudienceIds)?s.analysisAudienceIds.map(String):null;
  const suggested=eeAssignedAudiences(x,s);
  const ids=configured===null?suggested:configured.filter(id=>all.some(a=>String(a.id)===id));
- const matched=all.filter(a=>ids.includes(String(a.id)));
- const known=(s.responses||[]).filter(r=>r.audienceId&&all.some(a=>String(a.id)===String(r.audienceId)));
- const unassigned=(s.responses||[]).length-known.length;
- return '<section class="ee-results-audience-scope">'+
-  '<div class="ee-results-audience-header"><div><span class="ee-scope-kicker">CONTEXTO DEL ANÁLISIS</span><h3>Audiencias asociadas</h3></div><strong class="ee-scope-count">'+(s.responses||[]).length+' respuestas globales</strong></div>'+
-  (matched.length?'<div class="ee-results-audience-chips">'+matched.map(a=>'<span>'+safe(a.name)+'</span>').join('')+'</div>':
-   '<p class="muted">Todavía no has asociado audiencias para interpretar esta medición.</p>')+
-  '<p class="ee-scope-context">'+(known.length?
-   known+' respuestas tienen audiencia identificada; '+unassigned+' no están identificadas por audiencia.':
-   'La aplicación no identifica la audiencia de cada respuesta: los resultados corresponden al conjunto y no pueden distribuirse entre A y B.')+'</p>'+
-  '<details class="ee-scope-editor"><summary>Asociar audiencias desde el análisis</summary>'+
-   '<form onsubmit="eeSaveAnalysisAudiences(event)"><p class="muted">Indica a qué audiencias se aplicó esta encuesta. Esta asociación es solo para análisis; no modifica el enlace, el QR, el instrumento ni las respuestas existentes.</p>'+
-    '<div class="ee-share-target-list">'+all.map(a=>'<label class="ee-share-target-option"><input type="checkbox" name="analysisAudienceIds" value="'+safe(a.id)+'"'+(ids.includes(String(a.id))?' checked':'')+'><span>'+safe(a.name)+'</span></label>').join('')+'</div>'+
-    '<div class="ee-share-target-actions"><button class="secondary" type="submit">Guardar asociación</button></div>'+
-   '</form></details>'+
- '</section>';
+ const names=all.filter(a=>ids.includes(String(a.id))).map(a=>a.name);
+ const audienceSummary=names.length?names.join(' · '):'Sin asociar';
+ return '<details class="ee-analysis-audiences-mini">'+
+  '<summary><span class="ee-analysis-label">Audiencias</span><span class="ee-analysis-selection" title="'+safe(audienceSummary)+'">'+safe(audienceSummary)+'</span><span class="ee-analysis-edit">Editar <span aria-hidden="true">⌄</span></span></summary>'+
+  '<form onsubmit="eeSaveAnalysisAudiences(event)">'+
+   '<div class="ee-analysis-choices">'+all.map(a=>'<label class="ee-analysis-choice"><input type="checkbox" name="analysisAudienceIds" value="'+safe(a.id)+'"'+(ids.includes(String(a.id))?' checked':'')+'><span>'+safe(a.name)+'</span></label>').join('')+'</div>'+
+   '<div class="ee-analysis-save"><small>Asociación para el análisis global. No identifica respuestas individuales ni modifica enlaces.</small><button class="secondary" type="submit">Guardar</button></div>'+
+  '</form></details>';
 }
 function eeSaveAnalysisAudiences(event){
  event.preventDefault();
