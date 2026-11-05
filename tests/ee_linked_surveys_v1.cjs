@@ -108,11 +108,11 @@ const entriesBefore=x.measurementQuestionLinks.length;
 const mapEvent={preventDefault(){},target:{values:{
  first:base.id+'|'+base.questions[0].id,
  second:incompatible.id+'|'+incompatible.questions[0].id,
- label:'Claridad normalizada',
  equivalent:'yes'
 }}};
 mapAction(mapEvent);
 assert.equal(x.measurementQuestionLinks.length,entriesBefore+1,'Guardar desde formulario crea un vínculo persistente');
+assert.equal(x.measurementQuestionLinks.at(-1).label,base.questions[0].label,'La relación toma el nombre original automáticamente, sin pedir otro campo');
 const consolidated=compare(x,during).rows;
 assert.equal(consolidated.length,1,'La misma pregunta no se duplica por agregar otra equivalencia manual');
 assert.equal(consolidated[0].unit,'%');
@@ -123,7 +123,18 @@ assert.equal(consolidated[0].values[baseIndex].value,20,'Se mantiene la base de 
 assert.equal(consolidated[0].values[otherIndex].value,80,'Escala 0–5 normalizada a 0–100 para comparar');
 assert.equal(consolidated[0].values[otherIndex].value-consolidated[0].values[baseIndex].value,60,'Diferencia entre las dos mediciones normalizadas');
 assert.equal(diff(consolidated[0]),60,'La diferencia total sigue entre la primera y última medición cronológica con datos');
-assert.match(f.eeChainOverview(x,during),/Claridad normalizada|Claridad frente al cambio/,'El análisis conserva el nombre de las relaciones validadas');
+const evolutionData=vm.runInContext('eeLinkedEvolutionData',ctx)(x,during);
+assert.ok(evolutionData.sharedPercent.length>0,'El seguimiento debe alimentar un resultado global comparable');
+assert.equal(evolutionData.series.length,4,'La evolución contempla todas las encuestas vinculadas');
+assert.ok(evolutionData.comparisons.some(row=>row.key==='linked:global'&&row.delta!==null),'Debe calcular variación global a partir de preguntas equivalentes');
+const linkedDashboard=vm.runInContext('eeLinkedEvolutionDashboard',ctx);
+ctx.eeMetricChart=(e,key)=>'<div data-test-chart="'+key+'"></div>';
+ctx.eeEvolutionTable=(e,keys)=>'<div data-test-table="'+keys.join(',')+'"></div>';
+ctx.eeNumber=n=>String(n);
+assert.match(linkedDashboard(x,during),/Resultados comparables entre momentos/,'Los resultados globales vinculados llegan al panel principal');
+assert.match(linkedDashboard(x,during),/data-test-chart="linked:global"/,'Se presenta una gráfica temporal con los momentos vinculados');
+assert.match(read('src/modules/encuestas/encuestas.js'),/eeLinkedEvolutionDashboard\(x,s,eeFilter\.audienceId\)/,'La pantalla principal integra el comparativo vinculado');
+assert.match(f.eeChainOverview(x,during),/Claridad frente al cambio|Tengo claridad sobre el cambio/,'El análisis conserva los nombres de las preguntas validadas');
 assert.equal(JSON.stringify(base.responses),origBefore);
 assert.equal(JSON.stringify(during.responses),origDuring);
 
