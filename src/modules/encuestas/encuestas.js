@@ -6,35 +6,41 @@ function eeSurvey(){return EE.init(current()).find(s=>s.id===eeSelected);}
 function eeMsg(message,error=false){const el=$('ee-message');if(el){el.textContent=message;el.setAttribute('role',error?'alert':'status');}else alert(message);}
 let eeSaveNotice={surveyId:'',message:'',status:''},eeSaveNoticeToken=0;
 function eeSaveFeedback(message,status='saving',surveyId=''){
- eeSaveNotice={surveyId,message,status};
- const inline=document.getElementById('ee-save-feedback');
- if(inline){inline.textContent=message;inline.dataset.status=status;}
- const toolbar=document.getElementById('ee-save-toolbar');
- if(toolbar){toolbar.textContent=message;toolbar.dataset.status=status;}
+ // El guardado exitoso es interno; solo los errores requieren atención.
+ const showError=status==='error';
+ eeSaveNotice=showError?{surveyId,message,status}:{surveyId:'',message:'',status:''};
+ for(const id of ['ee-save-feedback','ee-save-toolbar']){
+  const el=document.getElementById(id);
+  if(el){el.textContent=showError?message:'';el.dataset.status=showError?'error':'';}
+ }
  let toast=document.getElementById('ee-save-toast');
+ if(!showError){
+  if(toast){toast.textContent='';toast.hidden=true;}
+  return;
+ }
  if(!toast){
   toast=document.createElement('div');toast.id='ee-save-toast';
-  toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');
+  toast.setAttribute('role','alert');toast.setAttribute('aria-live','assertive');
   document.body.append(toast);
  }
- toast.textContent=message;toast.dataset.status=status;toast.hidden=false;
+ toast.textContent=message;toast.dataset.status='error';toast.hidden=false;
 }
 async function eeVerifySave(kind='Encuesta',surveyId=eeSurvey()?.id){
  const token=++eeSaveNoticeToken;
  const revision=typeof cloudSaveVersion==='number'?cloudSaveVersion:0;
- eeSaveFeedback('Guardando '+kind.toLowerCase()+' en Supabase…','saving',surveyId);
+ eeSaveFeedback('','saving',surveyId);
  if(typeof confirmCloudSave!=='function'){
-  eeSaveFeedback('Cambios locales registrados. No se pudo verificar Supabase.','error',surveyId);
+  eeSaveFeedback('No se pudo comprobar el guardado. Revisa la conexión.','error',surveyId);
   return false;
  }
  const result=await confirmCloudSave(revision);
- if(token!==eeSaveNoticeToken)return result.ok;
- const message=result.ok?'✓ '+kind+' guardada en Supabase':('Sin confirmación de Supabase: '+result.message);
- eeSaveFeedback(message,result.ok?'success':'error',surveyId);
- if(result.ok)eeMsg(kind+' guardada correctamente en Supabase.');
- else eeMsg(message,true);
- if(result.ok)setTimeout(()=>{if(token===eeSaveNoticeToken){const toast=document.getElementById('ee-save-toast');if(toast)toast.hidden=true;}},6500);
- return result.ok;
+ if(token!==eeSaveNoticeToken)return !!result.ok;
+ if(result.ok){
+  eeSaveFeedback('','success',surveyId);
+  return true;
+ }
+ eeSaveFeedback('No se pudo confirmar el guardado. Revisa la conexión e inténtalo nuevamente.','error',surveyId);
+ return false;
 }
 function eeDownload(name,text,type='text/plain'){const url=URL.createObjectURL(new Blob([text],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function eeOpen(id){eePickerOpen=false;eeSelected=id;eeTab='diseño';eeDesignOpen='';eeFilter={wave:'',audienceId:''};eeImport=null;render();}
