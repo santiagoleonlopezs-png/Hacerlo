@@ -171,6 +171,81 @@ function eeLinkedRemoveQuestionMap(id){
  eeChainExpanded=true;save();render();eeMsg('Correspondencia eliminada sin alterar las encuestas.');
  if(typeof eeVerifySave==='function')void eeVerifySave('Comparación de preguntas',s.id);
 }
+/* Resultados comparables del seguimiento, sin sobrescribir los resultados
+   ni alterar la escala original de ninguna encuesta. */
+function eeLinkedEvolutionData(x,s,audienceId=''){
+ const comparison=eeLinkedRows(x,s,audienceId);
+ const members=comparison.members;
+ if(members.length<2)return null;
+ const counted=members.map(m=>(m.responses||[]).filter(r=>!audienceId||String(r.audienceId)===String(audienceId)).length);
+ const measured=counted.map((n,i)=>n>0?i:-1).filter(i=>i>=0);
+ const shared=unit=>comparison.rows.filter(row=>row.unit===unit&&measured.length>=2
+   &&measured.every(i=>row.values[i]?.value!==null&&row.values[i]?.value!==undefined&&row.values[i]?.n>0));
+ // Solo variables disponibles en TODOS los momentos efectivamente medidos.
+ // No recalcular un "global" con preguntas diferentes en Base y Durante.
+ const commonPercent=shared('%');
+ const commonPoints=shared('puntos');
+ const avg=(values)=>values.length?Math.round(values.reduce((a,b)=>a+b,0)*100/values.length)/100:null;
+ const baseline=measured.length?measured[0]:-1,latest=measured.length?measured.at(-1):-1;
+ const series=members.map((m,i)=>{
+  const values=commonPercent.map(row=>row.values[i]?.value).filter(v=>v!==null&&v!==undefined);
+  const reference=commonPoints.length===1?commonPoints[0].values[i]:null;
+  const metrics=[
+   {key:'linked:global',label:'Promedio de preguntas comparables',value:values.length===commonPercent.length?avg(values):null,n:counted[i],unit:'%',min:0,max:100},
+   {key:'linked:reference',label:commonPoints.length===1?commonPoints[0].label:'Índice de referencia comparable',value:reference?.value??null,n:reference?.n??0,unit:'puntos',min:-100,max:100}
+  ];
+  return {wave:eeChainMoment(m),date:eeChainDateInfo(m).date,n:counted[i],metrics};
+ });
+ const comparisons=series[0].metrics.map(metric=>{
+  const first=baseline>=0?series[baseline].metrics.find(q=>q.key===metric.key):null;
+  const last=latest>=0?series[latest].metrics.find(q=>q.key===metric.key):null;
+  const hasChange=measured.length>=2&&first?.value!=null&&last?.value!=null;
+  return {...metric,baselineValue:first?.value??null,latestValue:last?.value??null,
+   baselineN:first?.n||0,latestN:last?.n||0,
+   delta:hasChange?Math.round((last.value-first.value)*100)/100:null};
+ });
+ return {members,counted,measured,sharedPercent:commonPercent,sharedPoints:commonPoints,
+  baseline:baseline>=0?series[baseline].wave:'',latest:latest>=0?series[latest].wave:'',
+  series,comparisons,hasComparison:measured.length>=2&&(commonPercent.length>0||commonPoints.length===1)};
+}
+function eeLinkedEvolutionDashboard(x,s,audienceId=''){
+ const data=eeLinkedEvolutionData(x,s,audienceId);
+ if(!data||data.members.length<2)return '';
+ const global=data.comparisons.find(q=>q.key==='linked:global');
+ const reference=data.comparisons.find(q=>q.key==='linked:reference');
+ const sections=[];
+ if(data.sharedPercent.length){
+  sections.push('<div class="ee-linked-primary-chart"><h4>Promedio de preguntas comparables</h4>'+
+   '<p class="muted">'+data.sharedPercent.length+' pregunta(s) común(es) con puntuación porcentual. Cada pregunta tiene el mismo peso en el promedio de cada momento; no es el CNPS original.</p>'+
+   eeMetricChart(data,'linked:global')+eeEvolutionTable(data,['linked:global'])+'</div>');
+ }
+ if(data.sharedPoints.length===1){
+  sections.push('<details class="ee-linked-primary-reference" open><summary>Índice de referencia comparable</summary>'+
+   '<p class="muted">Misma pregunta e índice de −100 a 100 en las mediciones.</p>'+
+   eeMetricChart(data,'linked:reference')+eeEvolutionTable(data,['linked:reference'])+'</details>');
+ }
+ const card=(value,label,unit,delta)=>{
+  const score=value?.latestValue;
+  return '<div class="ee-linked-primary-metric"><small>'+safe(label)+'</small>'+
+   '<strong>'+(score===null||score===undefined?'—':eeNumber(score))+
+   '<span>'+safe(unit)+'</span></strong>'+
+   '<span>'+(delta===null||delta===undefined?'Sin comparación':(delta>0?'↑ +':delta<0?'↓ ':'')+eeNumber(delta)+' '+(unit==='%'?'puntos porcentuales':'puntos'))+'</span></div>';
+ };
+ const cards=(data.sharedPercent.length?card(global,'Promedio comparable','%',global.delta):'')+
+  (data.sharedPoints.length===1?card(reference,'Referencia comparable','puntos',reference.delta):'');
+ const note=!data.measured.length?'Las mediciones vinculadas todavía no tienen respuestas.':
+  data.measured.length===1?'Solo un momento tiene respuestas; podrás comparar cuando llegue la siguiente medición.':
+  !sections.length?'Las mediciones están conectadas, pero aún no comparten preguntas con resultados compatibles. Puedes relacionarlas en «Conectar y comparar encuestas».':'';
+ return '<section class="ee-linked-primary" aria-label="Evolución del seguimiento vinculado">'+
+  '<div class="ee-linked-primary-heading"><div><span>SEGUIMIENTO VINCULADO</span><h3>Resultados comparables entre momentos</h3>'+
+   '<p class="muted">'+data.members.length+' mediciones conectadas · '+safe(data.baseline||'Sin base')+' → '+safe(data.latest||'Sin resultados')+'</p></div>'+
+   '<span class="ee-linked-primary-count">'+data.sharedPercent.length+' preguntas porcentuales comparables</span></div>'+
+  (cards?'<div class="ee-linked-primary-metrics">'+cards+'</div>':'')+
+  (note?'<p class="ee-linked-primary-note">'+safe(note)+'</p>':'')+
+  sections.join('')+
+  '<p class="ee-linked-primary-footnote">Comparación descriptiva de muestras por momento; no supone que respondieron las mismas personas. Los resultados originales de cada encuesta se conservan abajo.</p>'+
+ '</section>';
+}
 function eeLinkedExport(){
  const x=current(),s=eeSurvey(),comparison=eeLinkedRows(x,s,eeFilter.audienceId);
  const headers=['resultado','tipo','unidad',...comparison.members.map(z=>eeChainMoment(z)),'cambio'];
