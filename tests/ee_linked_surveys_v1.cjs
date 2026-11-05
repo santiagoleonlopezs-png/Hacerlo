@@ -113,6 +113,25 @@ const mapEvent={preventDefault(){},target:{values:{
 mapAction(mapEvent);
 assert.equal(x.measurementQuestionLinks.length,entriesBefore+1,'Guardar desde formulario crea un vínculo persistente');
 assert.equal(x.measurementQuestionLinks.at(-1).label,base.questions[0].label,'La relación toma el nombre original automáticamente, sin pedir otro campo');
+assert.match(vm.runInContext('eeChainComparisonView',ctx)(x,during), /eeLinkedChooseCounterpart\(this.form\)/, 'El formulario guía hacia preguntas de distintas encuestas');
+assert.match(vm.runInContext('eeChainComparisonView',ctx)(x,during), /data-ee-map-feedback/, 'La respuesta de guardado o error aparece junto al botón');
+const mappingCount=x.measurementQuestionLinks.length;
+mapAction({preventDefault(){},target:{values:{
+ first:base.id+'|'+base.questions[0].id,
+ second:base.id+'|'+base.questions[0].id,
+ equivalent:'yes'
+}}});
+assert.equal(x.measurementQuestionLinks.length,mappingCount,'No guardar correspondencia de dos preguntas dentro de una misma encuesta');
+const firstSelect={value:base.id+'|'+base.questions[0].id};
+const secondSelect={value:'',options:[
+ {value:''},{value:base.id+'|'+base.questions[0].id},
+ {value:during.id+'|'+during.questions[0].id},
+ {value:incompatible.id+'|'+incompatible.questions[0].id}
+]};
+const pairForm={elements:{namedItem:name=>name==='first'?firstSelect:secondSelect},querySelector:()=>null};
+vm.runInContext('eeLinkedChooseCounterpart',ctx)(pairForm);
+assert.equal(secondSelect.options[1].disabled,true,'Evita seleccionar preguntas de la misma encuesta');
+assert.equal(secondSelect.value,during.id+'|'+during.questions[0].id,'Sugiere automáticamente la pregunta equivalente de otra medición');
 const consolidated=compare(x,during).rows;
 assert.equal(consolidated.length,1,'La misma pregunta no se duplica por agregar otra equivalencia manual');
 assert.equal(consolidated[0].unit,'%');
@@ -154,6 +173,16 @@ assert.equal(next.measurementGroupId,during.measurementGroupId,'Crear ya vincula
 assert.equal(next.status,'draft');
 assert.equal(next.questions.length,during.questions.length);
 assert.equal(next.publication,undefined);
+const autoNew=compare(x,during);
+assert.ok(autoNew.rows.some(row=>row.questionRefs.some(q=>q.surveyId===next.id&&q.questionId===next.questions[0].id)),
+ 'Crear siguiente medición vincula sus mismas preguntas automáticamente, sin crear asociaciones manuales');
+const restored=JSON.parse(JSON.stringify(x));
+const restoredNext=restored.surveys.find(z=>z.id===next.id);
+assert.equal(restoredNext.responses.length,0,'La nueva encuesta no hereda respuestas ni siquiera después de persistir');
+assert.ok(compare(restored,restoredNext).rows.some(row=>row.questionRefs.some(q=>q.surveyId===next.id)),
+ 'La comparación automática sobrevive al guardado y nueva carga de la iniciativa');
+assert.equal(restored.measurementQuestionLinks.length,x.measurementQuestionLinks.length,
+ 'Las correspondencias manuales permanecen después del guardado');
 assert.match(read('index.html'),/encadenamiento\.js\?v=\d+(?:\.\d+)+/,'El módulo actualizado debe estar versionado para publicación');
 assert.match(read('index.html'),/comparacion-vinculada\.js\?v=\d+(?:\.\d+)+/,'La comparación actualizada debe estar versionada');
 assert.match(read('src/modules/encuestas/encuestas.js'),/function eeEvolutionResults\(x,s\)\{const e=EE\.evolution\(s,eeFilter\.audienceId\)/,'La encuesta seleccionada conserva sus resultados principales');
