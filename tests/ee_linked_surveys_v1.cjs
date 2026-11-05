@@ -94,9 +94,9 @@ const outcome=compare(x,during).rows;
 assert.equal(outcome.length,1,'Una variable equivalente se consolida en una sola fila a través de las mediciones, sin duplicar comparación automática y manual');
 const manuallyMapped=outcome.find(r=>r.source==='manual');
 assert.ok(manuallyMapped);
-assert.equal(diff(manuallyMapped),50,'El cambio se calcula usando puntuación normalizada 0–100');
+assert.equal(diff(manuallyMapped),60,'El cambio de la serie consolidada se calcula entre el primer y último momento cronológico; se conservan los valores normalizados');
 assert.match(f.eeChainOverview(x,during),/Claridad frente al cambio/);
-assert.match(f.eeChainOverview(x,during),/↑ \+50/);
+assert.match(f.eeChainOverview(x,during),/↑ \+60/);
 
 /* Prueba de interacción: el facilitador debe poder guardar la equivalencia
    desde el formulario real, sin modificar respuestas originales. */
@@ -122,7 +122,7 @@ const baseIndex=chainOrder.findIndex(z=>z.id===base.id),otherIndex=chainOrder.fi
 assert.equal(consolidated[0].values[baseIndex].value,20,'Se mantiene la base de la escala original 0–10');
 assert.equal(consolidated[0].values[otherIndex].value,80,'Escala 0–5 normalizada a 0–100 para comparar');
 assert.equal(consolidated[0].values[otherIndex].value-consolidated[0].values[baseIndex].value,60,'Diferencia entre las dos mediciones normalizadas');
-assert.equal(diff(consolidated[0]),50,'La diferencia total sigue entre la primera y última medición con datos');
+assert.equal(diff(consolidated[0]),60,'La diferencia total sigue entre la primera y última medición cronológica con datos');
 assert.match(f.eeChainOverview(x,during),/Claridad normalizada|Claridad frente al cambio/,'El análisis conserva el nombre de las relaciones validadas');
 assert.equal(JSON.stringify(base.responses),origBefore);
 assert.equal(JSON.stringify(during.responses),origDuring);
