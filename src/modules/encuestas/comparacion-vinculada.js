@@ -32,8 +32,10 @@ function eeLinkedCanCompare(a,b){
 function eeLinkedCanAuto(a,b){
  if(!eeLinkedCanCompare(a,b))return false;
  if(a.optionScoring?.enabled||b.optionScoring?.enabled)return eeLinkedScoreStructure(a)===eeLinkedScoreStructure(b);
- const da=eeChainNorm(a.dimension),db=eeChainNorm(b.dimension);
- return !da||!db||da===db;
+ // Dos preguntas con igual enunciado, tipo y orientación son comparables
+ // aunque hayan sido catalogadas en dimensiones distintas.
+ const lower=q=>eeChainNorm(q.dimension)==='desgaste';
+ return lower(a)===lower(b);
 }
 function eeLinkedStoredMappings(x,s){
  const ids=new Set(eeChainMembers(x,s).map(z=>z.id)),group=s.measurementGroupId;
