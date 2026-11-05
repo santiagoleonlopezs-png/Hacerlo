@@ -90,20 +90,40 @@ function eeChainInvalid(x,s){
  return members.slice(1).map(m=>eeChainIssue(members[0],m)).find(Boolean)||'';
 }
 function eeChainLink(x,s,otherId,firstMoment,secondMoment){
- const other=EE.init(x).find(z=>z.id===otherId);
- const reason=eeChainIssue(s,other);
- if(reason)throw Error(reason);
- if(other.measurementGroupId)throw Error('La otra encuesta ya pertenece a un seguimiento. Desvincúlala allí primero.');
- const names=[firstMoment,secondMoment].map(v=>String(v||'').trim());
- if(names.some(v=>!v||v.length>80))throw Error('Define un momento de hasta 80 caracteres por encuesta.');
- const members=eeChainMembers(x,s);
- const existing=members.filter(m=>m.id!==s.id).map(m=>eeChainNorm(eeChainMoment(m)));
- if(eeChainNorm(names[0])===eeChainNorm(names[1])||existing.includes(eeChainNorm(names[0]))||existing.includes(eeChainNorm(names[1])))
-  throw Error('Cada encuesta debe tener un momento diferente. Por ejemplo: Durante · noviembre.');
- const group=s.measurementGroupId||EE.uid();
- s.measurementGroupId=group;s.measurementMoment=names[0];
- other.measurementGroupId=group;other.measurementMoment=names[1];
- return other;
+ const other=EE.init(x).find(z=>String(z.id)===String(otherId));
+ const issue=eeChainIssue(s,other);
+ if(issue)throw Error(issue);
+ const left=eeChainMembers(x,s),right=eeChainMembers(x,other);
+ if(left.some(item=>right.some(z=>String(z.id)===String(item.id))))
+  throw Error('Esa encuesta ya está conectada con este seguimiento.');
+ if(left.length+right.length>50)throw Error('El seguimiento admite máximo 50 mediciones.');
+ const first=String(firstMoment||'').trim(),second=String(secondMoment||'').trim();
+ if(!first||!second||first.length>80||second.length>80)throw Error('Selecciona momentos válidos para ambas encuestas.');
+ const members=[...left,...right];
+ const moments=new Map(members.map(item=>[item.id,item===s?first:item===other?second:eeChainMoment(item)]));
+ const seen=new Set();
+ for(const item of members){
+  const moment=eeChainNorm(moments.get(item.id));
+  if(seen.has(moment))
+   throw Error('No se pueden unir los seguimientos: hay dos encuestas con el mismo momento («'+moments.get(item.id)+'»). Ajusta las etiquetas de momento antes de vincular, sin modificar las encuestas.');
+  seen.add(moment);
+ }
+ const group=s.measurementGroupId||other.measurementGroupId||EE.uid();
+ const previousGroups=new Set([s.measurementGroupId,other.measurementGroupId].filter(Boolean));
+ // Los mapeos manuales de ambos seguimientos siguen perteneciendo al nuevo grupo.
+ for(const link of x.measurementQuestionLinks||[]){
+  if(previousGroups.has(link.groupId))link.groupId=group;
+ }
+ const sorted=[...members].sort((a,b)=>
+  eeChainRank(moments.get(a.id))-eeChainRank(moments.get(b.id))
+   ||String(a.measurementDate||a.applicationStart||a.createdAt||'').localeCompare(String(b.measurementDate||b.applicationStart||b.createdAt||''))
+   ||String(a.id).localeCompare(String(b.id)));
+ for(const [index,item] of sorted.entries()){
+  item.measurementGroupId=group;
+  item.measurementMoment=moments.get(item.id);
+  item.measurementOrder=index+1;
+ }
+ return {other,merged:right.length,total:sorted.length};
 }
 function eeChainUnlink(x,s,id){
  const members=eeChainMembers(x,s),linked=members.find(m=>m.id===id),group=s.measurementGroupId;
@@ -146,9 +166,18 @@ function eeChainEvolution(x,s,audienceId=''){
 }
 function eeChainPanel(x,s){
  const members=eeChainMembers(x,s),linked=members.length>1,invalid=eeChainInvalid(x,s);
- const others=EE.init(x).filter(z=>z.id!==s.id);
- const usable=others.filter(z=>!eeChainIssue(s,z)&&!z.measurementGroupId);
- const options=usable.map(z=>'<option value="'+safe(z.id)+'">'+safe(z.title)+'</option>').join('');
+ const others=EE.init(x).filter(z=>String(z.id)!==String(s.id));
+ const usable=others.filter(z=>!eeChainIssue(s,z)
+   && !members.some(m=>String(m.id)===String(z.id)));
+ const options=others.map(z=>{
+  const inCurrent=members.some(m=>String(m.id)===String(z.id));
+  const issue=eeChainIssue(s,z),blocked=inCurrent||!!issue;
+  const linkedCount=eeChainMembers(x,z).length;
+  const context=inCurrent?' · Ya conectada':issue?' · '+issue:
+   linkedCount>1?' · '+linkedCount+' mediciones vinculadas':'';
+  return '<option value="'+safe(z.id)+'"'+(blocked?' disabled':'')+'>'+
+   safe(z.title+' · '+(z.kind||'Sin categoría')+context)+'</option>';
+ }).join('');
  const edit=linked?'<details class="ee-chain-manage"><summary>Ajustar fechas y orden de las mediciones</summary>'+
   '<form class="ee-chain-edit" onsubmit="eeChainSave(event)"><div class="ee-chain-list">'+members.map((z,i)=>{
    const info=eeChainDateInfo(z);
@@ -165,20 +194,20 @@ function eeChainPanel(x,s){
    '<button class="secondary ee-chain-clear" type="button" onclick="eeChainRemoveAll()">Eliminar todas las relaciones</button></div>':'')+
   (linked?eeChainOverview(x,s):'<p class="muted">Conecta dos o más instrumentos para consultar sus resultados por momento. Vincular no altera preguntas ni respuestas.</p>')+
   edit+
-  (usable.length?'<details class="ee-chain-manage"><summary>+ Vincular otra encuesta</summary><form class="ee-chain-add" onsubmit="eeChainAdd(event)">'+
+  (usable.length?'<details class="ee-chain-manage"><summary>+ Vincular otra encuesta</summary><p class="ee-chain-merge-hint">También puedes elegir encuestas que pertenecen a otro seguimiento. Se unirán sus mediciones conservando los resultados y vínculos existentes.</p><form class="ee-chain-add" onsubmit="eeChainAdd(event)">'+
    '<label>Momento actual<select name="firstMoment" required>'+eeChainMomentOptions(eeChainMoment(s))+'</select></label>'+
    '<label>Encuesta para conectar<select name="otherId" required><option value="">Seleccionar encuesta</option>'+options+'</select></label>'+
    '<label>Momento de la otra<select name="otherMoment" required>'+eeChainMomentOptions(eeChainRank(eeChainMoment(s))===0?'Durante':eeChainRank(eeChainMoment(s))===1?'Después':'Base')+'</select></label>'+
    '<button class="primary" type="submit">Conectar</button></form></details>':
-   (!linked?'<p class="muted">No hay otros instrumentos disponibles para vincular.</p>':''))+
+   (!linked?'<p class="muted">No hay otras encuestas independientes disponibles. Las ya conectadas se muestran en la secuencia de arriba; los instrumentos de priorización se gestionan por separado.</p>':''))+
   '<p class="ee-chain-note">Comparaciones descriptivas entre preguntas equivalentes. No se mezclan índices de categorías distintas por el simple hecho de vincular encuestas.</p></div></details>';
 }
 function eeChainAdd(event){
  event.preventDefault();const x=current(),s=eeSurvey();if(!x||!s)return;
  try{
   const fd=new FormData(event.target);
-  eeChainLink(x,s,String(fd.get('otherId')||''),fd.get('firstMoment'),fd.get('otherMoment'));
-  eeFilter={wave:'',audienceId:eeFilter.audienceId};save();render();eeMsg('Encuestas conectadas. La evolución ahora incluye ambos momentos.');
+  const result=eeChainLink(x,s,String(fd.get('otherId')||''),fd.get('firstMoment'),fd.get('otherMoment'));
+  eeChainExpanded=true;eeFilter={wave:'',audienceId:''};save();render();eeMsg('Seguimiento conectado: '+result.total+' mediciones. Las respuestas originales se conservan.');
   if(typeof eeVerifySave==='function')void eeVerifySave('Vínculos de medición',s.id);
  }catch(err){eeMsg(err.message,true);}
 }
