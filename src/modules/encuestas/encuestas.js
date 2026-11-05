@@ -1,7 +1,7 @@
 /* HACERLO V2.4 · Encuestas y experiencias · scripts clásicos compatibles. */
 let eeQuickState=null,eePickerOpen=false;
 let eeSelected=null,eeTab='diseño',eeFilter={wave:'',audienceId:''},eeImport=null;
-let eeDesignOpen='questions';
+let eeDesignOpen='';
 function eeSurvey(){return EE.init(current()).find(s=>s.id===eeSelected);}
 function eeMsg(message,error=false){const el=$('ee-message');if(el){el.textContent=message;el.setAttribute('role',error?'alert':'status');}else alert(message);}
 let eeSaveNotice={surveyId:'',message:'',status:''},eeSaveNoticeToken=0;
@@ -37,10 +37,10 @@ async function eeVerifySave(kind='Encuesta',surveyId=eeSurvey()?.id){
  return result.ok;
 }
 function eeDownload(name,text,type='text/plain'){const url=URL.createObjectURL(new Blob([text],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-function eeOpen(id){eePickerOpen=false;eeSelected=id;eeTab='diseño';eeDesignOpen='questions';eeFilter={wave:'',audienceId:''};eeImport=null;render();}
+function eeOpen(id){eePickerOpen=false;eeSelected=id;eeTab='diseño';eeDesignOpen='';eeFilter={wave:'',audienceId:''};eeImport=null;render();}
 function eeDesignToggled(key,element){if(element?.open)eeDesignOpen=key;}
-function eeSetTab(tab){eeTab=tab;eeImport=null;render();if(tab==='resultados')eePull(true);}
-function eeCreate(e){e.preventDefault();const f=new FormData(e.target),s=EE.create(f.get('kind'),f.get('title').trim());if(!s.title)return;EE.init(current()).push(s);eeSelected=s.id;eePickerOpen=false;save();render();void eeVerifySave('Encuesta',s.id);}
+function eeSetTab(tab){if(tab==='diseño'&&eeTab!=='diseño')eeDesignOpen='';eeTab=tab;eeImport=null;render();if(tab==='resultados')eePull(true);}
+function eeCreate(e){e.preventDefault();const f=new FormData(e.target),s=EE.create(f.get('kind'),f.get('title').trim());if(!s.title)return;EE.init(current()).push(s);eeSelected=s.id;eePickerOpen=false;eeDesignOpen='';save();render();void eeVerifySave('Encuesta',s.id);}
 function eeIsPriority(s){return !!s&&s.instrumentKey==='priority-impact-effort';}
 function eeHasUnfinishedChoices(s){return (s.questions||[]).some(q=>q.type==='choice'&&(q.missingChoiceOptions||!Array.isArray(q.options)||q.options.some(v=>/^Completar opción\b/i.test(v))));}
 function eeCreatePriority(){
@@ -49,7 +49,7 @@ function eeCreatePriority(){
  const existing=prioritySurveys(x).sort((a,b)=>Number(b.version||1)-Number(a.version||1))[0];
  const survey=existing||priorityEnsureSurvey(x);
  if(!survey)return eeMsg('No se pudo crear el instrumento.',true);
- eeSelected=survey.id;eePickerOpen=false;eeTab='diseño';eeFilter={wave:'',audienceId:''};
+ eeSelected=survey.id;eePickerOpen=false;eeTab='diseño';eeDesignOpen='';eeFilter={wave:'',audienceId:''};
  save();render();eeMsg(existing?'Instrumento de priorización abierto.':'Plantilla de priorización creada. Puedes editarla antes de activarla.');
 }
 function eeOptions(values,selected){return values.map(v=>`<option value="${safe(v)}" ${v===selected?'selected':''}>${safe(v)}</option>`).join('');}
@@ -73,7 +73,8 @@ function eePage(x){
      '<label class="ee-toolbar-picker" for="ee-instrument-select"><span>Instrumento seleccionado</span>'+
        '<select id="ee-instrument-select" onchange="eeOpen(this.value)" '+(!surveys.length?'disabled ':'')+'>'+
        (surveys.length?options:'<option value="">Sin instrumentos todavía</option>')+'</select></label>'+
-     (s?'<div class="ee-toolbar-status"><small>'+safe(s.kind)+' · Versión '+s.version+' · '+safe(s.status)+'</small>'+
+     (s?'<label class="ee-toolbar-kind"><span>Categoría</span><select aria-label="Cambiar categoría de la encuesta" onchange="eeUpdateSurveyKind(this)" '+(eeIsPriority(s)?'disabled title="El instrumento de priorización conserva su tipo"':'')+'>'+eeOptions(['SENTIR','NPS','CNPS','Conocimiento','Libre'],s.kind)+'</select></label>':'')+
+     (s?'<div class="ee-toolbar-status"><small>Versión '+s.version+' · '+safe(s.status)+'</small>'+
           '<strong>'+s.responses.length+' respuestas</strong><span id="ee-save-toolbar" class="ee-save-inline" role="status" data-status="'+safe(eeSaveNotice.surveyId===s.id?eeSaveNotice.status:'')+'">'+safe(eeSaveNotice.surveyId===s.id?eeSaveNotice.message:'')+'</span></div>':'')+
      '<button class="secondary ee-manage-button" type="button" aria-controls="ee-instrument-manager" aria-expanded="'+managerOpen+'" onclick="eeTogglePicker()">'+
        (managerOpen?'Ocultar creación':'＋ Crear o importar')+'</button>'+
@@ -112,7 +113,7 @@ function eePage(x){
    (eeTab==='diseño'?'<div class="ee-design-workspace">'+
       '<details class="ee-design-section" name="ee-design-section" ontoggle="eeDesignToggled(\'questions\',this)" '+(eeDesignOpen==='questions'?'open':'')+'><summary><span class="ee-design-stepno">01</span><span><strong>Preguntas y estructura</strong><small>Contenido del instrumento</small></span></summary>'+eeDesigner(x,s)+'</details>'+
       '<details class="ee-design-section" name="ee-design-section" ontoggle="eeDesignToggled(\'apply\',this)" '+(eeDesignOpen==='apply'?'open':'')+'><summary><span class="ee-design-stepno">02</span><span><strong>Aplicación del instrumento</strong><small>Fechas, ola, identidad y audiencias</small></span></summary>'+(typeof eeAppConfigPanel==='function'?eeAppConfigPanel(x,s):'')+'</details>'+
-      '<details class="ee-design-section" name="ee-design-section" ontoggle="eeDesignToggled(\'advanced\',this)" '+(eeDesignOpen==='advanced'?'open':'')+'><summary><span class="ee-design-stepno">03</span><span><strong>Configuración avanzada</strong><small>Tipos, análisis y fuentes</small></span></summary><div class="ee-design-advanced">'+eeSurveyKindPanel(s)+eeHomeSourcesPanel(x)+eeQuestionTypePanel(s)+eeDirectionPanel(s)+eeOptionScoringPanel(s)+'</div></details>'+
+      '<details class="ee-design-section" name="ee-design-section" ontoggle="eeDesignToggled(\'advanced\',this)" '+(eeDesignOpen==='advanced'?'open':'')+'><summary><span class="ee-design-stepno">03</span><span><strong>Configuración avanzada</strong><small>Tipos, análisis y fuentes</small></span></summary><div class="ee-design-advanced">'+eeHomeSourcesPanel(x)+eeQuestionTypePanel(s)+eeDirectionPanel(s)+eeOptionScoringPanel(s)+'</div></details>'+
      '</div>':
     eeTab==='responder'?eeResponsePanel(x,s):
     eeTab==='importar'?eeImportPanel(s):
@@ -129,7 +130,7 @@ function eePage(x){
    '<div class="ee-single-column">'+selector+(eeQuickState?eeQuickPanel():'')+active+'</div>';
 }
 function eeDesigner(x,s){const locked=s.status!=='draft'||s.responses.length>0;if(locked)return eeLockedDesigner(s);return `<section class="panel">${eeHasUnfinishedChoices(s)?'<p class="notice">Completa las alternativas de las preguntas 5 y 7 antes de activar o compartir el instrumento.</p>':''}<form onsubmit="eeSaveDesign(event)"><fieldset ${locked?'disabled':''}><label>Nombre<input name="title" value="${safe(s.title)}" required maxlength="160"></label><details class="ee-description-details"><summary>Descripción y contexto · opcional</summary><label>Descripción<textarea name="description">${safe(s.description)}</textarea></label></details><h3>Banco de preguntas · ${s.questions.length}</h3><p class="muted">Abre únicamente la pregunta que quieras editar. Los cambios se conservan al guardar el diseño.</p><div id="ee-questions">${s.questions.map((q,i)=>eeQuestionEditor(q,i)).join('')}</div><button type="button" class="secondary" onclick="eeAddQuestion()">+ Añadir pregunta</button><details><summary>Editor JSON avanzado</summary><p class="muted">Para usar este editor, marca la casilla. Conserva IDs únicos.</p><label><input type="checkbox" name="advanced"> Usar JSON en lugar de las tarjetas</label><textarea name="questionsJSON" rows="14">${safe(JSON.stringify(s.questions,null,2))}</textarea></details><button class="primary">Guardar diseño</button><span id="ee-save-feedback" class="ee-save-inline" role="status" data-status="${safe(eeSaveNotice.surveyId===s.id?eeSaveNotice.status:'')}">${safe(eeSaveNotice.surveyId===s.id?eeSaveNotice.message:'')}</span></fieldset></form><div class="flex" style="margin-top:18px">${s.status==='draft'?'<button class="primary" onclick="eeStatus(\'active\')">Activar encuesta</button>':s.status==='active'?'<button class="secondary" onclick="eeStatus(\'closed\')">Cerrar captura</button>':'<button class="secondary" onclick="eeStatus(\'active\')">Reabrir captura</button>'}${locked?'<span class="muted">El diseño está congelado. Duplica para cambiar preguntas.</span>':''}</div></section>`;}
-function eeQuestionEditor(q,i){return `<details class="ee-question ee-question-fold" name="ee-question-editor" data-ee-question ontoggle="eeQuestionToggled(this)" ${i===0?'open':''}><summary><strong>${String(i+1).padStart(2,'0')} · ${safe(q.label)}</strong><span>Editar</span></summary><div class="ee-q-actions"><button class="secondary" type="button" onclick="this.closest('[data-ee-question]').remove()">Quitar pregunta</button></div><label>Texto<input data-k="label" value="${safe(q.label)}"></label><div class="grid"><label>Tipo<select data-k="type" onchange="eeUpdateQuestionFields(this.closest(&quot;[data-ee-question]&quot;))">${[["scale","Escala numérica"],["nps","NPS"],["cnps","CNPS"],["text","Texto abierto"],["choice","Selección única"],["knowledge","Conocimiento"]].map(([value,label])=>`<option value="${value}"${q.type===value?" selected":""}>${label}</option>`).join("")}</select></label><label>Dimensión<input data-k="dimension" value="${safe(q.dimension||'')}"></label></div><details class="hcx-more"><summary data-ee-settings-summary>${["scale","nps","cnps"].includes(q.type)?"Identificador y escala · opcional":"Identificador · opcional"}</summary><div class="triple"><label>ID<input data-k="id" value="${safe(q.id)}"></label><label data-ee-visible="numeric" ${["scale","nps","cnps"].includes(q.type)?"":"hidden"}>Mínimo<input data-k="min" type="number" step="any" value="${q.min??0}"></label><label data-ee-visible="numeric" ${["scale","nps","cnps"].includes(q.type)?"":"hidden"}>Máximo<input data-k="max" type="number" step="any" value="${q.max??10}"></label></div></details><label data-ee-visible="options" ${["choice","knowledge"].includes(q.type)?"":"hidden"}>Opciones de respuesta (una por línea)<textarea data-k="options">${safe((q.options||[]).join('\n'))}</textarea></label><label data-ee-visible="correct" ${q.type==="knowledge"?"":"hidden"}>Respuesta correcta<input data-k="correct" value="${safe(q.correct||'')}"></label><div class="flex"><label><input data-k="required" type="checkbox" ${q.required?'checked':''}> Obligatoria</label><label data-ee-visible="reverse" ${q.type==="scale"?"":"hidden"}><input data-k="reverse" type="checkbox" ${q.reverse?'checked':''}> Invertir escala</label></div></details>`;}
+function eeQuestionEditor(q,i){return `<details class="ee-question ee-question-fold" name="ee-question-editor" data-ee-question ontoggle="eeQuestionToggled(this)"><summary><strong>${String(i+1).padStart(2,'0')} · ${safe(q.label)}</strong><span>Editar</span></summary><div class="ee-q-actions"><button class="secondary" type="button" onclick="this.closest('[data-ee-question]').remove()">Quitar pregunta</button></div><label>Texto<input data-k="label" value="${safe(q.label)}"></label><div class="grid"><label>Tipo<select data-k="type" onchange="eeUpdateQuestionFields(this.closest(&quot;[data-ee-question]&quot;))">${[["scale","Escala numérica"],["nps","NPS"],["cnps","CNPS"],["text","Texto abierto"],["choice","Selección única"],["knowledge","Conocimiento"]].map(([value,label])=>`<option value="${value}"${q.type===value?" selected":""}>${label}</option>`).join("")}</select></label><label>Dimensión<input data-k="dimension" value="${safe(q.dimension||'')}"></label></div><details class="hcx-more"><summary data-ee-settings-summary>${["scale","nps","cnps"].includes(q.type)?"Identificador y escala · opcional":"Identificador · opcional"}</summary><div class="triple"><label>ID<input data-k="id" value="${safe(q.id)}"></label><label data-ee-visible="numeric" ${["scale","nps","cnps"].includes(q.type)?"":"hidden"}>Mínimo<input data-k="min" type="number" step="any" value="${q.min??0}"></label><label data-ee-visible="numeric" ${["scale","nps","cnps"].includes(q.type)?"":"hidden"}>Máximo<input data-k="max" type="number" step="any" value="${q.max??10}"></label></div></details><label data-ee-visible="options" ${["choice","knowledge"].includes(q.type)?"":"hidden"}>Opciones de respuesta (una por línea)<textarea data-k="options">${safe((q.options||[]).join('\n'))}</textarea></label><label data-ee-visible="correct" ${q.type==="knowledge"?"":"hidden"}>Respuesta correcta<input data-k="correct" value="${safe(q.correct||'')}"></label><div class="flex"><label><input data-k="required" type="checkbox" ${q.required?'checked':''}> Obligatoria</label><label data-ee-visible="reverse" ${q.type==="scale"?"":"hidden"}><input data-k="reverse" type="checkbox" ${q.reverse?'checked':''}> Invertir escala</label></div></details>`;}
 function eeQuestionToggled(question){
  if(!question)return;
  const action=question.querySelector(':scope > summary span');if(action)action.textContent=question.open?'Cerrar':'Editar';
@@ -174,7 +175,7 @@ function eeRestoreCnpsBank(){
  s.updatedAt=EE.now();
  save();render();eeMsg('Se cargaron las 10 preguntas. Completa las alternativas 5 y 7 y guarda el diseño.');
 }
-function eeClone(){const x=current(),s=eeSurvey(),z=structuredClone(s);Object.assign(z,{id:EE.uid(),previousSurveyId:s.id,familyId:s.familyId||s.id,title:s.title+' · nueva versión',version:s.version+1,status:'draft',responses:[],createdAt:EE.now()});delete z.measurementGroupId;delete z.measurementMoment;delete z.measurementOrder;delete z.measurementDate;delete z.publication;delete z.syncedAt;delete z.metricLinks;delete z.importHistory;delete z.lastImportedAt;EE.init(x).push(z);eeSelected=z.id;eeTab='diseño';save();render();}
+function eeClone(){const x=current(),s=eeSurvey(),z=structuredClone(s);Object.assign(z,{id:EE.uid(),previousSurveyId:s.id,familyId:s.familyId||s.id,title:s.title+' · nueva versión',version:s.version+1,status:'draft',responses:[],createdAt:EE.now()});delete z.measurementGroupId;delete z.measurementMoment;delete z.measurementOrder;delete z.measurementDate;delete z.publication;delete z.syncedAt;delete z.metricLinks;delete z.importHistory;delete z.lastImportedAt;EE.init(x).push(z);eeSelected=z.id;eeTab='diseño';eeDesignOpen='';save();render();}
 async function eeStatus(status){const s=eeSurvey();if(s.status==='draft'){const form=document.querySelector('form[onsubmit="eeSaveDesign(event)"]');if(form&&(!form.reportValidity()||!eeSaveDesign({preventDefault(){},target:form})))return;}try{EE.validateQuestions(s.questions);if(status==='active'&&eeHasUnfinishedChoices(s))throw Error('Completa las alternativas de selección de todas las preguntas antes de activar.');if(eeHasUnfinishedChoices(s))throw Error('Completa las alternativas pendientes de las preguntas 5 y 7 antes de publicar.');if(eeIsPriority(s)&&(typeof priorityScoreReady!=='function'||!priorityScoreReady(s)))throw Error('Revisa Impacto, Esfuerzo y los valores de las opciones antes de activar el instrumento.');if(s.publication){eeMsg('Actualizando captura pública…');const {error}=await sb.from('ee_publications').update({active:status==='active'&&!s.publication.revoked}).eq('id',s.publication.id);if(error)throw error;}s.status=status;save();render();void eeVerifySave('Estado de encuesta',s.id);}catch(e){eeMsg(e.message,true);}}
 function eeQuestionInput(q){const attrs=`name="${safe(q.id)}" ${q.required?'required':''}`;if(q.type==='text')return `<textarea ${attrs} maxlength="5000"></textarea>`;if(['choice','knowledge'].includes(q.type))return `<div class="ee-choice-options" role="radiogroup" aria-label="${safe(q.label)}">${EE.shuffleChoices(q).map((o,i)=>`<label class="ee-choice-option"><input type="radio" name="${safe(q.id)}" value="${safe(o)}" ${q.required?'required':''}><span>${safe(o)}</span></label>`).join('')}</div>`;return EE.scaleMarkup(q,safe);}
 
@@ -437,7 +438,7 @@ function eeLockedQuestion(s,q,i){
  const scalePanel=['scale','nps','cnps'].includes(q.type)?
    '<div class="ee-locked-scale">Escala de '+safe(q.min??0)+' a '+safe(q.max??10)+
    (q.reverse?' · sentido invertido':'')+'</div>':'';
- return '<details class="ee-locked-question" name="ee-locked-question" '+(i===0?'open':'')+'>'+
+ return '<details class="ee-locked-question" name="ee-locked-question">'+
   '<summary><strong>'+String(i+1).padStart(2,'0')+' · '+safe(q.label)+'</strong><span>Ver detalle</span></summary>'+
   '<div class="ee-locked-question-body">'+
   '<label>Texto de la pregunta<textarea name="question_'+i+'" required maxlength="2000">'+safe(q.label)+'</textarea></label>'+
@@ -575,5 +576,30 @@ function eeHomeSourcesPanel(x){const options=eeHomeSourceOptions(x);return `<sec
 function eeSaveHomeSources(e){e.preventDefault();try{const x=current(),fd=new FormData(e.target),available=eeHomeSourceOptions(x),sources={};for(const key of ['ins_personas','ins_proceso','cnps']){const value=fd.get(key);if(value==='__manual__'){sources[key]={manual:true};continue;}if(!value)continue;const [surveyId,metric]=JSON.parse(value);if(!available.some(o=>o.surveyId===surveyId&&o.key===metric))throw Error('La fuente seleccionada ya no existe.');sources[key]={surveyId,key:metric};}x.surveyHomeSources=sources;save();render();eeMsg('Fuentes de Inicio actualizadas.');}catch(err){eeMsg(err.message,true);}}
 function eeHomeMetric(x,key){const selected=x.surveyHomeSources?.[key];if(selected?.manual)return null;let source=selected;if(!source){const type=key==='ins_personas'?'nps':key==='cnps'?'cnps':null;if(!type)return null;const candidates=eeHomeSourceOptions(x).filter(o=>o.type===type);if(candidates.length!==1)return candidates.length?{value:null,n:0,note:'Elige la fuente en Encuestas → Diseño'}:null;source=candidates[0];}const s=(x.surveys||[]).find(s=>s.id===source.surveyId);if(!s)return {value:null,n:0,note:'Encuesta de origen no disponible'};const e=EE.evolution(s),latest=e.series.at(-1);if(!latest)return {value:null,n:0,note:s.title+' · Sin respuestas'};const scoped={...s,responses:s.responses.filter(r=>(r.wave||'Base')===latest.wave)};let metric;if(source.key==='global')metric=EE.composition(scoped).instrumentGlobal;else{const id=source.key.slice(9),q=s.questions.find(q=>q.id===id);if(!q||!['nps','cnps'].includes(q.type))return {value:null,n:0,note:'Revisa el tipo de la pregunta de origen'};metric=EE.composition(scoped,{}, {...(s.compositionConfig||{}),referenceId:id}).npsReference;}return {value:metric.balance,n:metric.n,date:latest.date||'',period:latest.wave,note:s.title+' · '+latest.wave+' · '+metric.n+' personas',surveyId:s.id};}
 
+async function eeUpdateSurveyKind(select){
+ const s=eeSurvey(),x=current();if(!s||!x)return;
+ const previous=s.kind,kind=String(select.value||'');
+ const allowed=['SENTIR','NPS','CNPS','Conocimiento','Libre'];
+ if(kind===previous)return;
+ if(eeIsPriority(s)){select.value=previous;return eeMsg('La categoría de este instrumento de priorización es fija.',true);}
+ if(!allowed.includes(kind)){select.value=previous;return eeMsg('Categoría no válida.',true);}
+ select.disabled=true;
+ try{
+  if(s.publication?.id){
+   const {data,error}=await sb.from('ee_publications')
+    .update({snapshot:{...eePublicSnapshot(s),kind}})
+    .eq('id',s.publication.id).select('id');
+   if(error)throw error;
+   if(!data?.length)throw Error('No se confirmó la actualización del enlace público.');
+  }
+  if(!EE.init(x).includes(s))throw Error('El instrumento seleccionado ya no está disponible.');
+  s.kind=kind;s.updatedAt=EE.now();save();render();
+  if(typeof eeVerifySave==='function')void eeVerifySave('Categoría de encuesta',s.id);
+  else eeMsg('Categoría actualizada sin modificar preguntas ni respuestas.');
+ }catch(error){
+  if(select.isConnected){select.value=previous;select.disabled=false;}
+  eeMsg('No se pudo cambiar la categoría: '+error.message,true);
+ }
+}
 function eeSurveyKindPanel(s){return `<section class="panel"><details><summary><b>Tipo de encuesta</b></summary><form onsubmit="eeSaveSurveyKind(event)"><label>Tipo<select name="kind" required>${eeOptions(['SENTIR','NPS','CNPS','Conocimiento','Libre'],s.kind)}</select></label><p class="muted">Describe el instrumento. Cada pregunta conserva su propio tipo y sus respuestas.</p><button class="primary">Guardar tipo de encuesta</button></form></details></section>`;}
 async function eeSaveSurveyKind(e){e.preventDefault();const s=eeSurvey(),x=current();if(!s)return;try{const kind=String(new FormData(e.target).get('kind')||'');if(!['SENTIR','NPS','CNPS','Conocimiento','Libre'].includes(kind))throw Error('Tipo de encuesta inválido.');if(s.publication){const {error}=await sb.from('ee_publications').update({snapshot:{...eePublicSnapshot(s),kind}}).eq('id',s.publication.id);if(error)throw error;}if(!EE.init(x).includes(s))return;s.kind=kind;s.updatedAt=EE.now();save();render();eeMsg('Tipo de encuesta actualizado. Preguntas y respuestas conservadas.');}catch(err){eeMsg(err.message,true);}}
