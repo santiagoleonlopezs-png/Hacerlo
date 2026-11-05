@@ -50,7 +50,8 @@ function eeChainSignature(s){
    values:(q.optionScoring.options||[]).map(o=>[o.option,o.value]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))
   }:null
  })).sort((a,b)=>a.label.localeCompare(b.label));
- return JSON.stringify({kind:s.kind,questions:qs});
+ // La categoría es metadato; la equivalencia depende de las preguntas.
+ return JSON.stringify({questions:qs});
 }
 function eeChainIssue(a,b){
  if(!a||!b||a.id===b.id)return 'Elige otra encuesta.';
