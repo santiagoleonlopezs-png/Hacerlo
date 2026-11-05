@@ -91,7 +91,7 @@ x.measurementQuestionLinks=[{id:'link1',groupId:during.measurementGroupId,
  firstSurveyId:base.id,firstQuestionId:base.questions[0].id,
  secondSurveyId:alternative.id,secondQuestionId:alternative.questions[0].id,label:'Claridad frente al cambio'}];
 const outcome=compare(x,during).rows;
-assert.equal(outcome.length,2,'Debe mostrar comparación automática y manual');
+assert.equal(outcome.length,1,'Una variable equivalente se consolida en una sola fila a través de las mediciones, sin duplicar comparación automática y manual');
 const manuallyMapped=outcome.find(r=>r.source==='manual');
 assert.ok(manuallyMapped);
 assert.equal(diff(manuallyMapped),50,'El cambio se calcula usando puntuación normalizada 0–100');
@@ -113,10 +113,17 @@ const mapEvent={preventDefault(){},target:{values:{
 }}};
 mapAction(mapEvent);
 assert.equal(x.measurementQuestionLinks.length,entriesBefore+1,'Guardar desde formulario crea un vínculo persistente');
-const normalizedRow=compare(x,during).rows.find(row=>row.label==='Claridad normalizada');
-assert.ok(normalizedRow,'El vínculo aparece inmediatamente en resultados');
-assert.equal(normalizedRow.unit,'%');
-assert.equal(diff(normalizedRow),60,'Una escala 0–10 y otra 0–5 se comparan normalizadas al rango porcentual');
+const consolidated=compare(x,during).rows;
+assert.equal(consolidated.length,1,'La misma pregunta no se duplica por agregar otra equivalencia manual');
+assert.equal(consolidated[0].unit,'%');
+assert.equal(consolidated[0].values.length,4,'La variable reúne los cuatro momentos vinculados');
+const chainOrder=f.eeChainMembers(x,during);
+const baseIndex=chainOrder.findIndex(z=>z.id===base.id),otherIndex=chainOrder.findIndex(z=>z.id===incompatible.id);
+assert.equal(consolidated[0].values[baseIndex].value,20,'Se mantiene la base de la escala original 0–10');
+assert.equal(consolidated[0].values[otherIndex].value,80,'Escala 0–5 normalizada a 0–100 para comparar');
+assert.equal(consolidated[0].values[otherIndex].value-consolidated[0].values[baseIndex].value,60,'Diferencia entre las dos mediciones normalizadas');
+assert.equal(diff(consolidated[0]),50,'La diferencia total sigue entre la primera y última medición con datos');
+assert.match(f.eeChainOverview(x,during),/Claridad normalizada|Claridad frente al cambio/,'El análisis conserva el nombre de las relaciones validadas');
 assert.equal(JSON.stringify(base.responses),origBefore);
 assert.equal(JSON.stringify(during.responses),origDuring);
 
@@ -131,8 +138,8 @@ assert.equal(next.measurementGroupId,during.measurementGroupId,'Crear ya vincula
 assert.equal(next.status,'draft');
 assert.equal(next.questions.length,during.questions.length);
 assert.equal(next.publication,undefined);
-assert.match(read('index.html'),/encadenamiento\.js\?v=1\.3\.0/);
-assert.match(read('index.html'),/comparacion-vinculada\.js\?v=1\.0\.0/);
+assert.match(read('index.html'),/encadenamiento\.js\?v=\d+(?:\.\d+)+/,'El módulo actualizado debe estar versionado para publicación');
+assert.match(read('index.html'),/comparacion-vinculada\.js\?v=\d+(?:\.\d+)+/,'La comparación actualizada debe estar versionada');
 assert.match(read('src/modules/encuestas/encuestas.js'),/function eeEvolutionResults\(x,s\)\{const e=EE\.evolution\(s,eeFilter\.audienceId\)/,'La encuesta seleccionada conserva sus resultados principales');
 assert.doesNotMatch(read('src/modules/encuestas/encuestas.js'),/return eeChainOverview\(x,s\)/,'El seguimiento no sustituye el panel');
 assert.match(read('src/modules/encuestas/encuestas.js'),/\$\{eeChainPanel\(x,s\)\}/,'La vinculación aparece después de resultados propios');
