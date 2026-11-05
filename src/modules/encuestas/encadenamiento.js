@@ -279,26 +279,13 @@ function eeChainMetricSignature(q){
  });
 }
 function eeChainComparableMetrics(x,s,audienceId=''){
- const members=eeChainMembers(x,s),columns=members.map(survey=>{
-  const d=EE.detailed(survey,{audienceId}),numeric=new Map();
-  for(const q of survey.questions||[]){
-   const m=d.questions.find(row=>row.questionId===q.id);
-   if(!m?.unit||!['scale','nps','cnps','knowledge'].includes(q.type)&&!q.optionScoring?.enabled)continue;
-   const signature=eeChainMetricSignature(q);
-   if(numeric.has(signature))continue;
-   numeric.set(signature,{label:q.label,unit:m.unit,value:m.value??null,n:m.n||0});
-  }
-  return numeric;
- });
- const registry=new Map();
- columns.forEach((column,i)=>column.forEach((metric,signature)=>{
-  if(!registry.has(signature))registry.set(signature,{signature,label:metric.label,unit:metric.unit,count:0});
-  registry.get(signature).count++;
- }));
- const rows=[...registry.values()].filter(item=>item.count>=2).map(item=>({
-  ...item,values:columns.map(column=>column.get(item.signature)||null)
- }));
- return {members,rows};
+ // Mantener la exportación coherente con la comparación visual, incluidas
+ // las relaciones manuales y las mediciones que aún no tienen respuestas.
+ if(typeof eeLinkedRows==='function'){
+  const report=eeLinkedRows(x,s,audienceId);
+  return {members:report.members,rows:report.rows};
+ }
+ return {members:eeChainMembers(x,s),rows:[]};
 }
 function eeChainExportComparison(){
  const x=current(),s=eeSurvey(),report=eeChainComparableMetrics(x,s,eeFilter.audienceId);
