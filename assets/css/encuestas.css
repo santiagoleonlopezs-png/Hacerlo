@@ -451,3 +451,26 @@
 
 /* Explicación breve cuando se conectan seguimientos existentes. */
 .ee-chain-merge-hint{font-size:11px;color:#a9c6d4;line-height:1.5;margin:10px 13px 0}
+
+/* Seguimiento comparable destacado; resultados originales separados visualmente. */
+.ee-linked-primary{border:1px solid #3d6a7c;background:linear-gradient(155deg,#103749,#0a2939);border-radius:15px;padding:20px 21px;margin:0 0 26px;min-width:0}
+.ee-linked-primary-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.ee-linked-primary-heading>div>span{display:block;font-size:10px;font-weight:800;color:#e9c56f;letter-spacing:.09em}
+.ee-linked-primary-heading h3{margin:6px 0;font-size:18px;color:#f4f8fb}
+.ee-linked-primary-heading .muted{font-size:12px;margin:2px 0 10px}
+.ee-linked-primary-count{font-size:11px;color:#a6c8d3;border:1px solid #376477;border-radius:999px;padding:6px 10px}
+.ee-linked-primary-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:14px 0 20px}
+.ee-linked-primary-metric{display:flex;flex-direction:column;gap:7px;border:1px solid #396579;background:#102e40;border-radius:11px;padding:15px 17px}
+.ee-linked-primary-metric>small{font-size:11px;color:#b6d2dc}
+.ee-linked-primary-metric>strong{color:#f0c665;font-size:30px;line-height:1.2}
+.ee-linked-primary-metric>strong span{font-size:12px;color:#b3cdd9;font-weight:500;margin-left:6px}
+.ee-linked-primary-metric>span{font-size:12px;color:#b9e9e5}
+.ee-linked-primary-chart h4{color:#f0f7f8;font-size:14px;margin:14px 0 2px}
+.ee-linked-primary-chart>.muted,.ee-linked-primary-reference>.muted{font-size:11px;line-height:1.5}
+.ee-linked-primary-reference{border-top:1px solid #396579;padding-top:10px}
+.ee-linked-primary-reference>summary{font-size:13px;font-weight:700;color:#f0c665}
+.ee-linked-primary-note{font-size:12px;color:#b8d3dc;line-height:1.5;margin:12px 0}
+.ee-linked-primary-footnote{border-top:1px solid #345e70;padding-top:12px;font-size:11px;color:#a5c5d0;line-height:1.6;margin:10px 0 0}
+.ee-original-survey-heading{border-top:1px solid #34576b;padding-top:23px}
+.ee-linked-auto-label{font-size:11px;color:#b1ccd8;margin:0}
+@media(max-width:620px){.ee-linked-primary{padding:15px 13px;margin-bottom:20px}.ee-linked-primary-heading h3{font-size:16px}.ee-linked-primary-metrics{grid-template-columns:minmax(0,1fr)}}
