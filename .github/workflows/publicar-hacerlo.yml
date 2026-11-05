@@ -47,6 +47,8 @@ jobs:
           node --check src/core/centro-inteligencia.js
           node --check src/modules/medicion/paneles.js
           node --check src/modules/implementacion/operaciones.js
+          node --check src/modules/implementacion/laboratorio.js
+          node tests/laboratorio_acceso_v2.cjs
           node tests/portfolio_home_v2.cjs
           node tests/initiative_lifecycle_v2.cjs
           node tests/home_rdaim_v2.cjs
