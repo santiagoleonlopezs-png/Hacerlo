@@ -89,6 +89,25 @@ function eeLinkedRows(x,s,audienceId='',extraLinks=[]){
   if(link)ga.links.push(link);
   groups.delete(rb);return true;
  };
+ // Instrumentos nacidos con «Crear siguiente medición»: misma familia e ID
+ // de pregunta. Se respeta el enunciado y el sentido para no comparar
+ // automáticamente preguntas cuyo significado haya sido modificado.
+ const byOrigin=new Map();
+ for(const node of nodes.values()){
+  const family=String(node.survey.familyId||node.survey.previousSurveyId||node.survey.id);
+  const key=JSON.stringify([family,String(node.q.id)]);
+  if(!byOrigin.has(key))byOrigin.set(key,[]);
+  byOrigin.get(key).push(node);
+ }
+ for(const lineage of byOrigin.values()){
+  for(let i=0;i<lineage.length;i++)for(let j=i+1;j<lineage.length;j++){
+   const first=lineage[i],second=lineage[j];
+   if(first.survey.id!==second.survey.id
+    &&eeChainNorm(first.q.label)===eeChainNorm(second.q.label)
+    &&eeLinkedCanAuto(first.q,second.q))
+    merge(first.id,second.id);
+  }
+ }
  const byName=new Map();
  for(const node of nodes.values()){
   const label=eeChainNorm(node.q.label);
