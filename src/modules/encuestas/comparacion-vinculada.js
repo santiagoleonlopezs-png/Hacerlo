@@ -152,8 +152,8 @@ function eeLinkedSaveQuestionMap(event){
  const first=locate(fd.get('first')),second=locate(fd.get('second'));
  if(!first.survey||!second.survey||first.survey.id===second.survey.id)return eeMsg('Elige preguntas de dos encuestas diferentes.',true);
  if(!eeLinkedCanCompare(first.q,second.q))return eeMsg('Las preguntas no tienen un tipo de resultado o dirección compatible. No se puede calcular un cambio válido.',true);
- const label=String(fd.get('label')||'').trim();
- if(!label||label.length>100)return eeMsg('Escribe un nombre de hasta 100 caracteres para el resultado comparable.',true);
+ const label=String(first.q.label||'').trim();
+ if(!label)return eeMsg('La pregunta de origen no tiene un nombre válido.',true);
  const key=[first.survey.id,first.q.id,second.survey.id,second.q.id].sort().join('|');
  const existing=eeLinkedStoredMappings(x,s).some(z=>[z.firstSurveyId,z.firstQuestionId,z.secondSurveyId,z.secondQuestionId].sort().join('|')===key);
  if(existing)return eeMsg('Esa correspondencia ya está vinculada.',true);
@@ -285,7 +285,7 @@ function eeChainComparisonView(x,s){
   '<form onsubmit="eeLinkedSaveQuestionMap(event)" class="ee-linked-mapping-form">'+
   '<label>Pregunta del primer momento<select name="first" required><option value="">Elegir pregunta</option>'+questionOptions+'</select></label>'+
   '<label>Pregunta del otro momento<select name="second" required><option value="">Elegir pregunta</option>'+questionOptions+'</select></label>'+
-  '<label>Nombre de la variable comparable<input name="label" maxlength="100" required placeholder="Ej. Claridad frente al cambio"></label>'+
+  '<p class="ee-linked-auto-label">Se usará automáticamente el nombre de la primera pregunta. No necesitas escribirlo otra vez.</p>'+
   '<label class="ee-linked-confirm"><input type="checkbox" name="equivalent" value="yes" required> Confirmo que ambas preguntas evalúan el mismo atributo y con el mismo sentido de respuesta. Acepto la normalización de escalas cuando corresponda.</label>'+
   '<button class="primary" type="submit">Guardar correspondencia</button></form></details>';
  return '<div class="ee-linked-comparison"><h3>Comparación entre momentos</h3>'+
