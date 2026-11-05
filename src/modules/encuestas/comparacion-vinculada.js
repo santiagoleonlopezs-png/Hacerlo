@@ -139,31 +139,79 @@ function eeLinkedQuestionOptions(members){
   return options?'<optgroup label="'+safe(eeChainMoment(s)+' · '+s.title)+'">'+options+'</optgroup>':'';
  }).join('');
 }
+function eeLinkedFormNotice(form,message,error=true){
+ const feedback=form?.querySelector?.('[data-ee-map-feedback]');
+ if(feedback){
+  feedback.hidden=false;feedback.textContent=message;
+  feedback.classList.toggle('is-error',!!error);
+  feedback.setAttribute('role',error?'alert':'status');
+ }else eeMsg(message,error);
+}
+function eeLinkedChooseCounterpart(form){
+ const first=form?.elements?.namedItem?.('first'),second=form?.elements?.namedItem?.('second');
+ if(!first||!second)return;
+ const [surveyId,questionId]=String(first.value||'').split('|');
+ const survey=eeChainMembers(current(),eeSurvey()).find(z=>String(z.id)===surveyId);
+ const question=survey?.questions?.find(q=>String(q.id)===questionId);
+ const previous=second.value;
+ const options=Array.from(second.options||[]);
+ for(const option of options)option.disabled=!!surveyId&&!!option.value&&option.value.split('|')[0]===surveyId;
+ const currentOption=options.find(o=>o.value===previous);
+ if(currentOption&&!currentOption.disabled&&currentOption.value)return;
+ const candidates=options.filter(o=>o.value&&!o.disabled);
+ const matching=candidates.find(o=>{
+  const [sid,qid]=o.value.split('|');
+  const other=eeChainMembers(current(),eeSurvey()).find(z=>String(z.id)===sid);
+  const otherQ=other?.questions?.find(q=>String(q.id)===qid);
+  return question&&otherQ&&eeChainNorm(question.label)===eeChainNorm(otherQ.label)
+   &&eeLinkedCanAuto(question,otherQ);
+ });
+ second.value=matching?.value||'';
+ const feedback=form.querySelector?.('[data-ee-map-feedback]');
+ if(feedback){feedback.hidden=true;feedback.textContent='';}
+}
 function eeLinkedSaveQuestionMap(event){
  event.preventDefault();
- const x=current(),s=eeSurvey();if(!x||!s)return;
- const form=event.target,fd=new FormData(form);
- if(fd.get('equivalent')!=='yes')return eeMsg('Confirma que ambas preguntas miden el mismo atributo con la misma escala.',true);
+ const x=current(),s=eeSurvey(),form=event.target;
+ if(!x||!s)return;
+ const fd=new FormData(form),fail=message=>eeLinkedFormNotice(form,message,true);
+ if(fd.get('equivalent')!=='yes')return fail('Confirma que ambas preguntas miden el mismo atributo con el mismo sentido.');
+ const members=eeChainMembers(x,s);
+ if(members.length<2||!s.measurementGroupId)return fail('Conecta primero las encuestas en el seguimiento.');
  const locate=value=>{
   const [sid,qid]=String(value||'').split('|');
-  const survey=eeChainMembers(x,s).find(z=>z.id===sid);
-  return {survey,q:survey?.questions?.find(q=>q.id===qid)};
+  const survey=members.find(z=>String(z.id)===sid);
+  return {survey,q:survey?.questions?.find(q=>String(q.id)===qid)};
  };
  const first=locate(fd.get('first')),second=locate(fd.get('second'));
- if(!first.survey||!second.survey||first.survey.id===second.survey.id)return eeMsg('Elige preguntas de dos encuestas diferentes.',true);
- if(!eeLinkedCanCompare(first.q,second.q))return eeMsg('Las preguntas no tienen un tipo de resultado o dirección compatible. No se puede calcular un cambio válido.',true);
+ if(!first.survey||!second.survey)return fail('Selecciona dos preguntas de las encuestas conectadas.');
+ if(first.survey.id===second.survey.id)return fail('Elige una pregunta de otra medición; no puedes relacionar preguntas dentro de la misma encuesta.');
+ if(!eeLinkedCanCompare(first.q,second.q))return fail('Estas preguntas no tienen escalas o sentidos compatibles. Selecciona otras preguntas equivalentes.');
  const label=String(first.q.label||'').trim();
- if(!label)return eeMsg('La pregunta de origen no tiene un nombre válido.',true);
- const key=[first.survey.id,first.q.id,second.survey.id,second.q.id].sort().join('|');
- const existing=eeLinkedStoredMappings(x,s).some(z=>[z.firstSurveyId,z.firstQuestionId,z.secondSurveyId,z.secondQuestionId].sort().join('|')===key);
- if(existing)return eeMsg('Esa correspondencia ya está vinculada.',true);
+ if(!label)return fail('La pregunta de origen debe tener un nombre válido.');
+ const pairKey=link=>[JSON.stringify([link.firstSurveyId,link.firstQuestionId]),
+   JSON.stringify([link.secondSurveyId,link.secondQuestionId])].sort().join('|');
+ const candidate={id:EE.uid(),groupId:s.measurementGroupId,
+  firstSurveyId:first.survey.id,firstQuestionId:first.q.id,
+  secondSurveyId:second.survey.id,secondQuestionId:second.q.id,
+  label,createdAt:EE.now()};
  x.measurementQuestionLinks ||= [];
- const candidate={id:EE.uid(),groupId:s.measurementGroupId,firstSurveyId:first.survey.id,firstQuestionId:first.q.id,secondSurveyId:second.survey.id,secondQuestionId:second.q.id,label,createdAt:EE.now()};
+ if(eeLinkedStoredMappings(x,s).some(m=>pairKey(m)===pairKey(candidate)))
+  return fail('Esta correspondencia ya está guardada y se utiliza en la comparación.');
  const preview=eeLinkedRows(x,s,'',[candidate]);
- if(preview.rejectedLinkIds.includes(candidate.id))return eeMsg('Estas preguntas ya pertenecen a relaciones incompatibles o duplicadas. Revisa las correspondencias existentes.',true);
+ if(preview.rejectedLinkIds.includes(candidate.id))
+  return fail('Las preguntas pertenecen a correspondencias incompatibles. Revisa las relaciones existentes.');
  x.measurementQuestionLinks.push(candidate);
- eeChainExpanded=true;save();render();eeMsg('Correspondencia guardada. La tabla muestra ahora los momentos comparables.');
- if(typeof eeVerifySave==='function')void eeVerifySave('Comparación de preguntas',s.id);
+ eeChainExpanded=true;save();render();
+ const visibleForm=typeof document!=='undefined'?document.querySelector('.ee-linked-mapping-form'):null;
+ eeLinkedFormNotice(visibleForm||form,'Correspondencia guardada. Se conservará en el seguimiento.',false);
+ if(typeof eeVerifySave==='function'){
+  void eeVerifySave('Correspondencia entre preguntas',s.id).then(ok=>{
+   if(ok!==false)return;
+   const currentForm=typeof document!=='undefined'?document.querySelector('.ee-linked-mapping-form'):null;
+   eeLinkedFormNotice(currentForm||form,'La correspondencia está en este equipo, pero el servidor aún no confirmó el guardado. Revisa la conexión.',true);
+  });
+ }
 }
 function eeLinkedRemoveQuestionMap(id){
  const x=current(),s=eeSurvey();if(!x||!s)return;
@@ -283,11 +331,11 @@ function eeChainComparisonView(x,s){
   '<p class="muted">La categoría SENTIR/CNPS/NPS no vuelve equivalentes dos preguntas. Si miden lo mismo con tipos y sentidos compatibles, puedes relacionarlas. Las escalas numéricas compatibles se expresan en una unidad común; NPS y CNPS conservan sus índices propios.</p>'+
   mapSummary+
   '<form onsubmit="eeLinkedSaveQuestionMap(event)" class="ee-linked-mapping-form">'+
-  '<label>Pregunta del primer momento<select name="first" required><option value="">Elegir pregunta</option>'+questionOptions+'</select></label>'+
+  '<label>Pregunta del primer momento<select name="first" required onchange="eeLinkedChooseCounterpart(this.form)"><option value="">Elegir pregunta</option>'+questionOptions+'</select></label>'+
   '<label>Pregunta del otro momento<select name="second" required><option value="">Elegir pregunta</option>'+questionOptions+'</select></label>'+
   '<p class="ee-linked-auto-label">Se usará automáticamente el nombre de la primera pregunta. No necesitas escribirlo otra vez.</p>'+
   '<label class="ee-linked-confirm"><input type="checkbox" name="equivalent" value="yes" required> Confirmo que ambas preguntas evalúan el mismo atributo y con el mismo sentido de respuesta. Acepto la normalización de escalas cuando corresponda.</label>'+
-  '<button class="primary" type="submit">Guardar correspondencia</button></form></details>';
+  '<button class="primary" type="submit">Guardar correspondencia</button><p class="ee-linked-form-feedback" data-ee-map-feedback role="status" hidden></p></form></details>';
  return '<div class="ee-linked-comparison"><h3>Comparación entre momentos</h3>'+
   '<p class="muted">Resultados de cada encuesta vinculada. Los índices propios se muestran para consulta, sin considerarlos automáticamente equivalentes.</p>'+
   '<div class="ee-linked-summary-grid">'+cards+'</div>'+
