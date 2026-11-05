@@ -155,7 +155,7 @@ function eeLinkedDiff(row){
 function eeLinkedQuestionOptions(members){
  return members.map(s=>{
   const options=(s.questions||[]).filter(eeLinkedNumericQuestion).map(q=>
-   '<option value="'+safe(s.id+'|'+q.id)+'">'+safe(q.label)+' · '+safe(q.type==='scale'?q.min+'–'+q.max:q.type)+'</option>').join('');
+   '<option value="'+safe(s.id+'|'+q.id)+'">'+safe(eeChainMoment(s))+' · '+safe(q.label)+' · '+safe(q.type==='scale'?q.min+'–'+q.max:q.type)+'</option>').join('');
   return options?'<optgroup label="'+safe(eeChainMoment(s)+' · '+s.title)+'">'+options+'</optgroup>':'';
  }).join('');
 }
