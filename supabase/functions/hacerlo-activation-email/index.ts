@@ -152,24 +152,32 @@ Deno.serve(async(request:Request)=>{
   if(insertError.code==='23505')return json({error:'Este envío ya fue procesado o se encuentra en curso. Consulta el historial antes de intentarlo otra vez.'},409);
   return json({error:'No fue posible registrar el envío. Ningún correo fue enviado.'},503);
  }
- const contentText=message+(cta?'\n\nAcción esperada: '+cta:'');
- const html='<div style="font:16px/1.65 Arial,sans-serif;max-width:640px;margin:auto;color:#193047">'+
+ // Personalización individual, escapada antes de componer HTML.
+ const personalize=(src:string,name:string)=>src
+  .replace(/\{\{nombre\}\}/g,name).replace(/\{\{intervencion\}\}/g,text(action?.name,150));
+ const contentFor=(name:string)=>{
+  const individualSubject=personalize(subject,name),individualMessage=personalize(message,name),individualCta=personalize(cta,name);
+  const textBody=individualMessage+(individualCta?'\n\nAcción esperada: '+individualCta:'');
+  const html='<div style="font:16px/1.65 Arial,sans-serif;max-width:640px;margin:auto;color:#193047">'+
    '<div style="font-weight:bold;font-size:13px;letter-spacing:1px;color:#176d68">HACERLO · ACTIVACIÓN CONDUCTUAL</div>'+
-   '<h1 style="font-size:22px;line-height:1.3">'+escapeHtml(subject)+'</h1>'+
-   '<div style="white-space:pre-line">'+escapeHtml(message)+'</div>'+
-   (cta?'<p style="padding:14px 16px;background:#f0f7f5;border-radius:10px"><strong>Acción esperada</strong><br>'+escapeHtml(cta)+'</p>':'')+
+   '<h1 style="font-size:22px;line-height:1.3">'+escapeHtml(individualSubject)+'</h1>'+
+   '<div style="white-space:pre-line">'+escapeHtml(individualMessage)+'</div>'+
+   (individualCta?'<p style="padding:14px 16px;background:#f0f7f5;border-radius:10px"><strong>Acción esperada</strong><br>'+escapeHtml(individualCta)+'</p>':'')+
    '<p style="font-size:12px;color:#687781">Enviado desde HACERLO · Fábrica del Comportamiento</p></div>';
+  return {subject:individualSubject,html,text:textBody};
+ };
  let accepted=0,failed=0,lastError='';
  // Mensajes individuales: nunca exponemos las demás direcciones en To/Cc.
  // No reintentar el mismo request_key evita duplicados tras un resultado parcial.
- for(const [i,email] of [...recipients].entries()){
+ for(const [i,[email,recipient]] of [...recipients.entries()].entries()){
   try{
+   const content=contentFor(recipient.name);
    const response=await fetch('https://api.resend.com/emails',{
     method:'POST',headers:{
      Authorization:'Bearer '+resendKey,'Content-Type':'application/json',
      'Idempotency-Key':requestKey+'-'+i
     },
-    body:JSON.stringify({from,to:[email],subject,html,text:contentText,...(scheduledIso?{scheduled_at:scheduledIso}:{})})
+    body:JSON.stringify({from,to:[email],...content,...(scheduledIso?{scheduled_at:scheduledIso}:{})})
    });
    if(response.ok){accepted++;}
    else{failed++;lastError='Resend rechazó uno o más mensajes ('+response.status+').';}
