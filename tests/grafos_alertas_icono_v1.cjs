@@ -22,6 +22,8 @@ const app={innerHTML:''};
 ctx.renderAdoptionGraphPage(app,'<header>Red</header>',data);
 assert.match(app.innerHTML,/aria-label="Alerta: Hábito. Abrir relación"/);
 assert.match(app.innerHTML,/M 0 -16 L 15 11/);
+assert.match(app.innerHTML,/transform="scale\(0\.64\)"/,"El icono se reduce sin perder el símbolo");
+assert.match(app.innerHTML,/r="15" fill="transparent" pointer-events="all"/,"El área de clic permanece accesible");
 assert.match(app.innerHTML,/graphOpenEdgeEditor\(0\)/);
 assert.match(ctx.graphFactorBadges(data.edges[0].graphFactors,'edge',0),/⚠️/);
 data.graphShowAlerts=false;
