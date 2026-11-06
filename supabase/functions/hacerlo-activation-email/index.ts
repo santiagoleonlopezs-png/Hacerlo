@@ -1,6 +1,6 @@
 // HACERLO | Envío autorizado para el Centro de Activación Conductual.
-// Los destinatarios salen exclusivamente del app_state de la iniciativa leída en Supabase.
-// Nunca se aceptan correos, organización o remitente definidos por el navegador.
+// Los contactos se validan contra la iniciativa. Solo UN destinatario manual por envío.
+// El remitente, la fábrica y los permisos se verifican en el servidor.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 
 const allowedOrigins=new Set([
@@ -51,13 +51,20 @@ Deno.serve(async(request:Request)=>{
  const scheduledFor=text(body?.scheduled_for,50);
  const audienceIds=Array.isArray(body?.audience_ids)?
    [...new Set(body.audience_ids.filter((a:unknown)=>typeof a==='string'&&a.length<=100))]:[];
+ const contactIds=Array.isArray(body?.contact_ids)?
+   [...new Set(body.contact_ids.filter((a:unknown)=>typeof a==='string'&&a.length<=100))]:[];
+ const manualEmail=text(body?.manual_email,254).toLowerCase();
+ const manualName=text(body?.manual_name,120);
+ if(contactIds.length>40||(manualEmail&&!validEmail(manualEmail))||
+    (body?.manual_email!=null&&typeof body.manual_email!=='string'))
+  return json({error:'Revisa los contactos y el correo manual.'},400);
  if(!['preview','send'].includes(mode)||!uuid.test(initiativeId)||
     !Number.isSafeInteger(actionIndex)||actionIndex<0||
     !['comunicacion','reconocimiento'].includes(kind)||
-    audienceIds.length<1||audienceIds.length>20||
-    !subject||!message)return json({error:'Revisa la acción, las audiencias, el asunto y el mensaje.'},400);
+    audienceIds.length>20||(!audienceIds.length&&!contactIds.length&&!manualEmail)||
+    !subject||!message)return json({error:'Selecciona una audiencia, un contacto o escribe un correo individual válido.'},400);
  if(mode==='send'&&!uuid.test(requestKey))return json({error:'Identificador de envío inválido.'},400);
- if(mode==='send'&&body?.consent_attested!==true)return json({error:'Confirma que tienes autorización para enviar comunicaciones a las audiencias.'},403);
+ if(mode==='send'&&body?.consent_attested!==true)return json({error:'Confirma que tienes autorización para comunicarte con estos destinatarios.'},403);
  let scheduledIso='';
  if(scheduledFor){
   const when=new Date(scheduledFor),delta=when.getTime()-Date.now();
@@ -78,23 +85,40 @@ Deno.serve(async(request:Request)=>{
  const audiences=Array.isArray(state.audiences)?state.audiences:[];
  const selected=audiences.filter((a:any)=>audienceIds.includes(String(a?.id)));
  if(selected.length!==audienceIds.length)return json({error:'Una o más audiencias ya no existen.'},409);
- const recipients=new Set<string>();
- const addEmail=(v:unknown)=>{
+ // Resolver los IDs de personas dentro del tenant; nunca confiar en emails asociados a IDs enviados por cliente.
+ const recipients=new Map<string,{name:string,source:string}>();
+ const addEmail=(v:unknown,name:unknown,source:string)=>{
   if(typeof v!=='string')return;
   const email=v.trim().toLowerCase();
-  if(validEmail(email))recipients.add(email);
+  if(validEmail(email)){
+   const existing=recipients.get(email);
+   if(!existing||(!existing.name&&text(name,120)))
+    recipients.set(email,{name:text(name,120),source});
+  }
  };
- for(const audience of selected)addEmail(audience?.email||audience?.correo);
  const people=Array.isArray(state.audiencePeople)?state.audiencePeople:[];
+ const contacts=people.filter((p:any)=>contactIds.includes(String(p?.id)));
+ if(contacts.length!==contactIds.length)return json({error:'Alguna persona seleccionada ya no existe en esta iniciativa.'},409);
+ for(const audience of selected)addEmail(audience?.email||audience?.correo,audience?.name,'audiencia');
  for(const person of people){
-  if(audienceIds.includes(String(person?.audienceId)))addEmail(person?.email||person?.correo);
+  if(audienceIds.includes(String(person?.audienceId)))addEmail(person?.email||person?.correo,person?.name,'audiencia');
  }
+ for(const person of contacts){
+  const email=String(person?.email||person?.correo||'').trim().toLowerCase();
+  if(!validEmail(email))return json({error:'Alguna persona no tiene correo válido. Corrígelo en Gestión de audiencias.'},422);
+  addEmail(email,person?.name,'contacto');
+ }
+ if(manualEmail)addEmail(manualEmail,manualName,'manual');
  const count=recipients.size;
- if(!count)return json({error:'Las audiencias seleccionadas no tienen direcciones de correo válidas. Agrégalas en Gestión de audiencias.'},422);
+ if(!count)return json({error:'No hay destinatarios con correos válidos.'},422);
+ if(manualEmail&&(message.includes('{{nombre}}')||subject.includes('{{nombre}}')||cta.includes('{{nombre}}'))&&!manualName)
+  return json({error:'Para usar {{nombre}} con el correo manual, escribe el nombre del destinatario.'},422);
  if(count>40)return json({error:'Por seguridad, el primer envío admite hasta 40 destinatarios únicos. Divide el envío en audiencias más pequeñas.'},422);
  const audienceNames=selected.map((a:any)=>text(a?.name,100)||'Audiencia');
+ const contactNames=contacts.map((p:any)=>text(p?.name,100)||'Persona registrada');
  if(mode==='preview')return json({ok:true,recipient_count:count,audiences:audienceNames,
-  note:'Destinatarios deduplicados y leídos del servidor. Se enviará un correo privado a cada persona.'});
+  contacts:contactNames,manual_count:manualEmail?1:0,
+  note:'Destinatarios únicos verificados. Cada persona recibirá un correo privado.'});
  if(Number(body?.expected_count)!==count)return json({error:'La cantidad de destinatarios cambió. Revisa la vista previa antes de enviar.'},409);
  const resendKey=Deno.env.get('RESEND_API_KEY')||'';
  const from=Deno.env.get('HACERLO_FROM_EMAIL')||'';
@@ -108,10 +132,19 @@ Deno.serve(async(request:Request)=>{
  if(quotaError)return json({error:'No se pudo comprobar el límite de envío.'},503);
  const used=(existingQuota||[]).reduce((sum:number,row:any)=>sum+Number(row.recipient_count||0),0);
  if(used+count>160)return json({error:'Se alcanzó el límite de seguridad de 160 destinatarios diarios por fábrica.'},429);
+ if(manualEmail){
+  const {data:recent,error:recentError}=await service.from('activation_sends')
+   .select('manual_email_count').eq('sender_user_id',user.id)
+   .gte('submitted_at',midnight.toISOString()).in('status',['processing','sent','scheduled','partial']);
+  if(recentError)return json({error:'No se pudo verificar el límite de correos manuales.'},503);
+  const usedManual=(recent||[]).reduce((n:number,r:any)=>n+Number(r.manual_email_count||0),0);
+  if(usedManual>=20)return json({error:'Límite inicial de 20 correos manuales por usuario y día.'},429);
+ }
  const insert={
   initiative_id:initiative.id,organization_id:initiative.organization_id,sender_user_id:user.id,
   request_key:requestKey,action_index:actionIndex,kind,audience_ids:audienceIds,
   subject,message,cta,recipient_count:count,status:'processing',
+  contact_ids:contactIds,manual_email_count:manualEmail?1:0,
   scheduled_for:scheduledIso||null,sequence_step:sequenceStep||null,sequence_id:sequenceId||null
  };
  const {data:log,error:insertError}=await service.from('activation_sends').insert(insert).select('id').single();
