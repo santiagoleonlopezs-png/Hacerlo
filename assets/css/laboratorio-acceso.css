@@ -20,3 +20,27 @@
 .hcx-lab-note{border:1px solid #2a5066;border-radius:14px;padding:16px 19px;background:#0d293b;color:#bdd6e4;font-size:13px;line-height:1.65}
 .hcx-lab-note strong{color:#eaf5ff}
 @media(max-width:650px){.hcx-lab-tile{padding:17px}.hcx-lab-tile button{margin-left:0;width:100%}.hcx-lab-actions{align-items:stretch;flex-direction:column}.hcx-lab-open{width:100%}.hcx-lab-hint{text-align:center}}
+
+/* Recomendaciones contextualizadas: visualización breve, sin mezclar plataformas. */
+.hcx-lab-recommendations{margin:15px 0 20px}
+.hcx-lab-rec-head{margin-bottom:14px}
+.hcx-lab-rec-head h2{font-size:clamp(18px,1.8vw,23px);margin:4px 0}
+.hcx-lab-rec-head p{margin:0;font-size:13px}
+.hcx-lab-rec-head strong{color:#e8f4ff}
+.hcx-lab-rec-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.hcx-lab-rec-card{display:flex;flex-direction:column;gap:16px;padding:20px;min-width:0;background:linear-gradient(140deg,#10334a,#0b253a);border:1px solid #315971;border-radius:16px}
+.hcx-lab-rec-detail{flex:1;min-width:0}
+.hcx-lab-rec-detail h3{font-size:18px;line-height:1.35;margin:0 0 9px;color:#f2f9ff}
+.hcx-lab-rec-detail p{font-size:13px;line-height:1.6;margin:0 0 12px;color:#c5deea}
+.hcx-lab-rec-detail small{display:block;font-size:12px;line-height:1.5;color:#a0c5d6;border-left:2px solid #d7a65c;padding-left:10px;overflow-wrap:anywhere}
+.hcx-lab-rec-detail small b{color:#e2bd83}
+.hcx-lab-rec-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.hcx-lab-rec-link{display:inline-flex;align-items:center;justify-content:center;min-height:39px;padding:8px 13px;border-radius:10px;background:#dfaa54;color:#071b2b;text-decoration:none;font-weight:750;font-size:12px}
+.hcx-lab-rec-link:hover{background:#f2c982}
+.hcx-lab-rec-link:focus-visible{outline:3px solid #7de9eb;outline-offset:2px}
+.hcx-lab-rec-actions button{min-height:39px;font-size:12px;white-space:normal}
+.hcx-lab-rec-disclaimer{font-size:11px;line-height:1.6;color:#99b7c9;margin:12px 0}
+.hcx-lab-linked-action{display:inline-flex;gap:4px;align-items:center;color:#e1bd7d;text-decoration:underline;font-size:12px;margin:6px 0}
+.hcx-lab-linked-action:focus-visible{outline:2px solid #7de9eb;outline-offset:3px}
+@media(max-width:820px){.hcx-lab-rec-grid{grid-template-columns:1fr}}
+@media(max-width:520px){.hcx-lab-rec-card{padding:16px}.hcx-lab-rec-actions{flex-direction:column;align-items:stretch}.hcx-lab-rec-actions>*{width:100%;text-align:center}}
