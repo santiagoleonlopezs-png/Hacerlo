@@ -143,3 +143,67 @@
  .cac-empty button{flex:0 0 auto}
 }
 @media(prefers-reduced-motion:reduce){.cac-home button{transition:none}}
+
+/* CAC 1.2 · Destinatarios, navegación reversible e indicadores sin ambigüedad */
+.cac-home .cac-audience-field{
+ border:0;display:block;padding:0;margin:0;width:100%;min-width:0;
+}
+.cac-home .cac-audience-field legend{
+ display:block;width:100%;padding:0;margin:0 0 9px;
+ font-size:11.5px;font-weight:620;line-height:1.5;color:#c7e4ea
+}
+.cac-home .cac-audience-field .cac-audience-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px;width:100%;min-width:0;align-items:stretch
+}
+.cac-home .cac-audience-field .cac-audience-option{
+ display:grid;grid-template-columns:18px minmax(0,1fr);gap:11px;
+ align-items:start;min-width:0;max-width:100%;width:100%;
+ min-height:63px;padding:12px;border:1px solid #325d70;
+ border-radius:10px;background:linear-gradient(140deg,#103247,#0b293d);
+ cursor:pointer;overflow:hidden;margin:0
+}
+.cac-home .cac-audience-field .cac-audience-option:hover,
+.cac-home .cac-audience-field .cac-audience-option:has(input:checked){
+ border-color:#51c4b5;background:#123b4c
+}
+.cac-home .cac-audience-field .cac-audience-option input[type="checkbox"]{
+ display:block;box-sizing:border-box;
+ width:17px;min-width:17px;max-width:17px;height:17px;
+ flex:0 0 17px;margin:2px 0 0;padding:0;
+ background:#092334;accent-color:#3dcdbc;
+ border:1px solid #6398a7;border-radius:4px
+}
+.cac-home .cac-audience-field .cac-audience-option>span{
+ display:flex;flex-direction:column;gap:5px;align-items:flex-start;
+ width:100%;min-width:0;max-width:100%;line-height:1.4
+}
+.cac-home .cac-audience-field .cac-audience-option b{
+ display:block;min-width:0;width:100%;
+ overflow-wrap:anywhere;white-space:normal;word-break:normal;
+ font-size:12px;line-height:1.45;font-weight:590;color:#e4f4f8
+}
+.cac-home .cac-audience-field .cac-audience-option small{
+ color:#a0c5ce;font-size:10.5px;line-height:1.4;
+ max-width:100%;overflow-wrap:anywhere;white-space:normal
+}
+.cac-editor-back{display:flex;align-items:center;justify-content:space-between;
+ gap:12px;padding:0 0 13px;margin-bottom:16px;border-bottom:1px solid #2a5365}
+.cac-editor-back button{width:auto;flex:none}
+.cac-editor-back span{color:#96b6c3;font-size:11px;line-height:1.45}
+.cac-behavior-metrics{display:flex;align-items:center;justify-content:space-between;gap:18px;
+ border:1px solid #2e6371;background:radial-gradient(ellipse at 100% 0,rgba(23,163,137,.1),transparent 50%),#0c3041;
+ border-radius:14px;padding:17px 19px}
+.cac-behavior-metrics h3{font-size:16px;color:#eaf8fb;line-height:1.35;font-weight:640;margin:6px 0}
+.cac-behavior-metrics p{font-size:12px;color:#a5c8d2;line-height:1.65;max-width:760px;margin:0}
+.cac-behavior-metrics p b{color:#8de4d5}
+.cac-metric-links{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.cac-metric-links button{white-space:nowrap}
+@media(max-width:840px){
+ .cac-behavior-metrics{flex-wrap:wrap}
+ .cac-metric-links{justify-content:flex-start}
+}
+@media(max-width:650px){
+ .cac-home .cac-audience-field .cac-audience-grid{grid-template-columns:1fr}
+ .cac-editor-back{align-items:flex-start;flex-direction:column}
+}
