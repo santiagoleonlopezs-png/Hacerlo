@@ -51,6 +51,8 @@ jobs:
           node --check src/modules/implementacion/movilizacion-estudio.js
           node --check src/modules/implementacion/centro-activacion.js
           node tests/centro_activacion_v1.cjs
+          node --check src/modules/analisis/grafos.js
+          node tests/grafos_alertas_icono_v1.cjs
           node --check src/modules/implementacion/plan-ejecutivo.js
           node tests/plan_ejecutivo_v1.cjs
           node --check src/modules/implementacion/plan-narrativa.js
