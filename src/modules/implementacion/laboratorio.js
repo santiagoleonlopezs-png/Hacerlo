@@ -20,5 +20,5 @@ function renderLearningLabPage(){
   </div>
  </div>
  <div class="hcx-hero-orbit" aria-hidden="true"><span>◇</span><i></i><i></i><i></i></div>
- </section>${learningLabRecommendationsSection(typeof current==='function'?current():null)}${labBridgeImportPanel(typeof current==='function'?current():null)}<div class="hcx-lab-note"><strong>Dos plataformas, un ecosistema.</strong> El Laboratorio funciona de forma independiente de HACERLO. Sus salas, respuestas personales y sesiones permanecen en el Laboratorio. Puedes importar únicamente consolidados autorizados a HACERLO; no se sincronizan respuestas individuales ni se comparten credenciales.</div>`;
+ </section>${labLinkedActionsPanel(typeof current==='function'?current():null)}${learningLabRecommendationsSection(typeof current==='function'?current():null)}${labBridgeImportPanel(typeof current==='function'?current():null)}<div class="hcx-lab-note"><strong>Dos plataformas, un ecosistema.</strong> El Laboratorio funciona de forma independiente de HACERLO. Sus salas, respuestas personales y sesiones permanecen en el Laboratorio. Puedes importar únicamente consolidados autorizados a HACERLO; no se sincronizan respuestas individuales ni se comparten credenciales.</div>`;
 }
