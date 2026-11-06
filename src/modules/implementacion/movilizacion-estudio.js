@@ -194,7 +194,11 @@ function mobStudioForm(x,row,kind){
    select('channel',(kind==='comunicacion'?['Correo','Teams','WhatsApp','Intranet','Reunión','Otro']:['Conversación','Teams','Correo','Reunión','Otro']).map(a=>({value:a,label:a})),base.channel||''))+'</div>'+
   (kind==='reconocimiento'?'<div class="mob-form-row">'+
    field('recipient','Persona o equipo (opcional)','<input type="text" name="recipient" maxlength="120" value="'+mobSafe(base.recipient||'')+'" placeholder="Ej. Equipo de servicio">')+
-   field('evidence','Hecho que justifica reconocer','<input type="text" name="evidence" maxlength="350" value="'+mobSafe(base.evidence||'')+'" placeholder="Ej. Compartió aprendizajes con otras áreas">')+'</div>':'')+
+   field('evidence','Hecho que justifica reconocer','<input type="text" name="evidence" maxlength="350" value="'+mobSafe(base.evidence||'')+'" placeholder="Ej. Compartió aprendizajes con otras áreas">')+'</div>'+
+   '<div class="mob-consent-box"><label><input type="checkbox" name="shareOnWall" value="yes"'+(base.shareOnWall?' checked':'')+'> Mostrar este reconocimiento en el mural interno de la iniciativa</label>'+
+   '<label><input type="checkbox" name="consentAttested" value="yes"'+(base.consentAttested?' checked':'')+'> Confirmo que cuento con autorización para compartir este reconocimiento y su contenido con los miembros de la iniciativa</label>'+
+   '<small>Por defecto, ninguna pieza aparece en el mural. El mural no es público en internet.</small></div>':'')+
+  field('scheduledFor','Fecha y hora previstas (opcional)','<input type="datetime-local" name="scheduledFor" value="'+mobSafe(base.scheduledFor||'')+'">')+
   field('title',kind==='comunicacion'?'Asunto o encabezado':'Título del reconocimiento','<input type="text" name="title" required maxlength="140" value="'+mobSafe(base.title||'')+'" placeholder="Un título breve y claro">')+
   field('body','Mensaje','<textarea name="body" required maxlength="2400" rows="6" placeholder="¿Qué quieres que la persona entienda, haga o repita?">'+mobSafe(base.body||'')+'</textarea>')+
   field('cta',kind==='comunicacion'?'Acción concreta esperada':'Refuerzo o cierre','<textarea name="cta" maxlength="450" rows="2">'+mobSafe(base.cta||'')+'</textarea>')+
@@ -217,6 +221,9 @@ function mobSavePiece(e,index,kind){
  const trim=(name,max)=>String(f[name]||'').trim().slice(0,max);
  const title=trim('title',140),body=trim('body',2400);
  if(!title||!body){mobNotice='Completa el título y el mensaje antes de guardar.';render();return;}
+ if(kind==='reconocimiento'&&f.shareOnWall==='yes'&&f.consentAttested!=='yes'){
+  alert('Para mostrarlo en el mural interno, confirma que tienes autorización para compartirlo.');return;
+ }
  const patterns=MOB_PATTERNS[kind];
  const chosen=patterns.find(p=>p.id===f.pattern)||patterns[0];
  const audienceId=(current().audiences||[]).some(z=>String(z.id)===String(f.audienceId))?String(f.audienceId):'';
@@ -229,8 +236,11 @@ function mobSavePiece(e,index,kind){
   title,body,cta:trim('cta',450),purpose:chosen.purpose,pattern:chosen.id,
   moment:['Antes','Durante','Después'].includes(f.moment)?f.moment:'Durante',
   channel:trim('channel',120),audienceId,behaviorId,
+  scheduledFor:/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(f.scheduledFor||'')?String(f.scheduledFor):'',
   recipient:kind==='reconocimiento'?trim('recipient',120):'',
   evidence:kind==='reconocimiento'?trim('evidence',350):'',
+  shareOnWall:kind==='reconocimiento'&&f.shareOnWall==='yes',
+  consentAttested:kind==='reconocimiento'&&f.consentAttested==='yes',
   status:existing?.status==='lista'?'lista':'borrador',
   createdAt:existing?.createdAt||now,updatedAt:now
  };
@@ -305,6 +315,7 @@ function mobPieceList(row,kind){
   '<span class="mob-status mob-status-'+mobSafe(p.status||'borrador')+'">'+mobDisplayState(p.status)+'</span></div>'+
   '<p>'+mobSafe(p.body||'').slice(0,180)+'</p>'+
   '<small>'+mobSafe(p.moment||'')+' · '+mobSafe(p.channel||'Sin canal')+
+  (p.scheduledFor?' · Prevista '+mobSafe(p.scheduledFor.replace('T',' ')):'')+
   (p.executedAt?' · Declarada el '+mobSafe(p.executedAt.slice(0,10)):'')+'</small></div>'+
   '<div class="mob-piece-actions">'+
   '<button type="button" class="secondary" onclick="mobCopyPiece('+row.index+',\''+kind+'\',\''+mobSafe(p.id)+'\')">Copiar</button>'+
@@ -316,14 +327,43 @@ function mobPieceList(row,kind){
    '<span class="mob-record-note">Registro conservado</span>')+
   '</div></article>').join('')+'</div>';
 }
+function mobAgenda(x){
+ const all=(x?.actions||[]).flatMap(a=>mobKinds().flatMap(kind=>
+  mobItems(a,kind).filter(p=>p.scheduledFor&&p.status!=='realizada')
+   .map(p=>({action:a.name||'Acción',kind,...p}))));
+ if(!all.length)return '';
+ all.sort((a,b)=>String(a.scheduledFor).localeCompare(String(b.scheduledFor)));
+ return '<section class="mob-agenda"><div class="mob-section-heading"><div><span class="mob-eyebrow">PRÓXIMOS MOMENTOS</span><h3>Agenda de piezas</h3></div>'+
+  '<small>Fechas previstas · no son envíos automáticos</small></div><div class="mob-agenda-grid">'+all.slice(0,5).map(p=>
+  '<div class="mob-agenda-item"><span>'+mobSafe(p.scheduledFor.replace('T',' · '))+'</span><strong>'+mobSafe(p.title)+'</strong>'+
+  '<small>'+mobSafe(p.action)+' · '+(p.kind==='comunicacion'?'Comunicación':'Reconocimiento')+'</small></div>').join('')+
+  '</div></section>';
+}
+function mobRecognitionWall(x){
+ const published=(x?.actions||[]).flatMap(a=>mobItems(a,'reconocimiento')
+  .filter(p=>p.status==='realizada'&&p.shareOnWall===true&&p.consentAttested===true)
+  .map(p=>({...p,action:a.name||'Acción'})));
+ published.sort((a,b)=>String(b.executedAt||'').localeCompare(String(a.executedAt||'')));
+ return '<section class="mob-wall"><div class="mob-section-heading"><div><span class="mob-eyebrow">PRÁCTICAS QUE QUEREMOS MULTIPLICAR</span>'+
+  '<h3>Mural de reconocimientos</h3><p>Comportamientos observables que merecen hacerse visibles.</p></div>'+
+  '<small>Solo reconocimientos autorizados y con entrega registrada</small></div>'+
+  (published.length?'<div class="mob-wall-grid">'+published.slice(0,15).map(p=>
+   '<article class="mob-wall-card"><span class="mob-wall-mark">✧</span><h4>'+mobSafe(p.title)+'</h4>'+
+   (p.recipient?'<div class="mob-wall-recipient">'+mobSafe(p.recipient)+'</div>':'')+
+   '<p>'+mobSafe(p.body||'').replace(/\n/g,'<br>')+'</p>'+
+   (p.evidence?'<div class="mob-wall-evidence"><strong>Hecho observado</strong>'+mobSafe(p.evidence)+'</div>':'')+
+   '<small>'+mobSafe(p.action)+' · '+mobSafe((p.executedAt||'').slice(0,10))+'</small></article>').join('')+'</div>':
+   '<div class="mob-wall-empty"><span>✧</span><div><strong>Un espacio para reconocer lo que hacemos</strong>'+
+    '<p>Cuando registres la entrega de un reconocimiento y autorices mostrarlo internamente, aparecerá aquí. No se crean publicaciones a partir de borradores.</p></div></div>')+
+   '</section>';
+}
 function mobAIContext(x){
  const rows=(x?.actions||[]).flatMap(a=>mobKinds().flatMap(kind=>mobItems(a,kind).map(p=>({kind,
    action:a.name||'',status:p.status||'borrador',purpose:p.purpose||'',
    moment:p.moment||'',channel:p.channel||'',pattern:p.pattern||'',
    behaviorId:p.behaviorId||'',audienceId:p.audienceId||'',
-   evidence:kind==='reconocimiento'?String(p.evidence||'').slice(0,180):'',
-   // Evitar transferir nombres, destinatarios o mensajes personales a la IA.
-   summary:kind==='comunicacion'?String(p.cta||'').slice(0,180):''
+   // Solo metadatos estructurados: no transferimos destinatarios, mensajes ni evidencias libres a la IA.
+   scheduled:!!p.scheduledFor
  }))));
  const done=rows.filter(r=>r.status==='realizada');
  return {pieces:rows.length,executionsDeclared:done.length,
@@ -365,7 +405,8 @@ function renderMovilizacionEstudio(x){
    'Diseña mensajes que den sentido, reduzcan fricciones, activen una práctica y recuerden qué hacer.':
    'Visibiliza hechos observables, expresa su contribución y promueve prácticas que vale la pena sostener.')+
   '</p></div><span class="mob-intro-symbol">'+(kind==='comunicacion'?'◉':'✧')+'</span></section>'+
-  mobPatternCards(kind,!!linked.length)+empty+content+
+  mobPatternCards(kind,!!linked.length)+mobAgenda(x)+empty+content+
+  (kind==='reconocimiento'?mobRecognitionWall(x):'')+
   '<p id="mob-studio-notice" class="mob-notice" role="status" aria-live="polite">'+mobSafe(mobNotice)+'</p>'+
   '<div class="mob-disclaimer">HACERLO prepara y registra estas piezas. No envía correos, publica reconocimientos ni verifica resultados automáticamente. Las ejecuciones se registran solo cuando el facilitador confirma que ocurrieron.</div></div>';
 }
