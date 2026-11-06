@@ -34,7 +34,7 @@ function cacEnsureNew(action,stage,kind){
   audienceIds:[],scheduledFor:'',status:'draft',createdAt:new Date().toISOString()};
 }
 function cacBuildSequence(){
- const row=cacAction(current());if(!row||cacBusy)return;
+ const row=cacAction(current());if(!row||cacBusy||!cacKeepVisibleDraft())return;
  if(cacSequenceSteps(row.action).length)return;
  const before=actionMechanisms(row.action);
  if(!before.includes('comunicacion')&&!before.includes('reconocimiento'))cacEnsureMechanism(row.action,'comunicacion');
@@ -48,7 +48,7 @@ function cacBuildSequence(){
  save();render();
 }
 function cacStartDirect(kind){
- if(cacBusy)return;
+ if(cacBusy||!cacKeepVisibleDraft())return;
  const row=cacAction(current());if(!row)return;
  if(!['comunicacion','reconocimiento'].includes(kind))return;
  cacEnsureMechanism(row.action,kind);
@@ -66,6 +66,12 @@ function cacKeepVisibleDraft(){
  try{cacStoreDraft(row,step,cacDraft(form,step,row));return true;}
  catch(e){alert('Revisa la fecha de programación antes de salir del editor.');return false;}
 }
+function cacPrepareNavigation(target){
+ if(typeof page==='undefined')return true;
+ if(page==='Centro de activación'&&cacEditorOpen&&!cacKeepVisibleDraft())return false;
+ if(target==='Centro de activación'){cacEditorOpen=false;cacStepId=null;}
+ return true;
+}
 function cacBackToCenter(){
  if(cacBusy||!cacKeepVisibleDraft())return;
  cacEditorOpen=false;cacStepId=null;
@@ -82,7 +88,7 @@ function cacChooseStep(id){
  document.getElementById('cac-editor')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function cacAddStep(){
- if(cacBusy)return;const row=cacAction(current());if(!row)return;
+ if(cacBusy||!cacKeepVisibleDraft())return;const row=cacAction(current());if(!row)return;
  const kind=actionMechanisms(row.action).includes('comunicacion')?'comunicacion':'reconocimiento';
  const step=cacEnsureNew(row.action,'recordar',kind);
  row.action.activationSequence=[...cacSteps(row.action),step];cacStepId=step.id;cacEditorOpen=true;
