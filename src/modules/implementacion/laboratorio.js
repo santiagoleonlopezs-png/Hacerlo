@@ -13,7 +13,7 @@ function renderLearningLabPage(){
  return `<section class="hcx-hero hcx-lab-hero" aria-labelledby="hcx-lab-title">
  <div class="hcx-hero-copy"><span class="hcx-eyebrow">RDAIM · IMPLEMENTACIÓN · ECOSISTEMA HACERLO</span>
   <h1 id="hcx-lab-title">Laboratorio de Aprendizaje y Decisión</h1>
-  <p>Un espacio para aprender haciendo: explora simuladores y experiencias, toma decisiones y observa sus consecuencias.</p>
+  <p>Un espacio para experimentar, tomar decisiones y comprender cómo nuestras acciones transforman los resultados.</p>
   <div class="hcx-lab-actions">
    <a class="hcx-lab-open" href="${HACERLO_LABORATORIO_URL}" target="_blank" rel="noopener noreferrer" aria-label="Abrir Laboratorio de Aprendizaje y Decisión en una nueva pestaña">Abrir laboratorio <span aria-hidden="true">↗</span></a>
    <span class="hcx-lab-hint">Se abre en una nueva pestaña</span>
