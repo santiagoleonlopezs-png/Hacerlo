@@ -18,4 +18,7 @@ assert.equal(elements.subject.value,'IA propone');
 assert.equal(x.actions[0].activationSequence[0].status,'draft');
 assert.equal(sent,0);
 assert.ok(saved>=1);
+assert.ok(src.includes('contextAudienceIds.add(String(p.audienceId))'),'La IA aprovecha el contexto del grupo de un contacto');
+assert.ok(src.includes("subject:'',message:'',cta:''"),'No se comparten textos privados del borrador');
+assert.ok(!src.includes('subject:draft.title,message:draft.body,cta:draft.cta'),'El texto del borrador no se envía al modelo');
 console.log('IA editable: no sobrescritura previa, no envíos automáticos.');
