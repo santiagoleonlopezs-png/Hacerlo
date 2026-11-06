@@ -54,7 +54,7 @@ assert.match(ctx.renderCentroActivacion(x),/Recordar/);
 assert.match(ctx.renderCentroActivacion(x),/Reforzar/);
 assert.match(ctx.renderCentroActivacion(x),/Seguimiento de envíos/,'Los estados del proveedor tienen nombre técnico');
 assert.match(ctx.renderCentroActivacion(x),/Indicadores de cambio en HACERLO/,'Los resultados conductuales se distinguen del proveedor');
-assert.match(ctx.renderCentroActivacion(x),/go\(\\'Indicadores\\'\)/);
+assert.match(ctx.renderCentroActivacion(x),/Ver indicadores/);
 assert.match(app,/cacPrepareNavigation\(n\)/,'Navegar por menú restablece la vista de Centro de activación');
 ctx.cacAddStep();
 assert.equal(action.activationSequence.length,6);
