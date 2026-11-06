@@ -371,15 +371,48 @@ function behaviorDesignQualityPanel(quality){
    '<p>El estado indica que se registraron los elementos del diseño; no certifica que el comportamiento o sus indicadores sean científicamente válidos.</p></div></details>';
 }
 
+// El orden es propiedad de la iniciativa; usar IDs estables y conservar vínculos diagnósticos.
+function behaviorMove(index,direction){
+ const x=current(),list=x?.behaviors;
+ if(!Array.isArray(list)||!Number.isSafeInteger(index)||![1,-1].includes(direction))return;
+ if(behaviorExploreAudience!=="__all__"||behaviorExploreSearch.trim())return;
+ const next=index+direction;
+ if(next<0||next>=list.length)return;
+ const chosen=list[index];
+ // Hallazgos antiguos almacenan índices, no IDs. Permutar también sus referencias
+ // evita que un hallazgo quede asociado al comportamiento equivocado.
+ (x.diagnosisFindings||[]).forEach(f=>{
+  if(!Array.isArray(f.behaviors))return;
+  f.behaviors=f.behaviors.map(ref=>{
+   if(String(ref)===String(index))return String(next);
+   if(String(ref)===String(next))return String(index);
+   return ref;
+  });
+ });
+ [list[index],list[next]]=[list[next],list[index]];
+ behaviorExploreSelected=behaviorExploreRef(chosen,next);
+ const scroll=document.getElementById?.('behavior-explore-entries')?.scrollTop||0;
+ save();render();
+ const entries=document.getElementById?.('behavior-explore-entries');
+ if(entries)entries.scrollTop=scroll;
+}
 function behaviorExploreEntries(x,visible,selected){
- return visible.length?visible.map(({b,i,ref})=>{
+ const reorder=behaviorExploreAudience==="__all__"&&!behaviorExploreSearch.trim();
+ if(!visible.length)return '<div class="behavior-explore-no-results">No se encontraron comportamientos. Prueba otra audiencia o búsqueda.</div>';
+ const hint='<p class="behavior-explore-order-note">'+(reorder?'Usa las flechas ↑ ↓ para organizar los comportamientos.':'Muestra todas las audiencias y borra la búsqueda para cambiar el orden.')+'</p>';
+ return hint+visible.map(({b,i,ref})=>{
   const n=(x.indicators||[]).filter(ind=>indicatorHasBehavior(x,ind,b)).length;
   const quality=behaviorDesignQuality(x,b);
-  return `<button type="button" class="behavior-explore-entry ${selected&&selected.ref===ref?'is-active':''}" data-ref="${safe(ref)}" aria-pressed="${!!selected&&selected.ref===ref}" onclick="behaviorExploreSelect(this.dataset.ref)">
-    <span class="behavior-explore-entry-title">${safe(b.name||"Sin título")}</span>
-    <span class="behavior-explore-entry-foot">${behaviorAudienceLabel(x,b)}<span aria-hidden="true">·</span>${n} ${n===1?'indicador':'indicadores'}${behaviorDesignQualityBadge(quality)}</span>
-  </button>`;
- }).join(""):`<div class="behavior-explore-no-results">No se encontraron comportamientos. Prueba otra audiencia o búsqueda.</div>`;
+  const controls=reorder?'<div class="behavior-explore-order-controls" role="group" aria-label="Ordenar comportamiento">'+
+   '<button type="button" class="behavior-order-button" title="Subir comportamiento" aria-label="Subir comportamiento" onclick="behaviorMove('+i+',-1)" '+(i===0?'disabled':'')+'>↑</button>'+
+   '<button type="button" class="behavior-order-button" title="Bajar comportamiento" aria-label="Bajar comportamiento" onclick="behaviorMove('+i+',1)" '+(i===x.behaviors.length-1?'disabled':'')+'>↓</button>'+
+   '</div>':'';
+  return '<div class="behavior-explore-entry-row">'+
+   '<button type="button" class="behavior-explore-entry '+(selected&&selected.ref===ref?'is-active':'')+'" data-ref="'+safe(ref)+'" aria-pressed="'+(!!selected&&selected.ref===ref)+'" onclick="behaviorExploreSelect(this.dataset.ref)">'+
+   '<span class="behavior-explore-entry-title">'+safe(b.name||"Sin título")+'</span>'+
+   '<span class="behavior-explore-entry-foot">'+behaviorAudienceLabel(x,b)+'<span aria-hidden="true">·</span>'+n+' '+(n===1?'indicador':'indicadores')+behaviorDesignQualityBadge(quality)+'</span></button>'+
+   controls+'</div>';
+ }).join("");
 }
 
 function behaviorExploreInspector(x,selection){
