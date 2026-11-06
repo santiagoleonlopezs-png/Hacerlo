@@ -6,7 +6,7 @@ const form={elements:{namedItem:n=>elements[n]},querySelectorAll:()=>[],querySel
 const x={actions:[{name:'Cambio',mechanisms:['comunicacion'],activationSequence:[{id:'s1',stage:'activar',kind:'comunicacion',status:'draft'}]}],audiences:[],audiencePeople:[]};
 const nodes={'cac-form':form,'cac-ai-suggestion':{innerHTML:'',hidden:true},'cac-ai-state':{textContent:''},'cac-ai-create':{disabled:false,textContent:''},'cac-preview':{innerHTML:''}};
 let sent=0,saved=0;
-const ctx={console,Date,current:()=>x,save:()=>saved++,render:()=>{},
+const ctx={console,Date,current:()=>x,save:()=>saved++,render:()=>{},actionMechanisms:()=>['comunicacion'],
 safe:s=>String(s??''),FormData:class{constructor(){return Object.entries(elements).map(([k,v])=>[k,v.value])}},
 document:{getElementById:id=>nodes[id]||null},sb:{functions:{invoke:()=>sent++}}};
 vm.createContext(ctx);vm.runInContext(src,ctx);
