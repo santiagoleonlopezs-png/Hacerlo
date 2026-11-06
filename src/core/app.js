@@ -189,6 +189,7 @@ function nav(){
 }
 function go(n){
  if(n==='Movilización y refuerzo')n='Centro de activación';
+ if(typeof cacPrepareNavigation==='function'&&!cacPrepareNavigation(n))return;
  if(n==='Pensamiento sistémico'&&typeof sysHubReset==='function')sysHubReset();
  if(n==='RDAIM')expandedNavStep=phase;
  if(Object.prototype.hasOwnProperty.call(HACERLO_PAGE_PHASE,n)){
