@@ -70,6 +70,10 @@ function addIndicator(e){e.preventDefault();let z=Object.fromEntries(new FormDat
  const z=Object.fromEntries(new FormData(f));
  const rawIndex=String(z.editIndex??'').trim();
  delete z.editIndex; // El índice de edición es estado de UI, no un dato de la acción.
+ // Un registro de acción, múltiples mecanismos vinculados.
+ const existing=rawIndex!==''?x.actions?.[Number(rawIndex)]:null;
+ delete z.mechanisms;
+ z.mechanisms=typeof actionMechanismsRead==='function'?actionMechanismsRead(f,existing):Array.isArray(existing?.mechanisms)?existing.mechanisms:['ninguno'];
  z.name=String(z.name||'').trim();
  if(!z.name)return alert('Escribe el nombre de la acción.');
  if(z.start&&z.end&&z.end<z.start)return alert('La fecha final debe ser igual o posterior a la inicial');
@@ -95,6 +99,7 @@ function editAction(i){
    const control=f.elements.namedItem(field);
    if(control)control.value=String(action[field]??'');
  }
+ if(typeof actionMechanismsSet==='function')actionMechanismsSet(f,action);
  const title=document.getElementById('action-form-title');
  if(title)title.textContent='Editar acción';
  const submit=document.getElementById('action-submit');
@@ -107,6 +112,7 @@ function cancelActionEdit(){
  const f=document.getElementById('action-form');
  if(!f)return;
  f.reset();
+ if(typeof actionMechanismsSet==='function')actionMechanismsSet(f,null);
  f.elements.namedItem('editIndex').value='';
  const title=document.getElementById('action-form-title');
  if(title)title.textContent='Nueva acción';
