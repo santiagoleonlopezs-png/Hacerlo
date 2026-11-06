@@ -191,7 +191,7 @@ function planExecMakeSlides(x){
  const decisionBody='<div class="plan-decision-card"><div class="plan-section-caption">TEMAS PARA LA CONVERSACIÓN CON LÍDERES</div>'+
   '<div class="plan-decision-list">'+decisions.map((d,i)=>'<div class="plan-decision"><span>'+String(i+1).padStart(2,'0')+'</span><p>'+planExecEsc(d)+'</p></div>').join('')+
   '</div><p class="plan-note">Puntos de revisión derivados de registros del plan; no equivalen a acuerdos aprobados por los líderes.</p></div>';
- return [
+ return planNarrativeApply(x,[
   {id:'portada',label:'Portada',eyebrow:'01 · PROPÓSITO',title:'Plan de cambio',html:cover,mode:'cover'},
   {id:'norte',label:'Norte del cambio',eyebrow:'02 · RESULTADOS',title:'Qué queremos lograr',html:direction},
   {id:'diagnostico',label:'Diagnóstico',eyebrow:'03 · EVIDENCIA',title:'Qué está influyendo',html:diagnosisBody},
@@ -200,13 +200,14 @@ function planExecMakeSlides(x){
   {id:'ruta',label:'Ruta de ejecución',eyebrow:'06 · ACTIVACIÓN',title:'Cuándo y cómo actuaremos',html:routeBody},
   {id:'medicion',label:'Medición',eyebrow:'07 · MEDICIÓN',title:'Cómo conoceremos el avance',html:metricBody},
   {id:'decisiones',label:'Decisiones',eyebrow:'08 · GOBERNANZA',title:'Qué debemos acordar',html:decisionBody}
- ];
+ ]);
 }
 function planExecSlideHTML(slide,index,total,options={}){
- return '<article class="plan-slide '+(slide.mode==='cover'?'plan-slide-cover':'')+
+ return '<article class="plan-slide '+(slide.mode==='cover'?'plan-slide-cover':'')+' plan-theme-'+planExecEsc(slide.planTheme||'oceano')+
   '" data-plan-slide="'+index+'" aria-label="Diapositiva '+(index+1)+' de '+total+'">'+
   '<div class="plan-slide-top"><span class="plan-slide-kicker">'+planExecEsc(slide.eyebrow)+'</span>'+
   '<span class="plan-slide-index">'+String(index+1).padStart(2,'0')+' / '+String(total).padStart(2,'0')+'</span></div>'+
+  (typeof planNarrativeSlideBackground==='function'?planNarrativeSlideBackground(slide):'')+
   (slide.mode==='cover'?'':'<h2 class="plan-slide-title">'+planExecEsc(slide.title)+'</h2>')+
   '<div class="plan-slide-body">'+slide.html+'</div>'+
   '<footer class="plan-slide-foot"><span>HACERLO · Fábrica del Comportamiento</span>'+
@@ -225,7 +226,8 @@ function planExecPreviewPage(x){
   '<div class="plan-progress-track"><span style="width:'+(ready/6*100)+'%"></span></div></div></div>'+
   '<div class="plan-exec-actions"><button type="button" class="primary" onclick="planExecOpenPresentation()">▶ Presentar</button>'+
   '<button type="button" class="secondary" onclick="planExecPrint()">Imprimir / Guardar PDF</button></div></section>'+
-  '<div class="plan-overview-heading"><div><span class="plan-overline">HISTORIA DEL CAMBIO</span><h3>Vista previa de las 8 diapositivas</h3></div>'+
+  planNarrativeEditorUI(x)+
+  '<div class="plan-overview-heading"><div><span class="plan-overline">HISTORIA DEL CAMBIO</span><h3>Vista previa de las '+slides.length+' diapositivas</h3></div>'+
   '<span>La presentación refleja los últimos datos guardados</span></div>'+
   '<div class="plan-slide-grid">'+slides.map((slide,index)=>'<button type="button" class="plan-thumb" onclick="planExecOpenPresentation('+index+')" aria-label="Presentar '+planExecEsc(slide.label)+'">'+
   '<div class="plan-thumb-head"><span>'+String(index+1).padStart(2,'0')+'</span><span>↗</span></div>'+
