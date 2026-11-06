@@ -4,8 +4,8 @@ const read=f=>fs.readFileSync(f,'utf8');
 const code=read('src/modules/implementacion/mecanismos.js')+'\n'+read('src/modules/implementacion/movilizacion-estudio.js');
 const app=read('src/core/app.js'),html=read('index.html'),ai=read('src/modules/inteligencia/ia.js');
 assert.match(app,/renderMovilizacionEstudio\(current\(\)\)/);
-assert.match(html,/movilizacion-estudio\.js\?v=1\.0\.0/);
-assert.match(html,/movilizacion-estudio\.css\?v=1\.0\.0/);
+assert.match(html,/movilizacion-estudio\.js\?v=1\.1\.0/);
+assert.match(html,/movilizacion-estudio\.css\?v=1\.1\.0/);
 assert.match(ai,/mobilization:typeof mobAIContext==='function'/);
 const action={id:'a-1',name:'Fortalecer la retroalimentación',owner:'Equipo cultura',status:'En ejecución',
  mechanisms:['comunicacion','reconocimiento','laboratorio'],hypothesis:'Fortalecer la retroalimentación cotidiana.'};
@@ -42,7 +42,10 @@ const make=(kind,extra={})=>({preventDefault(){},target:{data:{
  ...extra
 }}});
 ctx.mobSavePiece(make('comunicacion'),0,'comunicacion');
-ctx.mobSavePiece(make('reconocimiento'),0,'reconocimiento');
+ctx.mobSavePiece(make('reconocimiento',{shareOnWall:'yes',consentAttested:'yes',scheduledFor:'2026-11-14T11:00'}),0,'reconocimiento');
+assert.match(ctx.mobAgenda(x),/Agenda de piezas/);
+assert.match(ctx.mobAgenda(x),/2026-11-14/);
+assert.match(ctx.mobRecognitionWall(x),/Un espacio para reconocer/,'El borrador no aparece en el mural');
 assert.equal(x.actions.length,1,'Las piezas no crean acciones');
 assert.equal(action.mechanismRecords.comunicacion.length,1);
 assert.equal(action.mechanismRecords.reconocimiento.length,1);
@@ -59,11 +62,15 @@ assert.equal(calls.confirm,1);
 const rec=action.mechanismRecords.reconocimiento[0];
 ctx.mobUpdateStatus(0,'reconocimiento',rec.id,'realizada');
 assert.equal(ctx.mobCounts(x).completed,2);
+assert.match(ctx.mobRecognitionWall(x),/Título conducta/);
+assert.match(ctx.mobRecognitionWall(x),/Equipo Alfa/);
+assert.doesNotMatch(ctx.mobAgenda(x),/2026-11-14/,'Una ejecución realizada deja de estar pendiente en agenda');
 const aiContext=ctx.mobAIContext(x);
 assert.equal(aiContext.pieces,2);
 assert.equal(aiContext.executionsDeclared,2);
 assert.ok(!JSON.stringify(aiContext).includes('Equipo Alfa'),'No pasar destinatarios a IA');
 assert.ok(!JSON.stringify(aiContext).includes('Mensaje que promueve'),'No pasar mensajes íntegros a IA');
+assert.ok(!JSON.stringify(aiContext).includes('Se compartió una práctica'),'No pasar evidencia textual potencialmente identificable a IA');
 assert.match(ctx.renderMovilizacionEstudio(x),/2/);
 assert.match(ctx.renderMovilizacionEstudio(x),/Ejecución registrada/);
 assert.equal(action.mechanisms.length,3,'Se preservan mecanismos múltiples');
