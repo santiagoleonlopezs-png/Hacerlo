@@ -8,7 +8,7 @@ assert.match(app,/'Plan de cambio':3/);
 assert.match(app,/if\(page==='Plan de cambio'\)\{a\.innerHTML=planExecPreviewPage\(x\);return\}/);
 assert.match(html,/src\/modules\/implementacion\/plan-ejecutivo\.js\?v=1\.0\.0/);
 assert.match(html,/assets\/css\/plan-ejecutivo\.css\?v=1\.0\.0/);
-const c={console,Number,Date,Math};
+const c={console,Number,Date,Math,hcxHero:()=>'<header>HACERLO</header>'};
 vm.createContext(c);vm.runInContext(planCode,c);
 const x={name:'Evolución cultural',scope:'inside',description:'Acompañamiento al cambio',
  globalResult:{verb:'Incrementar',complement:'las conversaciones de retroalimentación',
