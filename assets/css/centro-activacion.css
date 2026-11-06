@@ -247,3 +247,32 @@
 .cac-recipient-body .cac-audience-field{width:100%;min-width:0}
 .cac-recipient-body .cac-audience-grid{width:100%;min-width:0}
 @media(max-width:700px){.cac-contact-list,.cac-target-direct .cac-two{grid-template-columns:1fr}.cac-target-chooser{padding:12px}}
+
+/* HACERLO · IA útil y discreta, sin añadir otro flujo · v1.4 */
+.cac-ai-assist{
+ display:flex;justify-content:space-between;align-items:center;gap:14px;
+ padding:13px 14px;border:1px solid #448c88;border-radius:10px;
+ background:linear-gradient(108deg,#113e48,#0e3042 80%);min-width:0;
+}
+.cac-ai-assist>div{display:grid;gap:5px;min-width:0}
+.cac-ai-assist strong{font-size:12.5px;font-weight:680;line-height:1.4;color:#a9f1e1}
+.cac-ai-assist small{font-size:11px;line-height:1.55;color:#bfdae1;max-width:630px}
+.cac-ai-assist button{flex:0 0 auto;white-space:normal;border-color:#60b4a9!important;color:#dcfcf4!important}
+.cac-ai-assist button:disabled{opacity:.6;cursor:progress}
+.cac-ai-state{font-size:11.5px;line-height:1.5;color:#a5cfcd;margin:0}
+.cac-ai-state:empty{display:none}
+.cac-ai-suggestion[hidden]{display:none!important}
+.cac-ai-suggestion{min-width:0}
+.cac-ai-proposal-card{
+ display:grid;gap:11px;background:linear-gradient(130deg,#0b2e41,#11454c);
+ border:1px solid #4f968e;border-radius:12px;padding:16px;color:#e6faf8;
+}
+.cac-ai-proposal-kicker{font-size:9.5px;font-weight:750;color:#8ee8d2;letter-spacing:1.2px}
+.cac-ai-proposal-card>strong{font-size:15px;line-height:1.4;font-weight:680;color:#f1fbfb}
+.cac-ai-proposal-card p{font-size:12.5px;line-height:1.65;margin:0;color:#deeff2}
+.cac-ai-proposal-message{border-left:2px solid #4db4a7;padding-left:11px;overflow-wrap:anywhere}
+.cac-ai-proposal-cta{padding:10px 12px;border-radius:8px;background:#143e4e}
+.cac-ai-proposal-reason{font-size:11.5px!important;color:#bfd9db!important}
+.cac-ai-proposal-card>small{font-size:10px;color:#98bdc5;line-height:1.45}
+.cac-ai-proposal-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media(max-width:660px){.cac-ai-assist{align-items:stretch;flex-direction:column}.cac-ai-assist button{width:100%}}
