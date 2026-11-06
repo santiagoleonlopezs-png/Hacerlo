@@ -1,6 +1,7 @@
 /* HACERLO · Centro de Activación Conductual: secuenciación, comunicación y reconocimiento.
  * Cada paso pertenece a la acción original. Nunca enviar automáticamente al guardar. */
 let cacActionIndex=null,cacStepId=null,cacEditorOpen=false,cacHistory=[],cacHistoryFor='',cacHistoryLoading=false,cacBusy=false,cacMessage='';
+let cacAiBusy=false,cacAiSuggestion=null,cacAiNotice='';
 const CAC_STAGES=[
  {id:'sentido',label:'Dar sentido',moment:'Antes',description:'Explica el para qué del cambio'},
  {id:'activar',label:'Activar',moment:'Durante',description:'Pide una acción observable y realizable'},
@@ -166,6 +167,111 @@ function cacPreview(){
   (val('cta')?'<p class="cac-preview-cta"><b>Acción esperada</b><br>'+esc(personalize(val('cta')))+'</p>':'')+
   '<small>La vista previa no envía mensajes.</small>';
 }
+// Copiloto opcional: propone asunto, mensaje y acción. Nunca activa un envío.
+function cacAiSuggestionHtml(step){
+ const data=cacAiSuggestion;
+ if(!data||data.stepId!==step.id)return '';
+ const p=data.proposal||{},s=data.sources||{};
+ const sources=Number(s.hallazgos||0)+Number(s.factores||0);
+ const detail=sources||Number(s.audiencias||0)||Number(s.comportamientos||0)
+  ?'Contexto: '+Number(s.comportamientos||0)+' comportamiento(s), '+
+   Number(s.audiencias||0)+' audiencia(s), '+Number(s.hallazgos||0)+' hallazgo(s) y '+
+   Number(s.factores||0)+' factor(es).'
+  :'Basado en la intervención registrada.';
+ return '<div class="cac-ai-proposal-card">'+
+  '<div class="cac-ai-proposal-kicker">✦ PROPUESTA EDITABLE</div>'+
+  '<strong>'+cacSafe(p.subject||'')+'</strong>'+
+  '<p class="cac-ai-proposal-message">'+cacSafe(p.message||'').replace(/\n/g,'<br>')+'</p>'+
+  '<p class="cac-ai-proposal-cta"><b>Acción esperada:</b> '+cacSafe(p.cta||'')+'</p>'+
+  (p.reason?'<p class="cac-ai-proposal-reason"><b>Por qué:</b> '+cacSafe(p.reason)+'</p>':'')+
+  '<small>'+cacSafe(detail)+'</small>'+
+  '<div class="cac-ai-proposal-actions"><button type="button" class="primary" onclick="cacAiApply()">Aplicar y ajustar</button>'+
+  '<button type="button" class="secondary" onclick="cacAiDismiss()">Descartar</button></div></div>';
+}
+function cacAiRefresh(){
+ const card=document.getElementById('cac-ai-suggestion');
+ const step=cacStep(cacAction(current()));
+ if(card&&step){
+  card.innerHTML=cacAiSuggestionHtml(step);
+  card.hidden=!card.innerHTML;
+ }
+ const status=document.getElementById('cac-ai-state');
+ if(status)status.textContent=cacAiNotice;
+ const button=document.getElementById('cac-ai-create');
+ if(button){button.disabled=cacAiBusy;button.textContent=cacAiBusy?'Preparando propuesta…':'✦ Redactar con IA';}
+}
+async function cacAiSuggest(){
+ if(cacAiBusy||cacBusy)return;
+ const x=current(),row=cacAction(x),step=cacStep(row),form=document.getElementById('cac-form');
+ if(!x||!row||!step||!form||step.status!=='draft')return;
+ let draft;
+ try{draft=cacDraft(form,step,row);}catch{return alert('Revisa la fecha de programación.');}
+ cacAiBusy=true;cacAiSuggestion=null;cacAiNotice='Consultando intervención y diagnóstico para preparar un mensaje…';
+ cacAiRefresh();
+ const key=step.id;let timer;
+ try{
+  if(!cloudReady||!x._cloudId)throw Error('Primero inicia sesión y sincroniza esta iniciativa para usar la IA.');
+  cacStoreDraft(row,step,draft);
+  const saved=await confirmCloudSave();
+  if(!saved?.ok)throw Error(saved?.message||'No se pudo sincronizar la iniciativa.');
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session?.access_token)throw Error('Debes iniciar sesión en HACERLO.');
+  const controller=new AbortController();
+  timer=setTimeout(()=>controller.abort(),80000);
+  const res=await fetch(HACERLO_ENGINE_URL+'/api/ai/activation-message',{
+   method:'POST',headers:{'Content-Type':'application/json',
+    Authorization:'Bearer '+session.access_token,
+    'X-Supabase-Apikey':SUPABASE_PUBLISHABLE_KEY},
+   body:JSON.stringify({
+    initiative_id:x._cloudId,action_index:row.index,
+    kind:draft.kind,stage:draft.stage,audience_ids:draft.audienceIds,
+    subject:draft.title,message:draft.body,cta:draft.cta
+   }),signal:controller.signal
+  });
+  let response={};
+  try{response=await res.json();}catch{}
+  if(!res.ok||!response?.proposal){
+   const reason=typeof response?.detail==='string'?response.detail:'El motor de IA no devolvió una propuesta.';
+   throw Error(reason);
+  }
+  const p=response.proposal;
+  if(typeof p.subject!=='string'||typeof p.message!=='string'||typeof p.cta!=='string')
+   throw Error('La propuesta no contiene todos los campos.');
+  // No cambiar la ficha si el usuario navegó durante la respuesta.
+  if(current()!==x||!cacEditorOpen||cacStep(cacAction(x))?.id!==key)return;
+  cacAiSuggestion={stepId:key,proposal:p,sources:response.sources||{}};
+  cacAiNotice='Propuesta preparada. Revísala y aplícala solo si te sirve; nada se ha enviado.';
+ }catch(err){
+  if(current()===x&&cacStep(cacAction(x))?.id===key){
+   cacAiNotice='No se generó el mensaje: '+
+    (err?.name==='AbortError'?'la IA tardó demasiado.':(err?.message||'error desconocido'))+
+    ' Tu borrador sigue disponible.';
+  }
+ }finally{
+  if(timer)clearTimeout(timer);
+  cacAiBusy=false;
+  cacAiRefresh();
+ }
+}
+function cacAiApply(){
+ const row=cacAction(current()),step=cacStep(row),form=document.getElementById('cac-form');
+ const proposal=cacAiSuggestion;
+ if(!row||!step||!form||step.status!=='draft'||proposal?.stepId!==step.id)return;
+ for(const [name,value] of [['subject',proposal.proposal.subject],
+                            ['message',proposal.proposal.message],['cta',proposal.proposal.cta]]){
+  const field=form.elements.namedItem(name);
+  if(field)field.value=String(value||'');
+ }
+ try{cacStoreDraft(row,step,cacDraft(form,step,row));}
+ catch{return alert('Revisa los campos antes de guardar.');}
+ cacAiSuggestion=null;cacAiNotice='Propuesta aplicada al borrador. Puedes editarla libremente; no se envió ningún correo.';
+ cacAiRefresh();cacPreview();
+ form.elements.namedItem('message')?.focus?.();
+}
+function cacAiDismiss(){
+ cacAiSuggestion=null;cacAiNotice='Propuesta descartada. Tu mensaje anterior no cambió.';
+ cacAiRefresh();
+}
 function cacAudienceCount(x,id){
  const set=new Set(),add=v=>{const s=String(v||'').trim().toLowerCase();if(s.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))set.add(s);};
  const a=(x.audiences||[]).find(v=>String(v.id)===String(id));if(a)add(a.email||a.correo);
@@ -321,6 +427,7 @@ function cacStepEditor(x,row,step){
   audienceOptions.replace(/^<div class="cac-audience-grid">/,'').replace(/<\/div>$/,'')+
   '</div></div></div></details>'+
   '<p class="cac-inline-help">Se eliminan duplicados. Cada persona recibe un correo privado. Máximo inicial: 40 destinatarios por activación.</p></section>'+
+  (immutable?'':'<div class="cac-ai-assist"><div><strong>✦ Un mensaje listo para ajustar</strong><small>La IA considera la intervención, las audiencias elegidas y los hallazgos disponibles. Tú siempre decides qué enviar.</small></div><button id="cac-ai-create" type="button" class="secondary" onclick="cacAiSuggest()">✦ Redactar con IA</button></div><p class="cac-ai-state" id="cac-ai-state" role="status">'+cacSafe(cacAiNotice)+'</p><div id="cac-ai-suggestion" class="cac-ai-suggestion" '+(cacAiSuggestion?.stepId===step.id?'':'hidden')+'>'+cacAiSuggestionHtml(step)+'</div>')+
   field('Asunto','<input type="text" name="subject" maxlength="140" required '+(immutable?'readonly':'')+' value="'+cacSafe(step.title||'')+'" placeholder="¿Qué deben entender o hacer?">')+
   field('Mensaje','<textarea name="message" maxlength="2400" rows="7" required '+(immutable?'readonly':'')+' placeholder="Escribe aquí el mensaje concreto.">'+cacSafe(step.body||'')+'</textarea>')+
   field('Acción esperada o refuerzo','<textarea name="cta" maxlength="450" rows="2" '+(immutable?'readonly':'')+'>'+cacSafe(step.cta||'')+'</textarea>')+
@@ -328,7 +435,7 @@ function cacStepEditor(x,row,step){
   '<p class="cac-inline-help">Sin fecha, se envía ahora. Con fecha, se programa en Resend hasta 30 días antes. Puedes usar {{nombre}} y {{intervencion}} para personalizar el texto.</p>'+
   (immutable?'':(
    '<label class="cac-check"><input type="checkbox" name="authorized"><span>Confirmo que estoy autorizado para contactar a las personas y direcciones seleccionadas.</span></label>'+
-   '<div class="cac-actions"><button class="secondary" type="submit">Guardar borrador</button><button class="secondary" type="button" onclick="cacFillTemplate()">Proponer mensaje</button><button class="secondary" type="button" onclick="cacDuplicateForAudience()">Versión para otro destinatario</button>'+
+   '<div class="cac-actions"><button class="secondary" type="submit">Guardar borrador</button><button class="secondary" type="button" onclick="cacDuplicateForAudience()">Versión para otro destinatario</button>'+
    '<button class="primary" type="button" id="cac-send" onclick="cacActivateStep()">Revisar destinatarios y activar</button></div>'
   ))+
   '<p class="cac-inline-help" id="cac-recipient-check">Revisión de destinatarios pendiente.</p>'+
