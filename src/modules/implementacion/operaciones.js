@@ -458,7 +458,8 @@ function behaviorDragDrop(event,el){
 // El resto de la tarjeta conserva el desplazamiento vertical de la lista.
 function behaviorTouchStart(event,el){
  if(event.pointerType==='mouse'||!behaviorOrderAllowed())return;
- const index=Number(el.dataset.index);
+ const card=el.closest?.('.behavior-explore-entry[data-index]');
+ const index=Number(card?.dataset.index);
  if(!Number.isSafeInteger(index))return;
  behaviorTouchDrag={id:event.pointerId,from:index,startY:event.clientY,active:false};
  el.setPointerCapture?.(event.pointerId);
@@ -483,6 +484,7 @@ function behaviorTouchEnd(event){
  const state=behaviorTouchDrag;
  if(!state||event.pointerId!==state.id)return;
  behaviorTouchDrag=null;
+ if(event.type==='pointercancel'){behaviorDragClean();return;}
  const active=state.active;
  if(active){
   const target=document.elementFromPoint?.(event.clientX,event.clientY)?.closest?.('.behavior-explore-entry[data-index]');
@@ -504,7 +506,7 @@ function behaviorExploreEntries(x,visible,selected){
  const reorder=behaviorOrderAllowed();
  if(!visible.length)return '<div class="behavior-explore-no-results">No se encontraron comportamientos. Prueba otra audiencia o búsqueda.</div>';
  const hint='<p class="behavior-explore-order-note">'+
-  (reorder?'Haz clic sostenido y arrastra un comportamiento hasta donde quieras ubicarlo.':'Muestra todas las audiencias y borra la búsqueda para cambiar el orden.')+'</p>';
+  (reorder?'Arrastra la tarjeta para cambiar su posición. También puedes usar Alt + ↑ / ↓.':'Muestra todas las audiencias y borra la búsqueda para cambiar el orden.')+'</p>';
  return hint+visible.map(({b,i,ref})=>{
   const n=(x.indicators||[]).filter(ind=>indicatorHasBehavior(x,ind,b)).length;
   const quality=behaviorDesignQuality(x,b);
@@ -521,7 +523,7 @@ function behaviorExploreEntries(x,visible,selected){
    '<span class="behavior-explore-entry-title">'+safe(b.name||"Sin título")+'</span>'+
    '<span class="behavior-explore-entry-foot">'+behaviorAudienceLabel(x,b)+'<span aria-hidden="true">·</span>'+n+' '+(n===1?'indicador':'indicadores')+behaviorDesignQualityBadge(quality)+'</span></span>'+
    (reorder?'<span class="behavior-explore-drag-grip" aria-hidden="true"'+
-    ' onpointerdown="behaviorTouchStart(event,this.closest(&quot;.behavior-explore-entry&quot;))"'+
+    ' onpointerdown="behaviorTouchStart(event,this)"'+
     ' onpointermove="behaviorTouchMove(event)" onpointerup="behaviorTouchEnd(event)"'+
     ' onpointercancel="behaviorTouchEnd(event)">⠿</span>':'')+
    '</button></div>';
