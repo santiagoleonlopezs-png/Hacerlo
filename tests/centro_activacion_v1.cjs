@@ -37,7 +37,7 @@ assert.equal(ctx.cacSequenceSteps(action)[3].kind,'reconocimiento');
 assert.ok(action.activationSequence.every(s=>s.status==='draft'));
 assert.equal(calls.network,0,'Crear secuencia NO envía correo');
 assert.equal(ctx.cacAudienceCount(x,'a1'),2,'Deduplicar el correo de una audiencia y su persona');
-assert.match(ctx.renderCentroActivacion(x),/Selecciona qué vamos a activar/);
+assert.match(ctx.renderCentroActivacion(x),/Qué intervención quieres activar/);
 assert.match(ctx.renderCentroActivacion(x),/Dar sentido/);
 assert.match(ctx.renderCentroActivacion(x),/Recordar/);
 assert.match(ctx.renderCentroActivacion(x),/Reforzar/);
