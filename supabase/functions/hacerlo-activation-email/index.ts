@@ -46,6 +46,9 @@ Deno.serve(async(request:Request)=>{
  const subject=text(body?.subject,140);
  const message=text(body?.message,2400);
  const cta=text(body?.cta,450);
+ const sequenceStep=text(body?.sequence_step,70);
+ const sequenceId=text(body?.sequence_id,100);
+ const scheduledFor=text(body?.scheduled_for,50);
  const audienceIds=Array.isArray(body?.audience_ids)?
    [...new Set(body.audience_ids.filter((a:unknown)=>typeof a==='string'&&a.length<=100))]:[];
  if(!['preview','send'].includes(mode)||!uuid.test(initiativeId)||
@@ -54,6 +57,13 @@ Deno.serve(async(request:Request)=>{
     audienceIds.length<1||audienceIds.length>20||
     !subject||!message)return json({error:'Revisa la acción, las audiencias, el asunto y el mensaje.'},400);
  if(mode==='send'&&!uuid.test(requestKey))return json({error:'Identificador de envío inválido.'},400);
+ if(mode==='send'&&body?.consent_attested!==true)return json({error:'Confirma que tienes autorización para enviar comunicaciones a las audiencias.'},403);
+ let scheduledIso='';
+ if(scheduledFor){
+  const when=new Date(scheduledFor),delta=when.getTime()-Date.now();
+  if(!Number.isFinite(when.getTime())||delta<10*60*1000||delta>30*24*60*60*1000)return json({error:'Programa el envío entre 10 minutos y 30 días a partir de ahora.'},422);
+  scheduledIso=when.toISOString();
+ }
  const {data:initiative,error:initiativeError}=await caller.from('initiatives')
    .select('id,organization_id,app_state').eq('id',initiativeId).maybeSingle();
  if(initiativeError||!initiative)return json({error:'No tienes acceso a esa iniciativa.'},403);
@@ -101,7 +111,8 @@ Deno.serve(async(request:Request)=>{
  const insert={
   initiative_id:initiative.id,organization_id:initiative.organization_id,sender_user_id:user.id,
   request_key:requestKey,action_index:actionIndex,kind,audience_ids:audienceIds,
-  subject,message,cta,recipient_count:count,status:'processing'
+  subject,message,cta,recipient_count:count,status:'processing',
+  scheduled_for:scheduledIso||null,sequence_step:sequenceStep||null,sequence_id:sequenceId||null
  };
  const {data:log,error:insertError}=await service.from('activation_sends').insert(insert).select('id').single();
  if(insertError){
@@ -125,7 +136,7 @@ Deno.serve(async(request:Request)=>{
      Authorization:'Bearer '+resendKey,'Content-Type':'application/json',
      'Idempotency-Key':requestKey+'-'+i
     },
-    body:JSON.stringify({from,to:[email],subject,html,text:contentText})
+    body:JSON.stringify({from,to:[email],subject,html,text:contentText,...(scheduledIso?{scheduled_at:scheduledIso}:{})})
    });
    if(response.ok){accepted++;}
    else{failed++;lastError='Resend rechazó uno o más mensajes ('+response.status+').';}
@@ -135,12 +146,13 @@ Deno.serve(async(request:Request)=>{
    failure_summary:lastError
   }).eq('id',log.id);
  }
- const status=failed===0?'sent':accepted>0?'partial':'failed';
+ const status=failed===0?(scheduledIso?'scheduled':'sent'):accepted>0?'partial':'failed';
  await service.from('activation_sends').update({
   status,accepted_count:accepted,failed_count:failed,finished_at:now(),
   failure_summary:lastError
  }).eq('id',log.id);
  return json({ok:accepted>0,status,accepted_count:accepted,failed_count:failed,
   recipient_count:count,log_id:log.id,
-  note:'Aceptado por el proveedor no equivale a entregado ni leído.'},accepted>0?200:502);
+  scheduled_for:scheduledIso||null,
+  note:scheduledIso?'Programado en el proveedor; todavía no se ha entregado.':'Aceptado por el proveedor no equivale a entregado ni leído.'},accepted>0?200:502);
 });
