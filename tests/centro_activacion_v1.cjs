@@ -30,7 +30,7 @@ assert.equal(ctx.cacSequenceSteps(action).length,0,'La secuencia sigue siendo op
 const editor=ctx.renderCentroActivacion(x);
 assert.match(editor,/id="cac-editor"/);
 assert.match(editor,/onclick="cacBackToCenter\(\)"/);
-assert.match(editor,/<fieldset class="cac-field cac-audience-field">/,'El grupo de audiencias usa fieldset, sin labels anidados');
+assert.match(editor,/class="cac-recipient-details"/,'Audiencias y personas se eligen sin formularios anidados');
 assert.doesNotMatch(editor,/<label class="cac-field"><span>Audiencias destinatarias/);
 assert.match(editor,/Versión para otro destinatario/);
 assert.match(editor,/Correo individual/);
