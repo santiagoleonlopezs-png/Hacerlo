@@ -371,47 +371,160 @@ function behaviorDesignQualityPanel(quality){
    '<p>El estado indica que se registraron los elementos del diseño; no certifica que el comportamiento o sus indicadores sean científicamente válidos.</p></div></details>';
 }
 
-// El orden es propiedad de la iniciativa; usar IDs estables y conservar vínculos diagnósticos.
-function behaviorMove(index,direction){
+// Arrastrar y soltar directamente la tarjeta. El clic normal sigue abriendo la ficha.
+let behaviorDragFrom=null,behaviorTouchDrag=null,behaviorDragSuppressClickUntil=0;
+function behaviorOrderAllowed(){
+ return behaviorExploreAudience==="__all__"&&!behaviorExploreSearch.trim();
+}
+function behaviorReorder(from,to){
  const x=current(),list=x?.behaviors;
- if(!Array.isArray(list)||!Number.isSafeInteger(index)||![1,-1].includes(direction))return;
- if(behaviorExploreAudience!=="__all__"||behaviorExploreSearch.trim())return;
- const next=index+direction;
- if(next<0||next>=list.length)return;
- const chosen=list[index];
- // Hallazgos antiguos almacenan índices, no IDs. Permutar también sus referencias
- // evita que un hallazgo quede asociado al comportamiento equivocado.
+ if(!behaviorOrderAllowed()||!Array.isArray(list)||
+   !Number.isSafeInteger(from)||!Number.isSafeInteger(to)||
+   from<0||to<0||from>=list.length||to>=list.length||from===to)return false;
+ const old=list.slice(),selected=list[from];
+ list.splice(from,1);
+ list.splice(to,0,selected);
+ // Compatibilidad con hallazgos antiguos que guardaron posiciones numéricas
+ // en lugar del ID estable de un comportamiento.
+ const indexMap=old.map(b=>list.indexOf(b));
  (x.diagnosisFindings||[]).forEach(f=>{
   if(!Array.isArray(f.behaviors))return;
   f.behaviors=f.behaviors.map(ref=>{
-   if(String(ref)===String(index))return String(next);
-   if(String(ref)===String(next))return String(index);
-   return ref;
+   const value=String(ref);
+   if(!/^\d+$/.test(value))return ref;
+   const prev=Number(value);
+   return prev<indexMap.length?String(indexMap[prev]):ref;
   });
  });
- [list[index],list[next]]=[list[next],list[index]];
- behaviorExploreSelected=behaviorExploreRef(chosen,next);
+ behaviorExploreSelected=behaviorExploreRef(selected,to);
  const scroll=document.getElementById?.('behavior-explore-entries')?.scrollTop||0;
  save();render();
  const entries=document.getElementById?.('behavior-explore-entries');
  if(entries)entries.scrollTop=scroll;
+ return true;
+}
+function behaviorDragClean(){
+ document.querySelectorAll?.('.behavior-explore-entry.is-dragging,.behavior-explore-entry.is-drop-before,.behavior-explore-entry.is-drop-after')
+  .forEach(el=>el.classList.remove('is-dragging','is-drop-before','is-drop-after'));
+ behaviorDragFrom=null;
+}
+function behaviorDropLocation(el,clientY){
+ const rect=el?.getBoundingClientRect?.();
+ return rect&&clientY>=rect.top+rect.height/2?'after':'before';
+}
+function behaviorDragMark(el,clientY){
+ document.querySelectorAll?.('.behavior-explore-entry.is-drop-before,.behavior-explore-entry.is-drop-after')
+  .forEach(node=>node.classList.remove('is-drop-before','is-drop-after'));
+ if(!el||!Number.isInteger(behaviorDragFrom))return;
+ const target=Number(el.dataset.index);
+ if(!Number.isSafeInteger(target)||target===behaviorDragFrom)return;
+ el.classList.add(behaviorDropLocation(el,clientY)==='after'?'is-drop-after':'is-drop-before');
+}
+function behaviorDragStart(event,el){
+ if(!behaviorOrderAllowed()){event.preventDefault();return;}
+ const index=Number(el.dataset.index);
+ if(!Number.isSafeInteger(index))return;
+ behaviorDragFrom=index;
+ el.classList.add('is-dragging');
+ if(event.dataTransfer){
+  event.dataTransfer.effectAllowed='move';
+  event.dataTransfer.setData('text/plain',String(index));
+ }
+}
+function behaviorDragOver(event,el){
+ if(!Number.isInteger(behaviorDragFrom))return;
+ event.preventDefault();
+ if(event.dataTransfer)event.dataTransfer.dropEffect='move';
+ behaviorDragMark(el,event.clientY);
+ const list=document.getElementById('behavior-explore-entries');
+ if(!list)return;
+ const rect=list.getBoundingClientRect();
+ if(event.clientY>rect.bottom-25)list.scrollTop+=16;
+ else if(event.clientY<rect.top+25)list.scrollTop-=16;
+}
+function behaviorDragDrop(event,el){
+ if(!Number.isInteger(behaviorDragFrom))return;
+ event.preventDefault();event.stopPropagation();
+ const from=behaviorDragFrom,target=Number(el.dataset.index);
+ const location=behaviorDropLocation(el,event.clientY);
+ behaviorDragClean();
+ if(!Number.isSafeInteger(target))return;
+ const insert=target+(location==='after'?1:0);
+ const to=insert>from?insert-1:insert;
+ behaviorDragSuppressClickUntil=Date.now()+300;
+ behaviorReorder(from,to);
+}
+// En pantallas táctiles se arrastra desde la pequeña marca lateral (no es botón).
+// El resto de la tarjeta conserva el desplazamiento vertical de la lista.
+function behaviorTouchStart(event,el){
+ if(event.pointerType==='mouse'||!behaviorOrderAllowed())return;
+ const index=Number(el.dataset.index);
+ if(!Number.isSafeInteger(index))return;
+ behaviorTouchDrag={id:event.pointerId,from:index,startY:event.clientY,active:false};
+ el.setPointerCapture?.(event.pointerId);
+ event.preventDefault();
+}
+function behaviorTouchMove(event){
+ const state=behaviorTouchDrag;
+ if(!state||event.pointerId!==state.id)return;
+ if(!state.active&&Math.abs(event.clientY-state.startY)<7)return;
+ if(!state.active){state.active=true;behaviorDragFrom=state.from;}
+ event.preventDefault();
+ const target=document.elementFromPoint?.(event.clientX,event.clientY)?.closest?.('.behavior-explore-entry[data-index]');
+ behaviorDragMark(target,event.clientY);
+ const list=document.getElementById('behavior-explore-entries');
+ if(list){
+  const r=list.getBoundingClientRect();
+  if(event.clientY>r.bottom-28)list.scrollTop+=17;
+  else if(event.clientY<r.top+28)list.scrollTop-=17;
+ }
+}
+function behaviorTouchEnd(event){
+ const state=behaviorTouchDrag;
+ if(!state||event.pointerId!==state.id)return;
+ behaviorTouchDrag=null;
+ const active=state.active;
+ if(active){
+  const target=document.elementFromPoint?.(event.clientX,event.clientY)?.closest?.('.behavior-explore-entry[data-index]');
+  if(target)behaviorDragDrop(event,target);
+  else behaviorDragClean();
+  behaviorDragSuppressClickUntil=Date.now()+350;
+ }
+}
+function behaviorDragKeyboard(event,el){
+ if(!event.altKey||!['ArrowUp','ArrowDown'].includes(event.key)||!behaviorOrderAllowed())return;
+ event.preventDefault();
+ const from=Number(el.dataset.index);
+ if(!Number.isSafeInteger(from))return;
+ behaviorReorder(from,from+(event.key==='ArrowUp'?-1:1));
+ document.querySelector?.('.behavior-explore-entry[data-index="'+
+  (from+(event.key==='ArrowUp'?-1:1))+'"]')?.focus?.({preventScroll:true});
 }
 function behaviorExploreEntries(x,visible,selected){
- const reorder=behaviorExploreAudience==="__all__"&&!behaviorExploreSearch.trim();
+ const reorder=behaviorOrderAllowed();
  if(!visible.length)return '<div class="behavior-explore-no-results">No se encontraron comportamientos. Prueba otra audiencia o búsqueda.</div>';
- const hint='<p class="behavior-explore-order-note">'+(reorder?'Usa las flechas ↑ ↓ para organizar los comportamientos.':'Muestra todas las audiencias y borra la búsqueda para cambiar el orden.')+'</p>';
+ const hint='<p class="behavior-explore-order-note">'+
+  (reorder?'Haz clic sostenido y arrastra un comportamiento hasta donde quieras ubicarlo.':'Muestra todas las audiencias y borra la búsqueda para cambiar el orden.')+'</p>';
  return hint+visible.map(({b,i,ref})=>{
   const n=(x.indicators||[]).filter(ind=>indicatorHasBehavior(x,ind,b)).length;
   const quality=behaviorDesignQuality(x,b);
-  const controls=reorder?'<div class="behavior-explore-order-controls" role="group" aria-label="Ordenar comportamiento">'+
-   '<button type="button" class="behavior-order-button" title="Subir comportamiento" aria-label="Subir comportamiento" onclick="behaviorMove('+i+',-1)" '+(i===0?'disabled':'')+'>↑</button>'+
-   '<button type="button" class="behavior-order-button" title="Bajar comportamiento" aria-label="Bajar comportamiento" onclick="behaviorMove('+i+',1)" '+(i===x.behaviors.length-1?'disabled':'')+'>↓</button>'+
-   '</div>':'';
   return '<div class="behavior-explore-entry-row">'+
-   '<button type="button" class="behavior-explore-entry '+(selected&&selected.ref===ref?'is-active':'')+'" data-ref="'+safe(ref)+'" aria-pressed="'+(!!selected&&selected.ref===ref)+'" onclick="behaviorExploreSelect(this.dataset.ref)">'+
+   '<button type="button" class="behavior-explore-entry '+(selected&&selected.ref===ref?'is-active':'')+'"'+
+   ' data-index="'+i+'" data-ref="'+safe(ref)+'"'+
+   ' aria-pressed="'+(!!selected&&selected.ref===ref)+'"'+
+   (reorder?' draggable="true" title="Haz clic y arrastra para cambiar el orden; clic para ver la ficha"'+
+    ' ondragstart="behaviorDragStart(event,this)" ondragover="behaviorDragOver(event,this)"'+
+    ' ondrop="behaviorDragDrop(event,this)" ondragend="behaviorDragClean()"'+
+    ' onkeydown="behaviorDragKeyboard(event,this)"':'')+
+   ' onclick="behaviorExploreSelect(this.dataset.ref)">'+
+   '<span class="behavior-explore-entry-content">'+
    '<span class="behavior-explore-entry-title">'+safe(b.name||"Sin título")+'</span>'+
-   '<span class="behavior-explore-entry-foot">'+behaviorAudienceLabel(x,b)+'<span aria-hidden="true">·</span>'+n+' '+(n===1?'indicador':'indicadores')+behaviorDesignQualityBadge(quality)+'</span></button>'+
-   controls+'</div>';
+   '<span class="behavior-explore-entry-foot">'+behaviorAudienceLabel(x,b)+'<span aria-hidden="true">·</span>'+n+' '+(n===1?'indicador':'indicadores')+behaviorDesignQualityBadge(quality)+'</span></span>'+
+   (reorder?'<span class="behavior-explore-drag-grip" aria-hidden="true"'+
+    ' onpointerdown="behaviorTouchStart(event,this.closest(&quot;.behavior-explore-entry&quot;))"'+
+    ' onpointermove="behaviorTouchMove(event)" onpointerup="behaviorTouchEnd(event)"'+
+    ' onpointercancel="behaviorTouchEnd(event)">⠿</span>':'')+
+   '</button></div>';
  }).join("");
 }
 
@@ -462,6 +575,7 @@ function behaviorExploreRefresh(){
 }
 
 function behaviorExploreSelect(ref){
+ if(Date.now()<behaviorDragSuppressClickUntil)return;
  behaviorExploreSelected=String(ref);
  behaviorExploreDetailOpen=true;
  behaviorExploreRefresh();
