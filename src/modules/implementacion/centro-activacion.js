@@ -14,6 +14,8 @@ function cacActions(x){return (x?.actions||[]).map((action,index)=>({action,inde
 });}
 function cacAction(x){const items=cacActions(x);return items.find(r=>r.index===cacActionIndex)||items[0]||null;}
 function cacSteps(action){return Array.isArray(action?.activationSequence)?action.activationSequence:[];}
+function cacSequenceSteps(action){return cacSteps(action).filter(s=>!s.standalone);}
+function cacDirectSteps(action){return cacSteps(action).filter(s=>s.standalone===true);}
 function cacStep(row){if(!row)return null;const steps=cacSteps(row.action);return steps.find(s=>s.id===cacStepId)||steps[0]||null;}
 function cacFormDate(iso){if(!iso)return '';const d=new Date(iso);if(Number.isNaN(+d))return '';const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);return local.toISOString().slice(0,16);}
 function cacStage(s){return CAC_STAGES.find(a=>a.id===s)||CAC_STAGES[0];}
@@ -32,14 +34,27 @@ function cacEnsureNew(action,stage,kind){
 }
 function cacBuildSequence(){
  const row=cacAction(current());if(!row||cacBusy)return;
- if(cacSteps(row.action).length)return;
+ if(cacSequenceSteps(row.action).length)return;
  const m=actionMechanisms(row.action),com=m.includes('comunicacion'),rec=m.includes('reconocimiento');
- row.action.activationSequence=(com?
+ const sequence=com?
   CAC_STAGES.map(s=>cacEnsureNew(row.action,s.id,s.id==='sostener'&&rec?'reconocimiento':'comunicacion')):
-  [cacEnsureNew(row.action,'sostener','reconocimiento'),cacEnsureNew(row.action,'recordar','reconocimiento')]);
- cacStepId=row.action.activationSequence[0].id;
+  [cacEnsureNew(row.action,'sostener','reconocimiento'),cacEnsureNew(row.action,'recordar','reconocimiento')];
+ row.action.activationSequence=[...cacSteps(row.action),...sequence];
+ cacStepId=sequence[0].id;
  cacMessage='Secuencia creada. Personaliza cada mensaje, las audiencias y el momento. Guardar no envía.';
  save();render();
+}
+function cacStartDirect(kind){
+ if(cacBusy)return;
+ const row=cacAction(current());if(!row)return;
+ if(!['comunicacion','reconocimiento'].includes(kind)||!actionMechanisms(row.action).includes(kind))return;
+ const step=cacEnsureNew(row.action,kind==='comunicacion'?'activar':'sostener',kind);
+ step.standalone=true;
+ row.action.activationSequence=[...cacSteps(row.action),step];
+ cacStepId=step.id;
+ cacMessage='Activación independiente creada. No necesitas una secuencia ni completar pasos anteriores.';
+ save();render();
+ document.getElementById('cac-editor')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function cacChooseAction(index){
  if(cacBusy)return;cacActionIndex=Number(index);cacStepId=null;cacMessage='';render();
@@ -209,7 +224,7 @@ function cacStepEditor(x,row,step){
   '<option value="'+cacSafe(z[0])+'"'+(String(z[0])===String(value)?' selected':'')+'>'+cacSafe(z[1])+'</option>').join('')+'</select>';
  const audienceOptions=cacAudienceOptions(x,step);
  return '<section id="cac-editor" class="cac-editor">'+
-  '<div class="cac-heading"><div><small>PASO '+(cacSteps(row.action).indexOf(step)+1)+' · '+cacSafe(cacStage(step.stage).moment.toUpperCase())+'</small><h3>'+cacSafe(cacStage(step.stage).label)+
+  '<div class="cac-heading"><div><small>'+(step.standalone?'ACTIVACIÓN INDEPENDIENTE':'PASO '+(cacSequenceSteps(row.action).indexOf(step)+1))+' · '+cacSafe(cacStage(step.stage).moment.toUpperCase())+'</small><h3>'+cacSafe(cacStage(step.stage).label)+
   '</h3><p>Redacta el mensaje, escoge sus destinatarios y define cuándo activar esta etapa.</p></div>'+
   (immutable?'<span class="cac-pill">'+cacSafe(cacStepLabel(step))+'</span>':'<button type="button" class="secondary" onclick="cacDeleteStep()">Eliminar paso</button>')+'</div>'+
   '<div class="cac-compose-grid"><form id="cac-form" onsubmit="cacSaveStep(event)" oninput="cacPreview()">'+
@@ -229,42 +244,70 @@ function cacStepEditor(x,row,step){
   ))+
   '<p class="cac-inline-help" id="cac-recipient-check">Revisión de destinatarios pendiente.</p>'+
   '</form><aside class="cac-preview-panel"><div class="cac-preview-top">VISTA PREVIA DEL CORREO</div>'+
-  '<div class="cac-preview-paper" id="cac-preview"></div>'+
+  '<div class="cac-preview-paper" id="cac-preview"><div class="cac-preview-brand">✣ HACERLO <span>· ACTIVACIÓN CONDUCTUAL</span></div><h3>'+cacSafe(step.title||'Asunto del correo')+'</h3><div class="cac-preview-message">'+cacSafe(step.body||'Aquí aparecerá el mensaje.').replace(/\n/g,'<br>')+'</div>'+(step.cta?'<p class="cac-preview-cta"><b>Acción esperada</b><br>'+cacSafe(step.cta)+'</p>':'')+'</div>'+
   '<div class="cac-preview-check"><b>Chequeo conductual</b><p>¿El mensaje expresa claramente qué hacer, cuándo hacerlo y por qué vale la pena?</p></div>'+
   '</aside></div></section>';
 }
 function renderCentroActivacion(x){
- const rows=cacActions(x),row=cacAction(x),steps=row?cacSteps(row.action):[],step=cacStep(row);
+ const rows=cacActions(x),row=cacAction(x),
+  sequence=row?cacSequenceSteps(row.action):[],direct=row?cacDirectSteps(row.action):[],step=cacStep(row);
  if(x?._cloudId&&!cacHistoryLoading&&cacHistoryFor!==x._cloudId)void cacLoadHistory();
- const content=!rows.length?
-  '<section class="cac-empty"><h3>Parte de una intervención</h3><p>En Intervenciones, activa el mecanismo de Comunicación o Reconocimiento para empezar a movilizar a las audiencias.</p>'+
-  '<button class="primary" type="button" onclick="go(\'Intervenciones\')">Ir a Intervenciones</button></section>':
-  '<section class="cac-control"><div><span class="cac-eyebrow">INTERVENCIÓN DE ORIGEN</span><h3>Selecciona qué vamos a activar</h3></div><label class="cac-select">Intervención <select onchange="cacChooseAction(this.value)">'+
+ let content='';
+ if(!rows.length){
+  content='<section class="cac-empty"><h3>Empieza con una intervención</h3>'+
+   '<p>En Intervenciones, activa Comunicación o Reconocimiento. El Centro sirve para ejecutarlas: no crea acciones duplicadas.</p>'+
+   '<button class="primary" type="button" onclick="go(\'Intervenciones\')">Ir a Intervenciones</button></section>';
+ }else{
+  const mechanisms=actionMechanisms(row.action);
+  const choose='<section class="cac-control"><div><span class="cac-eyebrow">INTERVENCIÓN DE ORIGEN</span>'+
+   '<h3>¿Qué intervención quieres activar?</h3></div><label class="cac-select">Intervención <select onchange="cacChooseAction(this.value)">'+
    rows.map(r=>'<option value="'+r.index+'"'+(row.index===r.index?' selected':'')+'>'+cacSafe(r.action.name||'Acción')+'</option>').join('')+
-   '</select></label></section>'+
-  (!steps.length?'<section class="cac-empty"><div class="cac-empty-icon">↗</div><h3>Diseña una secuencia de activación</h3>'+
-   '<p>No basta con un anuncio. Prepara una ruta para dar sentido, provocar una acción, recordar y sostener la nueva práctica.</p>'+
-   '<button class="primary" type="button" onclick="cacBuildSequence()">＋ Crear secuencia conductual</button></section>':
-   '<section class="cac-sequence"><div class="cac-heading"><div><small>RUTA DE ACTIVACIÓN CONDUCTUAL</small><h3>Secuencia vinculada a esta intervención</h3>'+
-   '<p>Cada paso puede dirigirse a distintas audiencias y tener su propia fecha. Solo se activa con tu confirmación.</p></div>'+
+   '</select></label></section>';
+  const options='<section class="cac-entry"><div><span class="cac-eyebrow">ELIGE CÓMO ACTIVAR</span>'+
+   '<h3>Una acción puntual o una secuencia: tú decides.</h3>'+
+   '<p>No hay etapas obligatorias ni requisitos previos. Puedes activar cualquier comunicación o reconocimiento cuando tenga sentido.</p></div>'+
+   '<div class="cac-entry-actions">'+
+   (mechanisms.includes('comunicacion')?'<button class="primary" type="button" onclick="cacStartDirect(\'comunicacion\')">✉ Nueva comunicación</button>':'')+
+   (mechanisms.includes('reconocimiento')?'<button class="secondary" type="button" onclick="cacStartDirect(\'reconocimiento\')">✧ Nuevo reconocimiento</button>':'')+
+   (!sequence.length?'<button class="secondary" type="button" onclick="cacBuildSequence()">＋ Crear secuencia opcional</button>':'')+
+   '</div></section>';
+  let directSection='';
+  if(direct.length)directSection='<section class="cac-sequence"><div class="cac-heading"><div><small>ACTIVACIONES INDEPENDIENTES</small>'+
+   '<h3>Comunicaciones y reconocimientos individuales</h3>'+
+   '<p>No dependen de una secuencia. Puedes enviarlos y programarlos por separado.</p></div></div>'+
+   '<div class="cac-direct-list">'+direct.map(s=>
+    '<button class="cac-direct-item'+(step?.id===s.id?' is-active':'')+'" type="button" onclick="cacChooseStep(\''+cacSafe(s.id)+'\')">'+
+    '<span>'+cacSafe(s.kind==='reconocimiento'?'✧ Reconocimiento':'✉ Comunicación')+'</span>'+
+    '<strong>'+cacSafe(s.title||'Sin asunto')+'</strong><small>'+cacSafe(cacStepLabel(s))+'</small></button>'
+   ).join('')+'</div></section>';
+  let sequenceSection='';
+  if(sequence.length)sequenceSection='<section class="cac-sequence"><div class="cac-heading"><div>'+
+   '<small>SECUENCIACIÓN OPCIONAL</small><h3>Ruta de activación conductual</h3>'+
+   '<p>Etapas sugeridas, no prerrequisitos: puedes ejecutar cualquier paso sin completar los anteriores, o no usar la ruta.</p></div>'+
    '<button class="secondary" type="button" onclick="cacAddStep()">＋ Añadir paso</button></div>'+
-   '<div class="cac-timeline">'+steps.map((s,i)=>
-    '<button type="button" onclick="cacChooseStep(\''+cacSafe(s.id)+'\')" class="cac-step'+(step.id===s.id?' is-active':'')+'">'+
-    '<span class="cac-step-number">'+String(i+1).padStart(2,'0')+'</span><span class="cac-step-meta"><small>'+
-     cacSafe(cacStage(s.stage).moment.toUpperCase())+'</small><strong>'+cacSafe(cacStage(s.stage).label)+'</strong>'+
-     '<em>'+cacSafe(cacStepLabel(s))+(s.scheduledFor?' · '+cacSafe(new Date(s.scheduledFor).toLocaleDateString('es-CO')):'')+'</em></span></button>'
-    ).join('')+'</div></section>'+cacStepEditor(x,row,step)));
+   '<div class="cac-timeline">'+sequence.map((s,i)=>
+    '<button type="button" onclick="cacChooseStep(\''+cacSafe(s.id)+'\')" class="cac-step'+(step?.id===s.id?' is-active':'')+'">'+
+    '<span class="cac-step-number">'+String(i+1).padStart(2,'0')+'</span>'+
+    '<span class="cac-step-meta"><small>'+cacSafe(cacStage(s.stage).moment.toUpperCase())+'</small>'+
+    '<strong>'+cacSafe(cacStage(s.stage).label)+'</strong>'+
+    '<em>'+cacSafe(cacStepLabel(s))+(s.scheduledFor?' · '+cacSafe(new Date(s.scheduledFor).toLocaleDateString('es-CO')):'')+
+    '</em></span></button>'
+   ).join('')+'</div></section>';
+  content=choose+options+directSection+sequenceSection+(step?cacStepEditor(x,row,step):'');
+ }
  const title=typeof hcxHero==='function'?hcxHero('Centro de Activación Conductual',x,
-  'Diseña secuencias, envía comunicaciones y reconoce comportamientos con resultados verificables.',
+  'Comunica, reconoce y refuerza comportamientos, con secuencias opcionales y envíos a audiencias.',
   'RDAIM · IMPLEMENTACIÓN','✧'):'<h2>Centro de Activación Conductual</h2>';
  return '<div class="cac-home">'+title+
   '<section class="cac-introduction"><div><span class="cac-eyebrow">ACTIVAR · RECORDAR · REFORZAR</span>'+
-  '<h2>El cambio ocurre cuando las personas actúan.</h2><p>Deja de registrar piezas sin distribuirlas. Conecta una intervención con las audiencias y activa una secuencia de mensajes reales.</p></div>'+
-  '<div class="cac-capabilities"><span>✉ Correos por audiencia</span><span>◷ Secuencias programables</span><span>✧ Reconocimiento</span></div></section>'+
+  '<h2>Activa el cambio a tu manera.</h2>'+
+  '<p>Envía un mensaje puntual, reconoce un comportamiento o diseña una ruta de refuerzo. Ninguna etapa es obligatoria.</p></div>'+
+  '<div class="cac-capabilities"><span>✉ Correos por audiencia</span><span>◷ Secuencias opcionales</span><span>✧ Reconocimiento</span></div></section>'+
   content+
   '<p class="cac-notice" id="cac-notice" role="status" aria-live="polite">'+cacSafe(cacMessage)+'</p>'+
-  '<section class="cac-history"><div class="cac-heading"><div><small>TRAZABILIDAD</small><h3>Historial de activaciones</h3><p>Estados de aceptación del proveedor, sin confundirlos con entregas o adopción.</p></div>'+
+  '<section class="cac-history"><div class="cac-heading"><div><small>TRAZABILIDAD</small>'+
+  '<h3>Historial de activaciones</h3><p>Estados reportados por el proveedor, sin confundirlos con entregas o adopción.</p></div>'+
   '<button class="secondary" type="button" onclick="cacLoadHistory(true)">Actualizar</button></div>'+
   '<div id="cac-history">'+cacHistoryHtml()+'</div></section>'+
-  '<p class="cac-disclaimer">Los envíos requieren autenticación, permiso de edición, consentimiento confirmado y proveedor configurado. Un correo aceptado no demuestra que se haya leído ni que el comportamiento haya cambiado.</p></div>';
+  '<p class="cac-disclaimer">Los envíos requieren autenticación, permiso de edición, autorización confirmada y proveedor configurado. Un correo aceptado no demuestra que se haya leído ni que el comportamiento haya cambiado.</p></div>';
 }
