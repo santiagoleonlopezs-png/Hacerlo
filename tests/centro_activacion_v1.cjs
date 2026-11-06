@@ -32,7 +32,7 @@ ctx.cacBuildSequence();
 assert.equal(x.actions.length,1,'Ninguna acción nueva');
 assert.equal(ctx.cacSequenceSteps(action).length,4,'Etapas de activación, recordatorio y refuerzo');
 assert.equal(action.activationSequence.length,5,'Se conserva la activación independiente al añadir la secuencia');
-assert.deepEqual(ctx.cacSequenceSteps(action).map(s=>s.stage),['sentido','activar','recordar','sostener']);
+assert.equal(ctx.cacSequenceSteps(action).map(s=>s.stage).join(','),'sentido,activar,recordar,sostener');
 assert.equal(ctx.cacSequenceSteps(action)[3].kind,'reconocimiento');
 assert.ok(action.activationSequence.every(s=>s.status==='draft'));
 assert.equal(calls.network,0,'Crear secuencia NO envía correo');
