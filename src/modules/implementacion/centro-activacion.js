@@ -216,6 +216,11 @@ async function cacAiSuggest(){
   if(!saved?.ok)throw Error(saved?.message||'No se pudo sincronizar la iniciativa.');
   const {data:{session}}=await sb.auth.getSession();
   if(!session?.access_token)throw Error('Debes iniciar sesión en HACERLO.');
+  // El modelo recibe el grupo de la persona elegida, pero nunca su nombre o correo.
+  const contextAudienceIds=new Set(draft.audienceIds);
+  for(const p of x.audiencePeople||[]){
+   if(draft.contactIds.includes(String(p.id))&&p.audienceId)contextAudienceIds.add(String(p.audienceId));
+  }
   const controller=new AbortController();
   timer=setTimeout(()=>controller.abort(),80000);
   const res=await fetch(HACERLO_ENGINE_URL+'/api/ai/activation-message',{
@@ -224,8 +229,9 @@ async function cacAiSuggest(){
     'X-Supabase-Apikey':SUPABASE_PUBLISHABLE_KEY},
    body:JSON.stringify({
     initiative_id:x._cloudId,action_index:row.index,
-    kind:draft.kind,stage:draft.stage,audience_ids:draft.audienceIds,
-    subject:draft.title,message:draft.body,cta:draft.cta
+    kind:draft.kind,stage:draft.stage,audience_ids:[...contextAudienceIds].slice(0,20),
+    // La IA propone desde el diagnóstico; el texto privado del borrador no sale del navegador.
+    subject:'',message:'',cta:''
    }),signal:controller.signal
   });
   let response={};
