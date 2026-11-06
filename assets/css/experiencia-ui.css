@@ -922,3 +922,19 @@ button.behavior-explore-entry:focus-visible{outline:2px solid #80eadc;outline-of
 .hcx-sync-retry{flex:none;width:auto;font-size:11px;padding:7px 11px}
 .hcx-sync-retry[hidden]{display:none!important}
 @media(max-width:700px){#cloud-status.hcx-cloud-sync-error{max-width:100%;font-size:11px}.hcx-session-bar{flex-wrap:wrap}}
+
+/* HACERLO · Orden manual de comportamientos en Diseño · v2.1 */
+.behavior-explore-order-note{font-size:10.5px;line-height:1.45;color:#9cc2cf;margin:2px 7px 7px}
+.behavior-explore-entry-row{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:7px;align-items:stretch;min-width:0}
+.behavior-explore-entry-row>.behavior-explore-entry{width:100%;min-width:0;margin:0}
+.behavior-explore-order-controls{display:grid;grid-template-rows:1fr 1fr;gap:5px;min-width:0}
+.behavior-explore-order-controls .behavior-order-button{
+ display:grid;place-items:center;min-width:0;width:34px;height:100%;min-height:28px;
+ border-radius:8px;background:#12374b;border:1px solid #34667a;
+ color:#90e4d8;font-size:17px;line-height:1;cursor:pointer;padding:0;
+ transition:background .15s ease,border-color .15s ease;
+}
+.behavior-explore-order-controls .behavior-order-button:not(:disabled):hover{background:#19536a;border-color:#65d5c4;color:#eafffa}
+.behavior-explore-order-controls .behavior-order-button:focus-visible{outline:2px solid #85e3d6;outline-offset:2px}
+.behavior-explore-order-controls .behavior-order-button:disabled{opacity:.3;cursor:not-allowed}
+@media(max-width:710px){.behavior-explore-entry-row{grid-template-columns:minmax(0,1fr) 32px}.behavior-explore-order-controls .behavior-order-button{width:32px}}
