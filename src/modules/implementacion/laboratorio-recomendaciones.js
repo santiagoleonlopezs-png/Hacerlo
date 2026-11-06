@@ -56,20 +56,58 @@ function labExperienceLink(id){
  const item=HACERLO_LAB_RECOMMENDATIONS.find(i=>i.id===id);
  return item?HACERLO_LABORATORIO_URL+item.path:'';
 }
+function labAssignableActions(x){
+ return (x?.actions||[]).map((action,index)=>({action,index})).filter(({action})=>
+  (typeof actionMechanisms==='function'?actionMechanisms(action).includes('laboratorio'):
+   (Array.isArray(action.mechanisms)?action.mechanisms.includes('laboratorio'):!!action.learningLabExperience)));
+}
+function labAssignExperience(index,id){
+ const x=current(),action=x?.actions?.[index],item=HACERLO_LAB_RECOMMENDATIONS.find(i=>i.id===id);
+ if(!x||!action||!item||!labAssignableActions(x).some(z=>z.index===index))return;
+ action.learningLabExperience=id;
+ save();render();
+}
+function labSetActionExperience(select,index){
+ const x=current(),action=x?.actions?.[index];
+ if(!x||!action||!labAssignableActions(x).some(z=>z.index===index))return;
+ const id=String(select.value||'');
+ if(id&&!HACERLO_LAB_RECOMMENDATIONS.some(i=>i.id===id))return;
+ if(id)action.learningLabExperience=id;
+ else delete action.learningLabExperience;
+ save();render();
+}
+function labRecommendAssign(button,id){
+ const article=button?.closest?.('article');
+ const select=article?.querySelector?.('select[data-lab-action]');
+ if(!select)return go('Intervenciones');
+ const index=Number(select.value);
+ if(!Number.isSafeInteger(index))return;
+ labAssignExperience(index,id);
+}
+function labLinkedActionsPanel(x){
+ if(!x)return '';
+ const links=labAssignableActions(x);
+ const catalog=HACERLO_LAB_RECOMMENDATIONS;
+ return '<section class="hcx-lab-recommendations"><header class="hcx-lab-rec-head"><div>'+
+  '<span class="hcx-lab-kicker">ACCIONES VINCULADAS</span><h2>Experiencias de la iniciativa</h2>'+
+  '<p class="muted">Asigna la experiencia a una acción creada previamente en Intervenciones.</p></div></header>'+
+  (links.length?'<div class="hcx-lab-rec-grid">'+links.map(({action,index})=>{
+   const selected=action.learningLabExperience||'';
+   return '<article class="hcx-lab-rec-card"><div class="hcx-lab-rec-detail"><h3>'+safe(action.name||'Acción')+
+    '</h3><p>'+safe(action.status||'Pendiente')+' · '+safe(action.owner||'Sin responsable')+'</p></div>'+
+    '<label class="hcx-lab-experience-picker">Experiencia<select onchange="labSetActionExperience(this,'+index+')">'+
+    '<option value="">Sin experiencia asignada</option>'+catalog.map(item=>
+     '<option value="'+item.id+'"'+(selected===item.id?' selected':'')+'>'+safe(item.title)+'</option>').join('')+'</select></label>'+
+    (selected?'<a class="hcx-lab-rec-link" target="_blank" rel="noopener noreferrer" href="'+labExperienceLink(selected)+'">Abrir experiencia ↗</a>':'')+
+    '</article>';
+  }).join('')+'</div>':
+  '<div class="hcx-lab-note">Aún no hay acciones con el mecanismo Laboratorio. Crea o edita una acción en Intervenciones y marca «Laboratorio»; aparecerá aquí automáticamente. <button type="button" class="secondary" onclick="go(\'Intervenciones\')">Ir a Intervenciones ↗</button></div>')+
+  '</section>';
+}
 function labAddExperienceToInterventions(id){
- const item=HACERLO_LAB_RECOMMENDATIONS.find(i=>i.id===id);
- const x=typeof current==='function'?current():null;
- if(!item||!x){alert('Selecciona primero una iniciativa para planificar esta experiencia.');return;}
- x.actions=x.actions||[];
- if(x.actions.some(z=>z.learningLabExperience===id)){go('Intervenciones');return;}
- x.actions.push({
-  id:'laboratorio-'+id+'-'+Date.now(),name:'Experiencia · '+item.title,
-  dimension:'Aprendizaje',owner:'',start:'',end:'',status:'Pendiente',
-  source:'Laboratorio de Aprendizaje y Decisión',
-  hypothesis:'Explorar con la audiencia de la iniciativa: '+item.focus+' Registrar después los aprendizajes y las observaciones.',
-  learningLabExperience:id
- });
- save();
+ // Compatibilidad con referencias existentes: nunca crea otra acción.
+ const x=typeof current==='function'?current():null,links=labAssignableActions(x);
+ if(links.length===1){labAssignExperience(links[0].index,id);return;}
  go('Intervenciones');
 }
 function learningLabRecommendationsSection(x){
@@ -78,10 +116,10 @@ function learningLabRecommendationsSection(x){
  const heading='<header class="hcx-lab-rec-head"><div><span class="hcx-lab-kicker">EXPERIENCIAS SUGERIDAS</span><h2>Para tu iniciativa</h2><p class="muted">Según la información registrada en <strong>'+safe(x.name||'esta iniciativa')+'</strong>.</p></div></header>';
  if(!suggestions.length)return '<section class="hcx-lab-recommendations">'+heading+'<div class="hcx-lab-note">Todavía no hay información suficiente para sugerir una experiencia específica. Registra comportamientos o hallazgos en HACERLO y aquí aparecerán opciones relacionadas. Puedes explorar el catálogo mientras tanto.</div></section>';
  const cards=suggestions.map(rec=>{
-  const already=(x.actions||[]).some(z=>z.learningLabExperience===rec.id);
+  const linked=labAssignableActions(x);
   return '<article class="hcx-lab-rec-card"><div class="hcx-lab-rec-detail"><h3>'+safe(rec.title)+'</h3><p>'+safe(rec.focus)+'</p><small><b>'+safe(rec.basis.name)+':</b> '+safe(rec.basis.text.slice(0,115))+'</small></div>'+
    '<div class="hcx-lab-rec-actions"><a class="hcx-lab-rec-link" href="'+labExperienceLink(rec.id)+'" target="_blank" rel="noopener noreferrer" aria-label="Abrir '+safe(rec.title)+' en una nueva pestaña">Explorar experiencia ↗</a>'+
-   '<button type="button" class="secondary" onclick="labAddExperienceToInterventions(\''+rec.id+'\')">'+(already?'Ver intervención':'Añadir a intervenciones')+'</button></div></article>';
+   (linked.length?'<label class="hcx-lab-recommend-select">Acción<select data-lab-action aria-label="Elegir acción para '+safe(rec.title)+'">'+linked.map(({action,index})=>'<option value="'+index+'">'+safe(action.name||'Acción')+'</option>').join('')+'</select></label><button type="button" class="secondary" onclick="labRecommendAssign(this,\''+rec.id+'\')">Asignar a acción</button>':'<button type="button" class="secondary" onclick="go(\'Intervenciones\')">Crear acción en Intervenciones</button>')+'</div></article>';
  }).join('');
  return '<section class="hcx-lab-recommendations">'+heading+'<div class="hcx-lab-rec-grid">'+cards+'</div><p class="hcx-lab-rec-disclaimer">Sugerencias orientativas a partir de palabras clave y registros existentes; no son un diagnóstico automático. La experiencia y los resultados del Laboratorio siguen siendo independientes.</p></section>';
 }
