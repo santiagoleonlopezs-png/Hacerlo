@@ -44,3 +44,25 @@
 .hcx-lab-linked-action:focus-visible{outline:2px solid #7de9eb;outline-offset:3px}
 @media(max-width:820px){.hcx-lab-rec-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.hcx-lab-rec-card{padding:16px}.hcx-lab-rec-actions{flex-direction:column;align-items:stretch}.hcx-lab-rec-actions>*{width:100%;text-align:center}}
+
+
+/* Datos agregados del Laboratorio – integración con tablero e IA. */
+.hcx-lab-bridge{margin:18px 0 20px;padding:21px 23px;border:1px solid #366076;border-radius:16px;background:linear-gradient(145deg,#0c2b40,#102b40)}
+.hcx-lab-bridge-header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin-bottom:14px}
+.hcx-lab-bridge h2{margin:4px 0 6px;font-size:clamp(19px,2vw,24px)}
+.hcx-lab-bridge p{font-size:13px;line-height:1.6;margin:5px 0 13px}
+.hcx-lab-bridge-upload{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:13px;font-weight:700;color:#eaf6ff;margin-top:14px}
+.hcx-lab-bridge-upload input{display:block;max-width:100%;border:1px solid #407288;background:#0c2031;border-radius:9px;padding:10px;font-size:12px;color:#eaf6ff}
+.hcx-lab-bridge-upload input::file-selector-button{padding:8px 10px;border:1px solid #72b4be;border-radius:7px;background:#103f4e;color:#ebfdff;cursor:pointer}
+.hcx-lab-bridge-status{color:#a8d1de;margin:10px 0 14px!important}
+.hcx-lab-bridge-status[data-error="true"]{color:#ffb6ab}
+.hcx-lab-bridge-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:12px;margin-top:13px}
+.hcx-lab-bridge-result{border:1px solid #31566b;border-radius:12px;background:#0a2538;padding:14px 16px}
+.hcx-lab-bridge-result-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.hcx-lab-bridge-result-head b{color:#f1d09b;font-size:15px}
+.hcx-lab-bridge-result-head small{color:#c4d8e1;font-size:11px}
+.hcx-lab-bridge-row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0;padding:7px 0;border-bottom:1px solid #274c60;font-size:12px;color:#c9e1ec}
+.hcx-lab-bridge-row b{font-weight:650;color:#e8f6ff}
+.hcx-lab-bridge-source{font-size:11px!important;color:#9ebdca!important;margin:12px 0 0!important}
+.hcx-lab-bridge-analysis>button{margin-top:12px}
+@media(max-width:600px){.hcx-lab-bridge{padding:16px}.hcx-lab-bridge-upload{align-items:stretch;flex-direction:column}.hcx-lab-bridge-upload input{width:100%}}
