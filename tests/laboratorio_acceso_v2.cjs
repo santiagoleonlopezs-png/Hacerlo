@@ -15,8 +15,8 @@ const route=core.indexOf("if(page==='Laboratorio'){a.innerHTML=renderLearningLab
 const noInitiative=core.indexOf("if(!x){a.innerHTML=");
 assert.ok(route>=0&&noInitiative>route,'Debe abrirse aunque no haya iniciativa seleccionada');
 assert.match(core,/if\(phase===3\)body=[^\n]+\+renderLearningLabTile\(\);/);
-assert.ok(html.includes('assets/css/laboratorio-acceso.css?v=1.1.0'));
-assert.ok(html.includes('src/modules/implementacion/laboratorio.js?v=1.1.0'));
+assert.ok(html.includes('assets/css/laboratorio-acceso.css?v=1.2.0'));
+assert.ok(html.includes('src/modules/implementacion/laboratorio.js?v=1.2.0'));
 assert.ok(html.indexOf('src/modules/implementacion/laboratorio.js')<html.indexOf('src/core/bootstrap.js'));
 assert.match(css,/\.hcx-lab-hero/);
 const sandbox={};
