@@ -7,7 +7,7 @@ const app=read('src/core/app.js');
 const html=read('index.html');
 assert.match(app,/\{title:'Implementación',step:3,items:\[\['Intervenciones','▥'\],\['Movilización y refuerzo','✧'\],\['Laboratorio','◇'\]\]\}/);
 assert.match(app,/actionMechanismsEditor\(\)/);
-assert.match(app,/renderMovilizacionRefuerzo\(current\(\)\)/);
+assert.match(app,/renderMovilizacionEstudio\(current\(\)\)/);
 assert.match(html,/mecanismos\.js\?v=1\.0\.0/);
 assert.match(html,/mecanismos\.css\?v=1\.0\.0/);
 const fake={id:'a1',name:'Programa de acompañamiento',mechanisms:['comunicacion','reconocimiento'],
