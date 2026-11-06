@@ -3,13 +3,14 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const read=p=>fs.readFileSync(p,'utf8');
 const app=read('src/core/app.js'),html=read('index.html');
 const planCode=read('src/modules/implementacion/plan-ejecutivo.js');
+const narrativeCode=read('src/modules/implementacion/plan-narrativa.js');
 assert.match(app,/\['Plan de cambio','▤'\]/);
 assert.match(app,/'Plan de cambio':3/);
 assert.match(app,/if\(page==='Plan de cambio'\)\{a\.innerHTML=planExecPreviewPage\(x\);return\}/);
-assert.match(html,/src\/modules\/implementacion\/plan-ejecutivo\.js\?v=1\.0\.0/);
-assert.match(html,/assets\/css\/plan-ejecutivo\.css\?v=1\.0\.0/);
+assert.match(html,/src\/modules\/implementacion\/plan-ejecutivo\.js\?v=1\.1\.0/);
+assert.match(html,/assets\/css\/plan-ejecutivo\.css\?v=1\.1\.0/);
 const c={console,Number,Date,Math,hcxHero:()=>'<header>HACERLO</header>'};
-vm.createContext(c);vm.runInContext(planCode,c);
+vm.createContext(c);vm.runInContext(planCode,c);vm.runInContext(narrativeCode,c);
 const x={name:'Evolución cultural',scope:'inside',description:'Acompañamiento al cambio',
  globalResult:{verb:'Incrementar',complement:'las conversaciones de retroalimentación',
   baseline:35,target:70,dueDate:'2027-06-30',unit:'Porcentaje (%)',measureType:'Frecuencia de comportamiento'},
