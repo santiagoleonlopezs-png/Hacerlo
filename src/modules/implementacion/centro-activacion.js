@@ -106,9 +106,12 @@ function cacDraft(form,step,row){
  const title=String(d.subject||'').trim().slice(0,140),body=String(d.message||'').trim().slice(0,2400);
  const cta=String(d.cta||'').trim().slice(0,450);
  const audienceIds=[...form.querySelectorAll('input[name="audience_ids"]:checked')].map(el=>el.value);
+ const contactIds=[...form.querySelectorAll('input[name="contact_ids"]:checked')].map(el=>el.value);
+ const manualEmail=String(d.manualEmail||'').trim().toLowerCase().slice(0,254);
+ const manualName=String(d.manualName||'').trim().slice(0,120);
  const kind=String(d.kind||step.kind);
  const mechanisms=actionMechanisms(row.action);
- return {title,body,cta,audienceIds,kind:mechanisms.includes(kind)?kind:step.kind,
+ return {title,body,cta,audienceIds,contactIds,manualEmail,manualName,kind:mechanisms.includes(kind)?kind:step.kind,
   scheduledFor:d.scheduledFor?new Date(d.scheduledFor).toISOString():'',
   stage:String(d.stage||step.stage)};
 }
@@ -121,7 +124,7 @@ function cacSaveStep(e){
  const draft=cacDraft(form,step,row);
  if(!draft.title||!draft.body)return alert('Escribe el asunto y el mensaje.');
  if(step.status!=='draft')return alert('Este paso ya fue enviado o programado. Crea otro paso para una nueva versión.');
- cacStoreDraft(row,step,draft);cacMessage='Borrador guardado. Puedes seleccionar las audiencias antes de activar el envío.';render();
+ cacStoreDraft(row,step,draft);cacMessage='Borrador guardado. Puedes seleccionar destinatarios antes de activar el envío.';render();
 }
 function cacDuplicateForAudience(){
  if(cacBusy)return;
@@ -133,11 +136,11 @@ function cacDuplicateForAudience(){
  if(!cacKeepVisibleDraft())return;
  const copy={...cacEnsureNew(row.action,draft.stage,draft.kind),...draft,
   id:crypto.randomUUID(),standalone:true,status:'draft',
-  audienceIds:[],scheduledFor:'',requestKey:'',logId:'',acceptedCount:0,failedCount:0,
+  audienceIds:[],contactIds:[],manualEmail:'',manualName:'',scheduledFor:'',requestKey:'',logId:'',acceptedCount:0,failedCount:0,
   createdAt:new Date().toISOString()};
  row.action.activationSequence=[...cacSteps(row.action),copy];
  cacStepId=copy.id;cacEditorOpen=true;
- cacMessage='Se creó otra versión sin destinatarios ni programación. Elige otra audiencia y adapta el mensaje.';
+ cacMessage='Versión creada sin destinatarios ni programación. Elige una persona, una audiencia o escribe otro correo.';
  save();render();
 }
 function cacFillTemplate(){
@@ -151,11 +154,16 @@ function cacFillTemplate(){
 function cacPreview(){
  const form=document.getElementById('cac-form'),display=document.getElementById('cac-preview');if(!form||!display)return;
  const val=k=>String(form.elements.namedItem(k)?.value||'');
+ const contact=form.querySelector('input[name="contact_ids"]:checked');
+ const contactName=contact?(current().audiencePeople||[]).find(p=>String(p.id)===String(contact.value))?.name:'';
+ const sampleName=val('manualName')||contactName||'{{nombre}}';
+ const actionName=cacAction(current())?.action?.name||'';
+ const personalize=s=>s.replace(/\{\{nombre\}\}/g,sampleName).replace(/\{\{intervencion\}\}/g,actionName);
  const esc=cacSafe;
  display.innerHTML='<div class="cac-preview-brand">✣ HACERLO <span>· ACTIVACIÓN CONDUCTUAL</span></div>'+
-  '<h3>'+esc(val('subject')||'Asunto del correo')+'</h3>'+
-  '<div class="cac-preview-message">'+esc(val('message')||'Aquí aparecerá el contenido que recibirá la audiencia.').replace(/\n/g,'<br>')+'</div>'+
-  (val('cta')?'<p class="cac-preview-cta"><b>Acción esperada</b><br>'+esc(val('cta'))+'</p>':'')+
+  '<h3>'+esc(personalize(val('subject')||'Asunto del correo'))+'</h3>'+
+  '<div class="cac-preview-message">'+esc(personalize(val('message')||'Aquí aparecerá el contenido que recibirá el destinatario.')).replace(/\n/g,'<br>')+'</div>'+
+  (val('cta')?'<p class="cac-preview-cta"><b>Acción esperada</b><br>'+esc(personalize(val('cta')))+'</p>':'')+
   '<small>La vista previa no envía mensajes.</small>';
 }
 function cacAudienceCount(x,id){
@@ -173,6 +181,29 @@ function cacAudienceOptions(x,step){
    ' '+(step.status!=='draft'?'disabled':'')+'><span><b>'+cacSafe(a.name)+'</b><small>'+(n?n+' '+(n===1?'contacto con correo':'contactos con correo'):'Sin correos registrados')+'</small></span></label>';
  }).join('')+'</div>';
 }
+function cacContactOptions(x,step){
+ const people=(x.audiencePeople||[]).filter(p=>p&&p.id&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(p.email||p.correo||'').trim()));
+ if(!people.length)return '<p class="cac-muted">No hay personas con correo registrado en esta iniciativa.</p>';
+ const chosen=new Set((step.contactIds||[]).map(String)),open=people.some(p=>chosen.has(String(p.id)));
+ const cards=people.map(p=>{
+  const aud=(x.audiences||[]).find(a=>String(a.id)===String(p.audienceId));
+  const description=String(p.email||p.correo||'').trim()+(aud?' · '+aud.name:'');
+  return '<label class="cac-contact-item" data-cac-contact="'+cacSafe((p.name||'')+' '+description).toLocaleLowerCase('es')+'">'+
+   '<input type="checkbox" name="contact_ids" value="'+cacSafe(p.id)+'"'+(chosen.has(String(p.id))?' checked':'')+
+   (step.status!=='draft'?' disabled':'')+'><span><b>'+cacSafe(p.name||'Sin nombre')+'</b><small>'+cacSafe(description)+'</small></span></label>';
+ }).join('');
+ return '<details class="cac-recipient-details" '+(open?'open':'')+'>'+
+  '<summary>Elegir personas registradas <small>'+people.length+' disponibles</small></summary>'+
+  '<div class="cac-recipient-body"><input class="cac-contact-search" type="search" autocomplete="off"'+
+  ' aria-label="Buscar personas registradas" placeholder="Buscar por nombre o correo" oninput="cacFilterContacts(this.value)">'+
+  '<div class="cac-contact-list">'+cards+'</div></div></details>';
+}
+function cacFilterContacts(value){
+ const term=String(value||'').trim().toLocaleLowerCase('es');
+ document.querySelectorAll?.('.cac-contact-item[data-cac-contact]').forEach(el=>{
+  el.hidden=!!term&&!el.dataset.cacContact.includes(term);
+ });
+}
 async function cacFunctionCall(body){
  const {data,error}=await sb.functions.invoke('hacerlo-activation-email',{body});
  if(error){
@@ -189,7 +220,10 @@ async function cacActivateStep(){
  if(!row||!step||!form)return;
  if(step.status!=='draft')return alert('Este paso ya fue enviado o programado. No se duplicará.');
  let draft;try{draft=cacDraft(form,step,row)}catch{return alert('Revisa la fecha de programación.');}
- if(!draft.title||!draft.body||!draft.audienceIds.length)return alert('Completa asunto, mensaje y al menos una audiencia.');
+ if(!draft.title||!draft.body||(!draft.audienceIds.length&&!draft.contactIds.length&&!draft.manualEmail))
+  return alert('Escribe el asunto, el mensaje y al menos un destinatario: persona, correo directo o audiencia.');
+ if(draft.manualEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.manualEmail))
+  return alert('El correo individual no tiene un formato válido.');
  if(!form.querySelector('input[name="authorized"]')?.checked)return alert('Confirma que cuentas con autorización para comunicarte con esas personas.');
  if(!cloudReady||!x._cloudId)return alert('Debes tener la iniciativa sincronizada con Supabase para enviar.');
  const scheduled=draft.scheduledFor?new Date(draft.scheduledFor):null;
@@ -201,14 +235,17 @@ async function cacActivateStep(){
   if(!saved.ok)throw Error(saved.message||'No fue posible guardar la secuencia en Supabase.');
   const payload={
    initiative_id:x._cloudId,action_index:row.index,kind:draft.kind,audience_ids:draft.audienceIds,
+   contact_ids:draft.contactIds,manual_email:draft.manualEmail,manual_name:draft.manualName,
    subject:draft.title,message:draft.body,cta:draft.cta,sequence_step:draft.stage,sequence_id:step.id,
    scheduled_for:draft.scheduledFor||''
   };
   const preview=await cacFunctionCall({...payload,mode:'preview'});
-  const n=Number(preview.recipient_count||0),names=(preview.audiences||[]).join(', ');
-  document.getElementById('cac-recipient-check').textContent=n+' destinatarios únicos verificados por el servidor · '+names;
+  const n=Number(preview.recipient_count||0);
+  const names=[...(preview.contacts||[]),...(preview.audiences||[]),
+    ...(preview.manual_count?['Correo escrito: '+draft.manualEmail]:[])].join(', ');
+  document.getElementById('cac-recipient-check').textContent=n+' destinatario(s) único(s) validado(s) por el servidor · '+names;
   const confirmation='Intervención: '+row.action.name+'\nPaso: '+cacStage(draft.stage).label+
-   '\nAudiencias: '+names+'\nDestinatarios únicos: '+n+'\n'+
+   '\nDestinatarios: '+names+'\nDirecciones únicas: '+n+'\n'+
    (scheduled?'Programación: '+scheduled.toLocaleString('es-CO'):'Envío: ahora')+
    '\n\n¿Confirmas el envío de este mensaje desde HACERLO?';
   if(!confirm(confirmation)){cacMessage='No se envió. Puedes seguir editando el paso.';return;}
@@ -271,16 +308,27 @@ function cacStepEditor(x,row,step){
   '<div class="cac-compose-grid"><form id="cac-form" onsubmit="cacSaveStep(event)" oninput="cacPreview()">'+
   '<div class="cac-two">'+field('Propósito',select('stage',CAC_STAGES.map(z=>[z.id,z.label]),step.stage))+
   field('Mecanismo',select('kind',options.map(v=>[v,v==='reconocimiento'?'Reconocimiento':'Comunicación']),step.kind))+'</div>'+
-  '<fieldset class="cac-field cac-audience-field"><legend>Audiencias destinatarias</legend>'+audienceOptions+'</fieldset>'+
-  '<p class="cac-inline-help">Los correos se toman de Gestión de audiencias. El servidor deduplica destinatarios y valida permisos antes de enviar.</p>'+
+  '<section class="cac-target-chooser"><div class="cac-target-header"><strong>¿A quién quieres escribirle?</strong><small>Elige una o combina varias opciones; no necesitas crear una audiencia.</small></div>'+
+  '<div class="cac-target-direct"><span class="cac-target-label">✉ Correo individual</span>'+
+  '<div class="cac-two">'+
+  field('Dirección de correo','<input type="email" name="manualEmail" maxlength="254" value="'+cacSafe(step.manualEmail||'')+'" placeholder="persona@empresa.com"'+(immutable?' readonly':'')+'>')+
+  field('Nombre (opcional)','<input type="text" name="manualName" maxlength="120" value="'+cacSafe(step.manualName||'')+'" placeholder="Nombre del destinatario"'+(immutable?' readonly':'')+'>')+
+  '</div><small>Puedes escribir un correo nuevo, aunque no esté registrado en HACERLO.</small></div>'+
+  cacContactOptions(x,step)+
+  '<details class="cac-recipient-details" '+((step.audienceIds||[]).length?'open':'')+'>'+
+  '<summary>Enviar a audiencias completas <small>'+Number((x.audiences||[]).length)+' disponibles</small></summary>'+
+  '<div class="cac-recipient-body"><div class="cac-audience-field"><div class="cac-audience-grid">'+
+  audienceOptions.replace(/^<div class="cac-audience-grid">/,'').replace(/<\/div>$/,'')+
+  '</div></div></div></details>'+
+  '<p class="cac-inline-help">Se eliminan duplicados. Cada persona recibe un correo privado. Máximo inicial: 40 destinatarios por activación.</p></section>'+
   field('Asunto','<input type="text" name="subject" maxlength="140" required '+(immutable?'readonly':'')+' value="'+cacSafe(step.title||'')+'" placeholder="¿Qué deben entender o hacer?">')+
   field('Mensaje','<textarea name="message" maxlength="2400" rows="7" required '+(immutable?'readonly':'')+' placeholder="Escribe aquí el mensaje concreto.">'+cacSafe(step.body||'')+'</textarea>')+
   field('Acción esperada o refuerzo','<textarea name="cta" maxlength="450" rows="2" '+(immutable?'readonly':'')+'>'+cacSafe(step.cta||'')+'</textarea>')+
   field('Fecha y hora del envío (opcional)','<input type="datetime-local" name="scheduledFor" '+(immutable?'readonly':'')+' value="'+cacSafe(cacFormDate(step.scheduledFor))+'">')+
-  '<p class="cac-inline-help">Sin fecha, se envía ahora. Con fecha, se programa en Resend hasta 30 días antes.</p>'+
+  '<p class="cac-inline-help">Sin fecha, se envía ahora. Con fecha, se programa en Resend hasta 30 días antes. Puedes usar {{nombre}} y {{intervencion}} para personalizar el texto.</p>'+
   (immutable?'':(
-   '<label class="cac-check"><input type="checkbox" name="authorized"><span>Confirmo que estoy autorizado para enviar comunicaciones a las audiencias seleccionadas.</span></label>'+
-   '<div class="cac-actions"><button class="secondary" type="submit">Guardar borrador</button><button class="secondary" type="button" onclick="cacFillTemplate()">Proponer mensaje</button><button class="secondary" type="button" onclick="cacDuplicateForAudience()">Versión para otra audiencia</button>'+
+   '<label class="cac-check"><input type="checkbox" name="authorized"><span>Confirmo que estoy autorizado para contactar a las personas y direcciones seleccionadas.</span></label>'+
+   '<div class="cac-actions"><button class="secondary" type="submit">Guardar borrador</button><button class="secondary" type="button" onclick="cacFillTemplate()">Proponer mensaje</button><button class="secondary" type="button" onclick="cacDuplicateForAudience()">Versión para otro destinatario</button>'+
    '<button class="primary" type="button" id="cac-send" onclick="cacActivateStep()">Revisar destinatarios y activar</button></div>'
   ))+
   '<p class="cac-inline-help" id="cac-recipient-check">Revisión de destinatarios pendiente.</p>'+
