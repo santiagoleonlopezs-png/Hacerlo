@@ -5,7 +5,7 @@ const mechanisms=read('src/modules/implementacion/mecanismos.js');
 const ops=read('src/modules/implementacion/operaciones.js');
 const app=read('src/core/app.js');
 const html=read('index.html');
-assert.match(app,/\{title:'Implementación',step:3,items:\[\['Intervenciones','▥'\],\['Movilización y refuerzo','✧'\],\['Laboratorio','◇'\]\]\}/);
+assert.match(app,/\{title:'Implementación',step:3,items:\[\['Intervenciones','▥'\],\['Movilización y refuerzo','✧'\],\['Laboratorio','◇'\],\['Plan de cambio','▤'\]\]\}/);
 assert.match(app,/actionMechanismsEditor\(\)/);
 assert.match(app,/renderMovilizacionEstudio\(current\(\)\)/);
 assert.match(html,/mecanismos\.js\?v=1\.0\.0/);
