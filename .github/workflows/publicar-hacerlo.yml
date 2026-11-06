@@ -47,6 +47,7 @@ jobs:
           node --check src/core/centro-inteligencia.js
           node --check src/modules/medicion/paneles.js
           node --check src/modules/implementacion/operaciones.js
+          node tests/comportamientos_orden_v1.cjs
           node --check src/modules/implementacion/mecanismos.js
           node --check src/modules/implementacion/movilizacion-estudio.js
           node --check src/modules/implementacion/centro-activacion.js
