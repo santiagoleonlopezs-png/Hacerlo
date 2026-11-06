@@ -6,6 +6,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 const core=read('src/core/app.js');
 const moduleCode=read('src/modules/implementacion/laboratorio.js');
 const recommendationCode=read('src/modules/implementacion/laboratorio-recomendaciones.js');
+const resultsCode=read('src/modules/implementacion/laboratorio-resultados.js');
 const kanbanCode=read('src/modules/medicion/paneles.js');
 const html=read('index.html');
 const css=read('assets/css/laboratorio-acceso.css');
@@ -21,7 +22,7 @@ assert.ok(html.indexOf('src/modules/implementacion/laboratorio.js')<html.indexOf
 assert.match(css,/\.hcx-lab-hero/);
 const sandbox={};
 vm.createContext(sandbox);
-vm.runInContext(moduleCode+'\n'+recommendationCode,sandbox);
+vm.runInContext(moduleCode+'\n'+recommendationCode+'\n'+resultsCode,sandbox);
 const card=sandbox.renderLearningLabTile(),page=sandbox.renderLearningLabPage();
 assert.match(card,/Laboratorio de Aprendizaje y Decisión/);
 assert.match(card,/go\('Laboratorio'\)/);
