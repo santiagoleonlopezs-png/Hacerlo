@@ -11,7 +11,7 @@ const resultsCode=read('src/modules/implementacion/laboratorio-resultados.js');
 const kanbanCode=read('src/modules/medicion/paneles.js');
 const html=read('index.html');
 const css=read('assets/css/laboratorio-acceso.css');
-assert.match(core, /\{title:'Implementación',step:3,items:\[\['Intervenciones','▥'\],\['Movilización y refuerzo','✧'\],\['Laboratorio','◇'\]\]\}/);
+assert.match(core, /\{title:'Implementación',step:3,items:\[\['Intervenciones','▥'\],\['Movilización y refuerzo','✧'\],\['Laboratorio','◇'\],\['Plan de cambio','▤'\]\]\}/);
 assert.match(core, /'Intervenciones':3,'Movilización y refuerzo':3,'Laboratorio':3/);
 const route=core.indexOf("if(page==='Laboratorio'){a.innerHTML=renderLearningLabPage();return}");
 const noInitiative=core.indexOf("if(!x){a.innerHTML=");
