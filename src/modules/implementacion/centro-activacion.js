@@ -1,6 +1,6 @@
 /* HACERLO · Centro de Activación Conductual: secuenciación, comunicación y reconocimiento.
  * Cada paso pertenece a la acción original. Nunca enviar automáticamente al guardar. */
-let cacActionIndex=null,cacStepId=null,cacHistory=[],cacHistoryFor='',cacHistoryLoading=false,cacBusy=false,cacMessage='';
+let cacActionIndex=null,cacStepId=null,cacEditorOpen=false,cacHistory=[],cacHistoryFor='',cacHistoryLoading=false,cacBusy=false,cacMessage='';
 const CAC_STAGES=[
  {id:'sentido',label:'Dar sentido',moment:'Antes',description:'Explica el para qué del cambio'},
  {id:'activar',label:'Activar',moment:'Durante',description:'Pide una acción observable y realizable'},
@@ -22,12 +22,12 @@ function cacFormDate(iso){if(!iso)return '';const d=new Date(iso);if(Number.isNa
 function cacStage(s){return CAC_STAGES.find(a=>a.id===s)||CAC_STAGES[0];}
 function cacStepLabel(step){return step.status==='scheduled'?'Programado':step.status==='sent'?'Aceptado para envío':step.status==='partial'?'Envío parcial':step.status==='unknown'?'Verificar estado':'Borrador';}
 function cacEnsureNew(action,stage,kind){
- const label=cacStage(stage),name=String(action.name||'el cambio');
+ const name=String(action.name||'el cambio');
  const textMap={
-  sentido:['Por qué importa '+name,'Estamos avanzando con '+name+'. Queremos compartir por qué es importante, qué esperamos lograr y cómo esto se conecta con nuestro trabajo.','Identifica qué cambia para ti y qué necesitas aclarar.'],
-  activar:['Es momento de ponerlo en práctica: '+name,'Ya conocemos el propósito. Ahora necesitamos convertirlo en una acción concreta y posible en nuestro trabajo diario.','Describe aquí exactamente qué deben hacer las personas, cómo y cuándo.'],
-  recordar:['Un recordatorio útil para '+name,'Los cambios se sostienen con prácticas repetidas. Este recordatorio busca ayudarte justo cuando necesitas poner en marcha la nueva forma de actuar.','Incluye aquí el paso puntual que las personas deben realizar.'],
-  sostener:['Reconozcamos los avances de '+name,'Queremos hacer visibles las prácticas que están contribuyendo al cambio. Reconocer hechos observables ayuda a fortalecer lo que vale la pena repetir.','Destaca un comportamiento real y su contribución al resultado.']
+  sentido:['El propósito del cambio','Estamos avanzando con «'+name+'». Queremos compartir el propósito y aclarar qué esperamos lograr con esta iniciativa.','Identifica qué cambiará en tu trabajo y qué dudas necesitas resolver.'],
+  activar:['Llevemos el cambio a la práctica','Ahora necesitamos llevar «'+name+'» a una acción concreta y posible en el trabajo diario.','Explica qué acción realizar, cuándo y con qué apoyo.'],
+  recordar:['Recordemos la práctica','Los cambios se sostienen con prácticas repetidas. Este recordatorio sobre «'+name+'» busca ayudarte cuando necesites actuar.','Recuerda el paso concreto que las personas deben realizar.'],
+  sostener:['Reconozcamos los avances','Queremos hacer visibles las prácticas que contribuyen a «'+name+'». Reconocer hechos observables ayuda a reforzar lo que vale la pena repetir.','Destaca un comportamiento observado y su contribución.']
  };
  const t=textMap[stage]||textMap.sostener;
  return {id:crypto.randomUUID(),stage,kind,title:t[0],body:t[1],cta:t[2],
@@ -43,7 +43,7 @@ function cacBuildSequence(){
   CAC_STAGES.map(s=>cacEnsureNew(row.action,s.id,s.id==='sostener'&&rec?'reconocimiento':'comunicacion')):
   [cacEnsureNew(row.action,'sostener','reconocimiento'),cacEnsureNew(row.action,'recordar','reconocimiento')];
  row.action.activationSequence=[...cacSteps(row.action),...sequence];
- cacStepId=sequence[0].id;
+ cacStepId=sequence[0].id;cacEditorOpen=true;
  cacMessage='Secuencia creada. Personaliza cada mensaje, las audiencias y el momento. Guardar no envía.';
  save();render();
 }
@@ -55,23 +55,37 @@ function cacStartDirect(kind){
  const step=cacEnsureNew(row.action,kind==='comunicacion'?'activar':'sostener',kind);
  step.standalone=true;
  row.action.activationSequence=[...cacSteps(row.action),step];
- cacStepId=step.id;
+ cacStepId=step.id;cacEditorOpen=true;
  cacMessage='Activación independiente creada. No necesitas una secuencia ni completar pasos anteriores.';
  save();render();
  document.getElementById('cac-editor')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
+function cacKeepVisibleDraft(){
+ const row=cacAction(current()),step=cacStep(row),form=document.getElementById('cac-form');
+ if(!cacEditorOpen||!row||!step||step.status!=='draft'||!form)return true;
+ try{cacStoreDraft(row,step,cacDraft(form,step,row));return true;}
+ catch(e){alert('Revisa la fecha de programación antes de salir del editor.');return false;}
+}
+function cacBackToCenter(){
+ if(cacBusy||!cacKeepVisibleDraft())return;
+ cacEditorOpen=false;cacStepId=null;
+ cacMessage='Volviste al Centro. El borrador se conservó sin enviarse.';
+ render();
+ document.querySelector?.('.cac-control')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+}
 function cacChooseAction(index){
- if(cacBusy)return;cacActionIndex=Number(index);cacStepId=null;cacMessage='';render();
+ if(cacBusy||!cacKeepVisibleDraft())return;
+ cacActionIndex=Number(index);cacStepId=null;cacEditorOpen=false;cacMessage='';render();
 }
 function cacChooseStep(id){
- if(cacBusy)return;cacStepId=id;cacMessage='';render();
+ if(cacBusy||!cacKeepVisibleDraft())return;cacStepId=id;cacEditorOpen=true;cacMessage='';render();
  document.getElementById('cac-editor')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function cacAddStep(){
  if(cacBusy)return;const row=cacAction(current());if(!row)return;
  const kind=actionMechanisms(row.action).includes('comunicacion')?'comunicacion':'reconocimiento';
  const step=cacEnsureNew(row.action,'recordar',kind);
- row.action.activationSequence=[...cacSteps(row.action),step];cacStepId=step.id;
+ row.action.activationSequence=[...cacSteps(row.action),step];cacStepId=step.id;cacEditorOpen=true;
  cacMessage='Paso adicional creado.';save();render();
 }
 function cacDeleteStep(){
@@ -79,7 +93,7 @@ function cacDeleteStep(){
  if(step.status!=='draft')return alert('No puedes eliminar un paso que ya fue enviado o programado.');
  if(!confirm('¿Eliminar este paso de la secuencia?'))return;
  row.action.activationSequence=cacSteps(row.action).filter(p=>p.id!==step.id);
- cacStepId=row.action.activationSequence[0]?.id||null;cacMessage='Paso eliminado.';save();render();
+ cacStepId=null;cacEditorOpen=false;cacMessage='Paso eliminado.';save();render();
 }
 function cacDraft(form,step,row){
  const d=Object.fromEntries(new FormData(form));
@@ -100,9 +114,25 @@ function cacSaveStep(e){
  const row=cacAction(current()),step=cacStep(row),form=document.getElementById('cac-form');if(!row||!step||!form)return;
  const draft=cacDraft(form,step,row);
  if(!draft.title||!draft.body)return alert('Escribe el asunto y el mensaje.');
- if(!draft.audienceIds.length)return alert('Elige al menos una audiencia.');
  if(step.status!=='draft')return alert('Este paso ya fue enviado o programado. Crea otro paso para una nueva versión.');
- cacStoreDraft(row,step,draft);cacMessage='Paso guardado. No se envió ningún mensaje.';render();
+ cacStoreDraft(row,step,draft);cacMessage='Borrador guardado. Puedes seleccionar las audiencias antes de activar el envío.';render();
+}
+function cacDuplicateForAudience(){
+ if(cacBusy)return;
+ const row=cacAction(current()),step=cacStep(row),form=document.getElementById('cac-form');
+ if(!row||!step||!form)return;
+ let draft;
+ try{draft=cacDraft(form,step,row)}catch{return alert('Revisa la fecha antes de crear otra versión.');}
+ if(!draft.title||!draft.body)return alert('Completa asunto y mensaje antes de crear otra versión.');
+ if(!cacKeepVisibleDraft())return;
+ const copy={...cacEnsureNew(row.action,draft.stage,draft.kind),...draft,
+  id:crypto.randomUUID(),standalone:true,status:'draft',
+  audienceIds:[],scheduledFor:'',requestKey:'',logId:'',acceptedCount:0,failedCount:0,
+  createdAt:new Date().toISOString()};
+ row.action.activationSequence=[...cacSteps(row.action),copy];
+ cacStepId=copy.id;cacEditorOpen=true;
+ cacMessage='Se creó otra versión sin destinatarios ni programación. Elige otra audiencia y adapta el mensaje.';
+ save();render();
 }
 function cacFillTemplate(){
  const row=cacAction(current()),step=cacStep(row),form=document.getElementById('cac-form');if(!row||!step||!form)return;
@@ -134,7 +164,7 @@ function cacAudienceOptions(x,step){
  return '<div class="cac-audience-grid">'+audiences.map(a=>{
   const n=cacAudienceCount(x,a.id),selected=(step.audienceIds||[]).some(id=>String(id)===String(a.id));
   return '<label class="cac-audience-option"><input type="checkbox" name="audience_ids" value="'+cacSafe(a.id)+'"'+(selected?' checked':'')+
-   ' '+(step.status!=='draft'?'disabled':'')+'><span><b>'+cacSafe(a.name)+'</b><small>'+n+' correo(s) válido(s) registrados</small></span></label>';
+   ' '+(step.status!=='draft'?'disabled':'')+'><span><b>'+cacSafe(a.name)+'</b><small>'+(n?n+' '+(n===1?'contacto con correo':'contactos con correo'):'Sin correos registrados')+'</small></span></label>';
  }).join('')+'</div>';
 }
 async function cacFunctionCall(body){
@@ -228,13 +258,14 @@ function cacStepEditor(x,row,step){
   '<option value="'+cacSafe(z[0])+'"'+(String(z[0])===String(value)?' selected':'')+'>'+cacSafe(z[1])+'</option>').join('')+'</select>';
  const audienceOptions=cacAudienceOptions(x,step);
  return '<section id="cac-editor" class="cac-editor">'+
+  '<div class="cac-editor-back"><button type="button" class="secondary" onclick="cacBackToCenter()">← Volver al Centro</button><span>El borrador se conserva al volver.</span></div>'+
   '<div class="cac-heading"><div><small>'+(step.standalone?'ACTIVACIÓN INDEPENDIENTE':'PASO '+(cacSequenceSteps(row.action).indexOf(step)+1))+' · '+cacSafe(cacStage(step.stage).moment.toUpperCase())+'</small><h3>'+cacSafe(cacStage(step.stage).label)+
   '</h3><p>Redacta el mensaje, escoge sus destinatarios y define cuándo activar esta etapa.</p></div>'+
   (immutable?'<span class="cac-pill">'+cacSafe(cacStepLabel(step))+'</span>':'<button type="button" class="secondary" onclick="cacDeleteStep()">Eliminar paso</button>')+'</div>'+
   '<div class="cac-compose-grid"><form id="cac-form" onsubmit="cacSaveStep(event)" oninput="cacPreview()">'+
-  '<div class="cac-two">'+field('Momento',select('stage',CAC_STAGES.map(z=>[z.id,z.label]),step.stage))+
+  '<div class="cac-two">'+field('Propósito',select('stage',CAC_STAGES.map(z=>[z.id,z.label]),step.stage))+
   field('Mecanismo',select('kind',options.map(v=>[v,v==='reconocimiento'?'Reconocimiento':'Comunicación']),step.kind))+'</div>'+
-  field('Audiencias destinatarias',audienceOptions)+
+  '<fieldset class="cac-field cac-audience-field"><legend>Audiencias destinatarias</legend>'+audienceOptions+'</fieldset>'+
   '<p class="cac-inline-help">Los correos se toman de Gestión de audiencias. El servidor deduplica destinatarios y valida permisos antes de enviar.</p>'+
   field('Asunto','<input type="text" name="subject" maxlength="140" required '+(immutable?'readonly':'')+' value="'+cacSafe(step.title||'')+'" placeholder="¿Qué deben entender o hacer?">')+
   field('Mensaje','<textarea name="message" maxlength="2400" rows="7" required '+(immutable?'readonly':'')+' placeholder="Escribe aquí el mensaje concreto.">'+cacSafe(step.body||'')+'</textarea>')+
@@ -243,7 +274,7 @@ function cacStepEditor(x,row,step){
   '<p class="cac-inline-help">Sin fecha, se envía ahora. Con fecha, se programa en Resend hasta 30 días antes.</p>'+
   (immutable?'':(
    '<label class="cac-check"><input type="checkbox" name="authorized"><span>Confirmo que estoy autorizado para enviar comunicaciones a las audiencias seleccionadas.</span></label>'+
-   '<div class="cac-actions"><button class="secondary" type="submit">Guardar borrador</button><button class="secondary" type="button" onclick="cacFillTemplate()">Proponer mensaje</button>'+
+   '<div class="cac-actions"><button class="secondary" type="submit">Guardar borrador</button><button class="secondary" type="button" onclick="cacFillTemplate()">Proponer mensaje</button><button class="secondary" type="button" onclick="cacDuplicateForAudience()">Versión para otra audiencia</button>'+
    '<button class="primary" type="button" id="cac-send" onclick="cacActivateStep()">Revisar destinatarios y activar</button></div>'
   ))+
   '<p class="cac-inline-help" id="cac-recipient-check">Revisión de destinatarios pendiente.</p>'+
@@ -297,7 +328,7 @@ function renderCentroActivacion(x){
     '<em>'+cacSafe(cacStepLabel(s))+(s.scheduledFor?' · '+cacSafe(new Date(s.scheduledFor).toLocaleDateString('es-CO')):'')+
     '</em></span></button>'
    ).join('')+'</div></section>';
-  content=choose+options+directSection+sequenceSection+(step?cacStepEditor(x,row,step):'');
+  content=choose+options+directSection+sequenceSection+(cacEditorOpen&&step?cacStepEditor(x,row,step):'');
  }
  const title=typeof hcxHero==='function'?hcxHero('Centro de Activación Conductual',x,
   'Comunica, reconoce y refuerza comportamientos, con secuencias opcionales y envíos a audiencias.',
@@ -309,8 +340,13 @@ function renderCentroActivacion(x){
   content+
   '<p class="cac-notice" id="cac-notice" role="status" aria-live="polite">'+cacSafe(cacMessage)+'</p>'+
   '<section class="cac-history"><div class="cac-heading"><div><small>TRAZABILIDAD</small>'+
-  '<h3>Historial de activaciones</h3><p>Estados reportados por el proveedor, sin confundirlos con entregas o adopción.</p></div>'+
+  '<h3>Seguimiento de envíos</h3><p>Datos técnicos del servicio de correo: mensajes aceptados, rechazados o programados. No miden adopción ni entrega efectiva.</p></div>'+
   '<button class="secondary" type="button" onclick="cacLoadHistory(true)">Actualizar</button></div>'+
   '<div id="cac-history">'+cacHistoryHtml()+'</div></section>'+
+  '<section class="cac-behavior-metrics"><div><span class="cac-eyebrow">RESULTADOS CONDUCTUALES</span>'+
+  '<h3>Indicadores de cambio en HACERLO</h3>'+
+  '<p>Esta iniciativa tiene <b>'+Number((x.indicators||[]).length)+'</b> indicadores definidos. Son diferentes de los estados técnicos del correo. Consulta su avance en Resultados y la evidencia de medición en Analítica.</p></div>'+
+  '<div class="cac-metric-links"><button type="button" class="secondary" onclick="go(\'Indicadores\')">Ver indicadores</button>'+
+  '<button type="button" class="secondary" onclick="go(\'Analítica\')">Ir a Analítica</button></div></section>'+
   '<p class="cac-disclaimer">Los envíos requieren autenticación, permiso de edición, autorización confirmada y proveedor configurado. Un correo aceptado no demuestra que se haya leído ni que el comportamiento haya cambiado.</p></div>';
 }
