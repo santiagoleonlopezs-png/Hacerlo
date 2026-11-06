@@ -51,6 +51,8 @@ jobs:
           node --check src/modules/implementacion/movilizacion-estudio.js
           node --check src/modules/implementacion/plan-ejecutivo.js
           node tests/plan_ejecutivo_v1.cjs
+          node --check src/modules/implementacion/plan-narrativa.js
+          node tests/plan_narrativa_v1.cjs
           node tests/movilizacion_estudio_v2.cjs
           node tests/implementacion_mecanismos_v1.cjs
           node --check src/modules/implementacion/laboratorio.js
