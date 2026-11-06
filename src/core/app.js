@@ -155,10 +155,10 @@ const HACERLO_NAV_GROUPS=[
  {title:'Resultados',step:0,items:[['Resultado global','◉'],['Comportamiento objetivo','◎'],['Diagnóstico','◈'],['Indicadores','▤']]},
  {title:'Diseño',step:1,items:[['Diseño de comportamientos','◈'],['Gestión de audiencias','♧']]},
  {title:'Análisis',step:2,items:[['Grafo de adopción','◎'],['Pensamiento sistémico','⟲'],['Simulación de agentes','♧'],['Inteligencia integrada','✧']]},
- {title:'Implementación',step:3,items:[['Intervenciones','▥'],['Movilización y refuerzo','✧'],['Laboratorio','◇'],['Plan de cambio','▤']]},
+ {title:'Implementación',step:3,items:[['Intervenciones','▥'],['Plan de cambio','▤'],['Centro de activación','✧'],['Laboratorio','◇']]},
  {title:'Medición',step:4,items:[['Analítica','▥']]}
 ];
-const HACERLO_PAGE_PHASE={'Inicio de Resultados':0,'Resultado global':0,'Comportamiento objetivo':0,'Encuestas y experiencias':0,'Diseño de comportamientos':1,'Gestión de audiencias':1,'Diagnóstico':0,'Indicadores':0,'Grafo de adopción':2,'Pensamiento sistémico':2,'Simulación de agentes':2,'Inteligencia integrada':2,'Intervenciones':3,'Movilización y refuerzo':3,'Laboratorio':3,'Plan de cambio':3,'Analítica':4};
+const HACERLO_PAGE_PHASE={'Inicio de Resultados':0,'Resultado global':0,'Comportamiento objetivo':0,'Encuestas y experiencias':0,'Diseño de comportamientos':1,'Gestión de audiencias':1,'Diagnóstico':0,'Indicadores':0,'Grafo de adopción':2,'Pensamiento sistémico':2,'Simulación de agentes':2,'Inteligencia integrada':2,'Intervenciones':3,'Centro de activación':3,'Movilización y refuerzo':3,'Laboratorio':3,'Plan de cambio':3,'Analítica':4};
 // Solo una etapa desplegada. null permite cerrar todas sin cambiar la pantalla.
 let expandedNavStep=null;
 function trackPlatformUsage(moduleName,eventType='view'){
@@ -188,6 +188,7 @@ function nav(){
  }).join('');
 }
 function go(n){
+ if(n==='Movilización y refuerzo')n='Centro de activación';
  if(n==='Pensamiento sistémico'&&typeof sysHubReset==='function')sysHubReset();
  if(n==='RDAIM')expandedNavStep=phase;
  if(Object.prototype.hasOwnProperty.call(HACERLO_PAGE_PHASE,n)){
@@ -215,7 +216,7 @@ function createInitiative(e){
  }
  db.initiatives.push(o);db.selected=o.id;save();go('RDAIM');
 }
-function render(){let x=current(),a=$('app');if(x){x.behaviors=x.behaviors||[];x.audiences=x.audiences||[];x.indicators=x.indicators||[];x.actions=x.actions||[];x.metrics=x.metrics||{};x.metricHistory=x.metricHistory||{};x.measurements=x.measurements||[];x.notes=x.notes||{};x.systemVariables=x.systemVariables||[];x.systemLinks=x.systemLinks||[];x.evidenceRecords=x.evidenceRecords||[];x.modelRuns=x.modelRuns||[];x.scope=x.scope||'inside';}if(page==='Inteligencia integrada'){a.innerHTML=intelligencePage(x);return}if(page==='Inicio'){a.innerHTML=renderIntelligenceHome();return}if(page==='Iniciativas'){a.innerHTML=renderInitiativesHome();return}if(page==='Laboratorio'){a.innerHTML=renderLearningLabPage();return}if(page==='Movilización y refuerzo'){a.innerHTML=current()?renderMovilizacionEstudio(current()):'<section class="panel"><h2>Movilización y refuerzo</h2><p>Selecciona una iniciativa para continuar.</p></section>';return}
+function render(){let x=current(),a=$('app');if(x){x.behaviors=x.behaviors||[];x.audiences=x.audiences||[];x.indicators=x.indicators||[];x.actions=x.actions||[];x.metrics=x.metrics||{};x.metricHistory=x.metricHistory||{};x.measurements=x.measurements||[];x.notes=x.notes||{};x.systemVariables=x.systemVariables||[];x.systemLinks=x.systemLinks||[];x.evidenceRecords=x.evidenceRecords||[];x.modelRuns=x.modelRuns||[];x.scope=x.scope||'inside';}if(page==='Inteligencia integrada'){a.innerHTML=intelligencePage(x);return}if(page==='Inicio'){a.innerHTML=renderIntelligenceHome();return}if(page==='Iniciativas'){a.innerHTML=renderInitiativesHome();return}if(page==='Laboratorio'){a.innerHTML=renderLearningLabPage();return}if(page==='Centro de activación'){a.innerHTML=x?renderCentroActivacion(x):'<section class="panel"><h2>Centro de activación</h2><p>Selecciona una iniciativa para comenzar.</p></section>';return}if(page==='Movilización y refuerzo'){a.innerHTML=current()?renderMovilizacionEstudio(current()):'<section class="panel"><h2>Movilización y refuerzo</h2><p>Selecciona una iniciativa para continuar.</p></section>';return}
 if(!x){a.innerHTML='<div class="panel">Primero crea una iniciativa desde Inicio.</div>';return}
 let showStageSteps=page==='RDAIM';let head=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>${safe(x.name)}</h2><p class="muted">${safe(initiativeContextSummary(x))} · ${x.population} personas</p></div><select style="width:auto" onchange="choose(Number(this.value))">${db.initiatives.map(i=>`<option value="${i.id}" ${i.id===x.id?'selected':''}>${safe(i.name)}</option>`).join('')}</select></div>${showStageSteps?`<div class="steps">${phases.map((p,i)=>`<button class="step ${(page==='RDAIM'?phase:(HACERLO_PAGE_PHASE[page]??phase))===i?'selected':''}" style="--c:${p[2]}" onclick="openNavStep(${i});go('RDAIM')"><b>${p[0]}</b>${p[1]}</button>`).join('')}</div>`:''}</section>`;
 if(page==='Diseño de comportamientos')head=hcxHero('Diseño de comportamientos',x,'Define las acciones observables que producirán el resultado esperado.','RDAIM · DISEÑO','◈');
