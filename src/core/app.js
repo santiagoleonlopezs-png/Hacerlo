@@ -193,6 +193,7 @@ function go(n){
   phase=HACERLO_PAGE_PHASE[n];expandedNavStep=phase;
  }
  page=n;nav();render();
+ if((n==='Laboratorio'||n==='Inteligencia integrada')&&typeof labBridgeLoad==='function')void labBridgeLoad(current(),true);
  if(n==='RDAIM'||Object.prototype.hasOwnProperty.call(HACERLO_PAGE_PHASE,n)){
    const stage=n==='RDAIM'?phase:HACERLO_PAGE_PHASE[n];
    if(phases[stage])trackPlatformUsage(phases[stage][1]);
