@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(p,'utf8');
 const app=read('src/core/app.js'),index=read('index.html'),code=read('src/modules/implementacion/mecanismos.js')+'\n'+read('src/modules/implementacion/centro-activacion.js');
 assert.match(app,/\['Intervenciones','▥'\],\['Plan de cambio','▤'\],\['Centro de activación','✧'\],\['Laboratorio','◇'\]/);
 assert.match(app,/page==='Centro de activación'/);
-assert.match(index,/centro-activacion\.js\?v=1\.4\.0/);
+assert.match(index,/centro-activacion\.js\?v=1\.4\.1/);
 assert.match(index,/centro-activacion\.css\?v=1\.4\.0/);
 const action={name:'Nuevo proceso',hypothesis:'Mejorar adopción',mechanisms:['comunicacion','reconocimiento']};
 const x={name:'Iniciativa',actions:[action],audiences:[{id:'a1',name:'Equipo A',email:'a@example.com'}],
