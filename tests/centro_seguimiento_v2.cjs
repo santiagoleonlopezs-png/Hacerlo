@@ -62,6 +62,24 @@ assert.equal(initiative.actions[0].activationSequence[1].standalone,true);
 assert.equal(initiative.actions[0].activationSequence[1].scheduledFor,undefined);
 assert.equal(ctx.cacCreateForAudience('inexistente'),undefined);
 assert.equal(saved,1,'Audiencias desconocidas no pueden iniciar borradores');
+initiative.behaviors=[{id:'b-1',name:'Reportar riesgo',scope:'specific',audienceIds:['aud-1']}];
+initiative.actions[0].behaviorId='b-1';
+initiative.audiencePeople=[
+ {id:'u-1',audienceId:'aud-1',adoptionHistory:[{behaviorId:'b-1',stage:'tries',observedOn:'2026-11-01'}]},
+ {id:'u-2',audienceId:'aud-1',adoptionHistory:[{behaviorId:'b-1',stage:'tries',observedOn:'2026-11-02'}]}
+];
+const signal=ctx.cacAudienceAdoptionSignal(initiative,initiative.actions[0],'aud-1');
+assert.equal(signal.count,2);
+assert.equal(signal.total,2);
+assert.equal(signal.next,'recordar');
+assert.equal(signal.kind,'comunicacion');
+assert.equal(ctx.cacAudienceAdoptionSignal(initiative,initiative.actions[0],'aud-2'),null,'No sugerir para audiencias fuera del alcance del comportamiento');
+assert.match(ctx.cacJourneysHTML(initiative,{action:initiative.actions[0]}),/Sugerir refuerzo/);
+ctx.cacSuggestForAudience('aud-1');
+assert.equal(initiative.actions[0].activationSequence.length,3);
+assert.equal(initiative.actions[0].activationSequence[2].stage,'recordar');
+assert.equal(initiative.actions[0].activationSequence[2].basis.source,'adopcion_audiencia');
+assert.equal(network,0,'Las sugerencias nunca disparan correos');
 assert.match(frontend,/cacHistoryMetricsHTML\(cacHistory\)/);
 assert.match(frontend,/cacHistoryEventFields\(r\)/);
 assert.match(frontend,/cacJourneysHTML\(x,row\)/);
