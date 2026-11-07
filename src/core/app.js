@@ -14,10 +14,11 @@ function localBackup(){localStorage.setItem('hacerlo_v15_backup',JSON.stringify(
 function save(){cloudSaveVersion++;localBackup();if(!cloudReady)return;syncPending=true;if(initiativeDeleteBusy)return;clearTimeout(syncTimer);syncTimer=setTimeout(syncAll,450)}
 async function confirmCloudSave(version=cloudSaveVersion){
  if(!cloudReady||!cloudOrgId)return {ok:false,message:'No hay conexión con Supabase. Conservamos una copia local, pero el servidor no confirmó el guardado.'};
+ if(cloudConfirmedVersion>=version&&!syncing&&!syncPending)return {ok:true};
  if(!syncing&&!initiativeDeleteBusy){clearTimeout(syncTimer);void syncAll();}
  const deadline=Date.now()+25000;
  while(Date.now()<deadline){
-  if(cloudConfirmedVersion>=version)return {ok:true};
+  if(cloudConfirmedVersion>=version&&!syncing)return {ok:true};
   if(!syncing&&!syncPending&&cloudFailedVersion>=version)return {ok:false,message:cloudSaveError||'Error de sincronización con Supabase.'};
   if(!syncing&&syncPending&&!initiativeDeleteBusy){clearTimeout(syncTimer);void syncAll();}
   await new Promise(resolve=>setTimeout(resolve,110));
@@ -25,13 +26,21 @@ async function confirmCloudSave(version=cloudSaveVersion){
  return {ok:false,message:'Supabase no confirmó el guardado. Revisa tu conexión y usa Reintentar guardado.'};
 }
 function evidenceToDb(v){return ({'Registrada':'registered','Observada':'observed','Declarada':'declared','Estimada':'estimated','Hipotética':'hypothesis','Hipotesis':'hypothesis','Hipótesis':'hypothesis'})[v]||'declared'}
-async function syncGraphForInitiative(i){if(!i._cloudId)return;i.nodes=i.nodes||[];i.edges=i.edges||[];
-  for(const n of i.nodes){if(!n._cloudNodeId)n._cloudNodeId=crypto.randomUUID()}
-  for(const e of i.edges){if(!e._cloudEdgeId)e._cloudEdgeId=crypto.randomUUID()}
-  let {error:de}=await sb.from('graph_edges').delete().eq('initiative_id',i._cloudId);if(de)throw de;
-  let {error:dn}=await sb.from('graph_nodes').delete().eq('initiative_id',i._cloudId);if(dn)throw dn;
-  if(i.nodes.length){let rows=i.nodes.map((n,idx)=>({id:n._cloudNodeId,initiative_id:i._cloudId,label:n.name||'Sin nombre',node_type:n.type||'Otro',attributes:{local_index:idx}}));let {error}=await sb.from('graph_nodes').insert(rows);if(error)throw error}
-  if(i.edges.length){let rows=i.edges.filter(e=>i.nodes[Number(e.s)]&&i.nodes[Number(e.t)]).map(e=>({id:e._cloudEdgeId,initiative_id:i._cloudId,source_node_id:i.nodes[Number(e.s)]._cloudNodeId,target_node_id:i.nodes[Number(e.t)]._cloudNodeId,relation_type:edgeRelation(e),measure_type:e.measureType||null,measure_value:e.measureValue===undefined||e.measureValue===null||e.measureValue===''?null:Number(e.measureValue),measure_unit:e.measureUnit||null,evidence_kind:evidenceToDb(e.evidence),evidence_notes:e.evidenceNotes||null,attributes:{relation_key:e.relationKey||normalizeRelation(edgeRelation(e))}}));if(rows.length){let {error}=await sb.from('graph_edges').insert(rows);if(error)throw error}}
+async function syncGraphForInitiative(i){
+ if(!i._cloudId)return;
+ i.nodes=i.nodes||[];i.edges=i.edges||[];
+ for(const n of i.nodes)if(!n._cloudNodeId)n._cloudNodeId=crypto.randomUUID();
+ for(const e of i.edges)if(!e._cloudEdgeId)e._cloudEdgeId=crypto.randomUUID();
+ const nodes=i.nodes.map((n,idx)=>({id:n._cloudNodeId,label:n.name||'Sin nombre',node_type:n.type||'Otro',attributes:{local_index:idx}}));
+ const edges=i.edges.filter(e=>i.nodes[Number(e.s)]&&i.nodes[Number(e.t)]).map(e=>({
+  id:e._cloudEdgeId,source_node_id:i.nodes[Number(e.s)]._cloudNodeId,target_node_id:i.nodes[Number(e.t)]._cloudNodeId,
+  relation_type:edgeRelation(e),measure_type:e.measureType||null,
+  measure_value:e.measureValue===undefined||e.measureValue===null||e.measureValue===''?null:Number(e.measureValue),
+  measure_unit:e.measureUnit||null,evidence_kind:evidenceToDb(e.evidence),evidence_notes:e.evidenceNotes||null,
+  attributes:{relation_key:e.relationKey||normalizeRelation(edgeRelation(e))}
+ }));
+ const {error}=await sb.rpc('save_initiative_graph',{p_initiative:i._cloudId,p_nodes:nodes,p_edges:edges});
+ if(error)throw error;
 }
 async function syncAll(){if(!cloudReady||!cloudOrgId)return false;if(syncing||initiativeDeleteBusy){syncPending=true;return false;}syncing=true;syncPending=false;const syncVersion=cloudSaveVersion;setCloudStatus('Guardando…');try{for(const i of db.initiatives){for(const n of (i.nodes||[])){if(!n._cloudNodeId)n._cloudNodeId=crypto.randomUUID()}for(const e of (i.edges||[])){if(!e._cloudEdgeId)e._cloudEdgeId=crypto.randomUUID()}const payload={organization_id:cloudOrgId,name:i.name||'Sin nombre',description:i.description||null,population:Number(i.population)||0,entry_date:i.createdAt||new Date().toISOString().slice(0,10),impact:i.impact||null,effort:i.effort||null,phase:phases[i.phase||0]?.[0]||'R',scope:i.scope||'inside',app_state:labSeparateState(i)};if(i._cloudId){let {data:updated,error}=await sb.from('initiatives').update(payload).eq('id',i._cloudId).select('id');if(error)throw error;if(!updated?.some(row=>String(row.id)===String(i._cloudId)))throw Error('Supabase no confirmó la actualización de '+(i.name||'la iniciativa'))}else{let {data,error}=await sb.from('initiatives').insert(payload).select('id').single();if(error)throw error;i._cloudId=data.id}await syncGraphForInitiative(i)}cloudConfirmedVersion=Math.max(cloudConfirmedVersion,syncVersion);cloudSaveError='';setCloudStatus('Guardado en Supabase ✓');return true}catch(e){console.error(e);cloudFailedVersion=Math.max(cloudFailedVersion,syncVersion);cloudSaveError=e.message;setCloudStatus('Error de sincronización: '+e.message,true);return false}finally{syncing=false;localBackup();if(syncPending&&!initiativeDeleteBusy){clearTimeout(syncTimer);syncTimer=setTimeout(syncAll,450)}}}
 function setCloudStatus(t,err=false,allowRetry=err){const el=document.getElementById('cloud-status');if(el){el.textContent='Centro de Inteligencia · '+t;el.style.color=err?'#f2a2a2':'';el.classList.toggle('hcx-visually-hidden',!err);el.classList.toggle('hcx-cloud-sync-error',err)}const retry=document.getElementById('sync-retry');if(retry)retry.hidden=!allowRetry;}
@@ -164,7 +173,25 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(event.key==='Escape')setMobileNav(false,true);
  });
 });
-async function logoutHacerlo(){await syncAll();await sb.auth.signOut();cloudReady=false;cloudOrgId=null;db={initiatives:[],selected:null};document.getElementById('auth-gate').style.display='flex';setCloudStatus('Sesión cerrada')}
+let logoutPending=false;
+async function logoutHacerlo(){
+ if(logoutPending)return false;
+ if(typeof hcxPrepareNavigation==='function'&&!hcxPrepareNavigation())return false;
+ logoutPending=true;
+ try{
+  if(cloudSaveVersion>cloudConfirmedVersion||syncing||syncPending){
+   const result=await confirmCloudSave(cloudSaveVersion);
+   if(!result.ok){setCloudStatus('No cerramos la sesión: hay cambios sin confirmar. '+result.message,true);return false;}
+  }
+  const {error}=await sb.auth.signOut();
+  if(error)throw error;
+  clearTimeout(syncTimer);cloudReady=false;cloudOrgId=null;syncPending=false;
+  db={initiatives:[],selected:null};
+  document.getElementById('auth-gate').style.display='flex';setCloudStatus('Sesión cerrada');
+  return true;
+ }catch(error){setCloudStatus('No se pudo cerrar la sesión: '+error.message,true);return false;}
+ finally{logoutPending=false;}
+}
 const current=()=>db.initiatives.find(x=>x.id===db.selected);
 // Navegación jerárquica: RDAIM es un marco integrado, no una pantalla superpuesta.
 const HACERLO_NAV_GROUPS=[
@@ -184,11 +211,14 @@ function trackPlatformUsage(moduleName,eventType='view'){
    .then(()=>{}).catch(()=>{});
 }
 function toggleNavStep(step){
+ if(expandedNavStep!==step&&typeof hcxPrepareNavigation==='function'&&!hcxPrepareNavigation())return;
+ if(expandedNavStep!==step&&typeof cacPrepareNavigation==='function'&&!cacPrepareNavigation('RDAIM'))return;
  if(expandedNavStep===step){expandedNavStep=null;nav();return}
  phase=step; expandedNavStep=step; page='RDAIM'; nav();render();
  if(phases[step])trackPlatformUsage(phases[step][1]);
 }
 function openNavStep(step){
+ if(typeof hcxPrepareNavigation==='function'&&!hcxPrepareNavigation())return false;
  phase=step;
  expandedNavStep=step;
  nav();
@@ -218,8 +248,9 @@ function nav(){
  }).join('');
 }
 function go(n){
+ if(typeof hcxPrepareNavigation==='function'&&!hcxPrepareNavigation())return false;
  if(n==='Movilización y refuerzo')n='Centro de activación';
- if(typeof cacPrepareNavigation==='function'&&!cacPrepareNavigation(n))return;
+ if(typeof cacPrepareNavigation==='function'&&!cacPrepareNavigation(n))return false;
  if(n==='Pensamiento sistémico'&&typeof sysHubReset==='function')sysHubReset();
  if(n==='RDAIM')expandedNavStep=phase;
  if(Object.prototype.hasOwnProperty.call(HACERLO_PAGE_PHASE,n)){
@@ -227,6 +258,7 @@ function go(n){
  }
  page=n;nav();render();
  setMobileNav(false,true);
+ if(typeof hcxAfterNavigation==='function')hcxAfterNavigation();
  if((n==='Laboratorio'||n==='Inteligencia integrada')&&typeof labBridgeLoad==='function')void labBridgeLoad(current(),true);
  if(n==='RDAIM'||Object.prototype.hasOwnProperty.call(HACERLO_PAGE_PHASE,n)){
    const stage=n==='RDAIM'?phase:HACERLO_PAGE_PHASE[n];
@@ -234,7 +266,7 @@ function go(n){
  }
  if(n==='Iniciativas'&&typeof prioritySyncPublic==='function')void prioritySyncPublic();
 }
-function choose(id){db.selected=id;save();go('RDAIM')}
+function choose(id){if(typeof hcxPrepareNavigation==='function'&&!hcxPrepareNavigation()){const picker=document.activeElement;if(picker?.tagName==='SELECT')picker.value=String(db.selected);return}db.selected=id;go('RDAIM')}
 function createInitiative(e){
  e.preventDefault();
  const f=e.target;
@@ -250,7 +282,7 @@ function createInitiative(e){
 }
 function render(){let x=current(),a=$('app');if(x){x.behaviors=x.behaviors||[];x.audiences=x.audiences||[];x.indicators=x.indicators||[];x.actions=x.actions||[];x.metrics=x.metrics||{};x.metricHistory=x.metricHistory||{};x.measurements=x.measurements||[];x.notes=x.notes||{};x.systemVariables=x.systemVariables||[];x.systemLinks=x.systemLinks||[];x.evidenceRecords=x.evidenceRecords||[];x.modelRuns=x.modelRuns||[];x.scope=x.scope||'inside';}if(page==='Inteligencia integrada'){a.innerHTML=intelligencePage(x);return}if(page==='Inicio'){a.innerHTML=renderIntelligenceHome();return}if(page==='Iniciativas'){a.innerHTML=renderInitiativesHome();return}if(page==='Laboratorio'){a.innerHTML=renderLearningLabPage();return}if(page==='Centro de activación'){a.innerHTML=x?renderCentroActivacion(x):'<section class="panel"><h2>Centro de activación</h2><p>Selecciona una iniciativa para comenzar.</p></section>';return}if(page==='Movilización y refuerzo'){a.innerHTML=current()?renderMovilizacionEstudio(current()):'<section class="panel"><h2>Movilización y refuerzo</h2><p>Selecciona una iniciativa para continuar.</p></section>';return}
 if(!x){a.innerHTML='<div class="panel">Selecciona o crea una iniciativa desde Iniciativas. <button type="button" class="secondary" onclick="go(\'Iniciativas\')">Ver iniciativas</button></div>';return}
-let showStageSteps=page==='RDAIM';let head=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>${safe(x.name)}</h2><p class="muted">${safe(initiativeContextSummary(x))} · ${x.population} personas</p></div><select style="width:auto" onchange="choose(Number(this.value))">${db.initiatives.map(i=>`<option value="${i.id}" ${i.id===x.id?'selected':''}>${safe(i.name)}</option>`).join('')}</select></div>${showStageSteps?`<div class="steps">${phases.map((p,i)=>`<button class="step ${(page==='RDAIM'?phase:(HACERLO_PAGE_PHASE[page]??phase))===i?'selected':''}" style="--c:${p[2]}" onclick="openNavStep(${i});go('RDAIM')"><b>${p[0]}</b>${p[1]}</button>`).join('')}</div>`:''}</section>`;
+let showStageSteps=page==='RDAIM';let head=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>${safe(x.name)}</h2><p class="muted">${safe(initiativeContextSummary(x))} · ${x.population} personas</p></div><select style="width:auto" onchange="choose(Number(this.value))">${db.initiatives.map(i=>`<option value="${i.id}" ${i.id===x.id?'selected':''}>${safe(i.name)}</option>`).join('')}</select></div>${showStageSteps?`<div class="steps">${phases.map((p,i)=>`<button class="step ${(page==='RDAIM'?phase:(HACERLO_PAGE_PHASE[page]??phase))===i?'selected':''}" style="--c:${p[2]}" onclick="if(openNavStep(${i})!==false)go('RDAIM')"><b>${p[0]}</b>${p[1]}</button>`).join('')}</div>`:''}</section>`;
 if(page==='Diseño de comportamientos')head=hcxHero('Diseño de comportamientos',x,'Define las acciones observables que producirán el resultado esperado.','RDAIM · DISEÑO','◈');
  if(page==='RDAIM'||page==='Diseño de comportamientos'){
 let p=phases[phase],body='';

@@ -125,8 +125,11 @@ async function runAgentSimulation(e) {
       scenario:settings.scenario,mode:settings.mode,settings,result});
     if(x.modelRuns.length>40)x.modelRuns=x.modelRuns.slice(-40);
     save();
-    document.getElementById('abm-output').innerHTML=renderABMVisualResult(result)+renderABMScenarioComparison(x,x.modelRuns.at(-1));
-    status.textContent='Simulación ejecutada y guardada en la iniciativa.';
+    const output=document.getElementById('abm-output');
+    if(output&&current()===x)output.innerHTML=renderABMVisualResult(result)+renderABMScenarioComparison(x,x.modelRuns.at(-1));
+    status.textContent='Simulación ejecutada. Confirmando guardado…';
+    const confirmation=await confirmCloudSave(cloudSaveVersion);
+    status.textContent=confirmation.ok?'Simulación ejecutada y guardada en la iniciativa.':'Simulación ejecutada; el guardado está pendiente. Revisa la conexión y utiliza Reintentar guardado.';
   }catch(err){console.error(err);status.textContent='No fue posible simular: '+err.message}
   finally{submit.disabled=false}
 }

@@ -14,3 +14,22 @@
 .at-day:hover{border-color:#61b5bb;background:#123b53}
 .at-day.at-selected{background:#14514e}
 @media(prefers-reduced-motion:reduce){.at-chevron{transition:none}}
+/* Cronograma: cuadrícula temporal y segmentos; sin pista de progreso. */
+.at-gantt-scroll{overflow-x:auto;padding:0 8px 2px 0}
+.at-gantt{min-width:680px}
+.at-gantt-head,.at-gantt-row{grid-template-columns:minmax(190px,32%) minmax(0,1fr);gap:20px}
+.at-scale{position:relative;display:block;height:30px;margin-top:5px;color:#a8c7d8}
+.at-scale>span{position:absolute;top:0;white-space:nowrap;font-size:11px}
+.at-scale>span:not(:first-child){transform:translateX(-50%)}
+.at-gantt-row{padding:15px 5px;background:transparent}
+.at-gantt-row>span:first-child{gap:5px}
+.at-gantt-row .at-dates{font-size:11px;color:#9ab9cb}
+.at-track{height:48px;border-radius:0;overflow:visible;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),#28516b55 calc(25% - 1px),#28516b55 25%);border-left:1px solid #28516b;border-right:1px solid #28516b}
+.at-track i{top:16px;height:16px;min-width:3px;border-radius:4px;background:#29b8ae;border:1px solid #63d9cb;box-shadow:0 2px 6px #00121f55}
+.at-track i.at-done{background:#54788d;border-color:#7fa3b7}
+.at-action-focus{outline:2px solid #78e3d4;outline-offset:3px}
+.at-gantt-scroll:focus-visible{outline:2px solid #78e3d4;outline-offset:2px}
+@media(max-width:600px){.at-gantt-head,.at-gantt-row{grid-template-columns:190px minmax(0,1fr);gap:14px}.at-gantt-row{padding:12px 5px}}
+
+.at-track{background:none;border:0}
+.at-gridline{position:absolute;top:0;bottom:0;width:1px;background:#28516b80}

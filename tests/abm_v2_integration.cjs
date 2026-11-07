@@ -8,7 +8,7 @@ const lab=fs.readFileSync('src/modules/analisis/agentes-calibracion.js','utf8');
 const guided=fs.readFileSync('src/modules/analisis/agentes-experiencia.js','utf8');
 const memory={initiatives:[],graph_nodes:[],graph_edges:[],memberships:[
   {organization_id:'org-test',role:'owner'}]};
-let uuid=0;
+let uuid=0,rpcFails=false;
 const dom=new Map();
 const element=id=>{
   if(!dom.has(id))dom.set(id,{innerHTML:'',textContent:'',disabled:false,
@@ -44,13 +44,20 @@ function query(table){
     }
     if(operation==='update'){
       rows.filter(matches).forEach(row=>Object.assign(row,structuredClone(payload)));
-      return {data:null,error:null};
+      return {data:rows.filter(matches).map(r=>structuredClone(r)),error:null};
     }
     throw Error('Operación desconocida '+operation);
   }
   return builder;
 }
-const mockClient={from:query,auth:{
+const mockClient={from:query,rpc:async(name,payload)=>{
+ if(name==='save_initiative_graph'){
+  if(rpcFails)return {data:null,error:Error('Fallo ficticio de guardado')};
+  memory.graph_nodes=payload.p_nodes.map(n=>({...structuredClone(n),initiative_id:payload.p_initiative}));
+  memory.graph_edges=payload.p_edges.map(e=>({...structuredClone(e),initiative_id:payload.p_initiative}));
+ }
+ return {data:null,error:null};
+},auth:{
   getSession:async()=>({data:{session:{access_token:'token-ficticio'}}}),
   onAuthStateChange(){},signOut:async()=>({error:null})}
 };
@@ -60,7 +67,8 @@ class MockFormData{
   getAll(name){return this.items[name]===undefined?[]:
     (Array.isArray(this.items[name])?this.items[name]:[this.items[name]])}
 }
-const ctx={console,FormData:MockFormData,
+const ctx={console,URLSearchParams,location:{hash:'',search:''},FormData:MockFormData,
+  hcxHero:(title,x)=>'<h1>'+title+'</h1><p>'+x.name+'</p>',
   indicatorTable:()=>'',edgeRelation:e=>e.relation||'Otra',normalizeRelation:v=>v,
   crypto:{randomUUID:()=> 'uuid-'+(++uuid)},
   window:{supabase:{createClient:()=>mockClient}},
@@ -68,7 +76,7 @@ const ctx={console,FormData:MockFormData,
   document:{getElementById:element,addEventListener(){},querySelector(sel){
     if(sel==='input[name="useCalibrated"]')return element('calibrated-checkbox');
     return null}},
-  setTimeout(){return 1},clearTimeout(){},
+  setTimeout:(fn,ms)=>setTimeout(fn,Math.min(ms,2)),clearTimeout,
   fetch:async(url,options)=>{
     const payload=JSON.parse(options.body);
     calls.push({url,payload,auth:options.headers.Authorization});
@@ -157,6 +165,7 @@ async function main(){
   assert.equal(calls[0].payload.edges[0].weight,.8);
   assert.match(calls[0].auth,/^Bearer /);
   assert.equal(current().modelRuns.length,1);
+  assert.match(element('abm-status').textContent,/ejecutada y guardada/);
   assert.match(element('abm-output').innerHTML,/Dos caminos|Escenarios comparados/);
   assert.match(element('abm-output').innerHTML,/10.0/);
   const csv='periodo,adoptados,poblacion_elegible,fuente\n'+
@@ -190,6 +199,11 @@ async function main(){
   assert.equal(current().abmSensitivity.result.summary.total,9);
   assert.equal(current().abmObservationCsv['0'],csv);
   assert.equal(memory.initiatives.length,1);
+  rpcFails=true;
+  ctx.console={...console,error(){}};
+  await vm.runInContext('runAgentSimulation',ctx)({preventDefault(){},target:element('abm-form')});
+  assert.match(element('abm-status').textContent,/guardado está pendiente/);
+  assert.equal(element('abm-start').disabled,false);
   console.log('E2E simulado OK: iniciativa, diseño, grafo, ABM, calibración, sensibilidad y persistencia/recuperación');
 }
 main().catch(error=>{console.error(error);process.exitCode=1});

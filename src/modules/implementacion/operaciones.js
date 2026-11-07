@@ -26,10 +26,42 @@ function portfolioMetricSummary(){
   '</tbody></table></div><p class="notice">Los valores mantienen sus escalas originales; no se calcula un promedio entre INS y CNPS.</p></section>';
 }
 const coreMetricNames={ins_personas:'INS personas',ins_proceso:'INS proceso',cnps:'CNPS'};
-function metricCard(x,label,key){let history=(x.metricHistory||{})[key]||[],latest=(typeof eeHomeMetric==='function'?eeHomeMetric(x,key):null)||(history.length?history[history.length-1]:null);return `<section class="panel"><h3>${label}</h3><div class="metric">${safe(latest?(latest.value??'—'):(x.metrics[key]??'—'))}</div><small class="muted">${safe(x.metrics[key+'_definition']||'Escala por definir')}</small><p class="subtle">${latest?safe(latest.note||('Última medición: '+latest.date)):'Sin historial de mediciones'}</p><button class="primary" onclick="openMetricEntry('${key}')">+ Registrar medición</button><button class="secondary" onclick="toggleMetricHistory('${key}')">Ver historial y tendencia</button><div id="metric-history-${key}" class="hide">${metricHistoryView(x,key)}</div></section>`}
-function openMetricEntry(key){let x=current(),form=$('metric-entry');if(!form){document.body.insertAdjacentHTML('beforeend',`<div id="metric-entry" class="metric-overlay"><form class="metric-dialog" onsubmit="recordCoreMetric(event)"><div class="flex" style="justify-content:space-between"><h2 id="metric-title">Registrar medición</h2><button type="button" class="secondary" onclick="closeMetricEntry()">Cerrar ×</button></div><input name="key" type="hidden"><label>Fecha<input name="date" type="date" required></label><label>Valor<input name="value" type="number" step="any" required></label><label>Período (opcional)<input name="period" placeholder="Ej. Octubre 2026"></label><label>Definición y escala<input name="definition" placeholder="Ej. Porcentaje, escala de -100 a 100"></label><label>Observaciones<textarea name="notes" placeholder="Contexto de esta medición"></textarea></label><button class="primary" type="submit">Guardar medición</button></form></div>`);form=$('metric-entry')}let f=form.querySelector('form');f.elements.key.value=key;f.elements.date.value=new Date().toISOString().slice(0,10);f.elements.value.value='';f.elements.period.value='';f.elements.notes.value='';f.elements.definition.value=x.metrics[key+'_definition']||'';$('metric-title').textContent='Registrar · '+coreMetricNames[key];form.style.display='flex'}
-function closeMetricEntry(){let m=$('metric-entry');if(m)m.style.display='none'}
-function recordCoreMetric(e){e.preventDefault();let f=e.target,x=current(),k=f.elements.key.value,v=Number(f.elements.value.value);if(!Number.isFinite(v))return alert('Ingresa un valor válido');x.metricHistory=x.metricHistory||{};x.metricHistory[k]=x.metricHistory[k]||[];x.metricHistory[k].push({date:f.elements.date.value,value:v,period:f.elements.period.value,notes:f.elements.notes.value});x.metricHistory[k].sort((a,b)=>a.date.localeCompare(b.date));x.metrics[k]=x.metricHistory[k].at(-1).value;x.metrics[k+'_definition']=f.elements.definition.value;save();closeMetricEntry();render()}
+function metricCard(x,label,key){let history=(x.metricHistory||{})[key]||[],latest=(typeof eeHomeMetric==='function'?eeHomeMetric(x,key):null)||(history.length?history[history.length-1]:null);return `<section class="panel"><h3>${label}</h3><div class="metric">${safe(latest?(latest.value??'—'):(x.metrics[key]??'—'))}</div><small class="muted">${safe(x.metrics[key+'_definition']||'Escala por definir')}</small><p class="subtle">${latest?safe(latest.note||('Última medición: '+latest.date)):'Sin historial de mediciones'}</p><button class="primary" data-metric-entry="${key}" onclick="openMetricEntry('${key}')">+ Registrar medición</button><button class="secondary" onclick="toggleMetricHistory('${key}')">Ver historial y tendencia</button><div id="metric-history-${key}" class="hide">${metricHistoryView(x,key)}</div></section>`}
+let metricEntryReturnFocus=null;
+function openMetricEntry(key){
+ const x=current();if(!x)return;
+ metricEntryReturnFocus=document.activeElement;
+ let root=$('metric-entry');
+ if(!root){
+  document.body.insertAdjacentHTML('beforeend',`<div id="metric-entry" class="metric-overlay"><form class="metric-dialog" role="dialog" aria-modal="true" aria-labelledby="metric-title" onsubmit="recordCoreMetric(event)"><div class="flex" style="justify-content:space-between"><h2 id="metric-title">Registrar medición</h2><button type="button" class="secondary" onclick="closeMetricEntry()">Cerrar ×</button></div><input name="key" type="hidden"><label>Fecha<input name="date" type="date" required></label><label>Valor<input name="value" type="number" step="any" required></label><label>Período (opcional)<input name="period" placeholder="Ej. Octubre 2026"></label><label>Definición y escala<input name="definition" placeholder="Ej. Porcentaje, escala de -100 a 100"></label><label>Observaciones<textarea name="notes" placeholder="Contexto de esta medición"></textarea></label><button class="primary" type="submit">Guardar medición</button></form></div>`);
+  root=$('metric-entry');
+  root.addEventListener('keydown',event=>{
+   if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeMetricEntry();return;}
+   if(event.key!=='Tab')return;
+   const focusable=Array.from(root.querySelectorAll('button:not(:disabled),input:not([type="hidden"]):not(:disabled),textarea:not(:disabled),select:not(:disabled)'));
+   const first=focusable[0],last=focusable.at(-1);
+   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
+   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
+  });
+ }
+ const form=root.querySelector('form'),now=new Date();
+ form.elements.key.value=key;
+ form.elements.date.value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+ for(const field of ['value','period','notes'])form.elements[field].value='';
+ form.elements.definition.value=x.metrics[key+'_definition']||'';
+ $('metric-title').textContent='Registrar · '+coreMetricNames[key];root.style.display='flex';
+ if(typeof hcxRememberForm==='function')hcxRememberForm(form);
+ form.elements.value.focus();
+}
+function closeMetricEntry(){
+ const root=$('metric-entry');if(!root||root.style.display==='none')return;
+ const form=root.querySelector('form');
+ if(typeof hcxFormChanged==='function'&&hcxFormChanged(form)&&!confirm('Tienes una medición sin guardar. ¿Quieres descartarla?'))return;
+ root.style.display='none';
+ const trigger=metricEntryReturnFocus?.isConnected?metricEntryReturnFocus:document.querySelector('[data-metric-entry="'+form.elements.key.value+'"]');
+ trigger?.focus();
+}
+function recordCoreMetric(e){e.preventDefault();let f=e.target,x=current(),k=f.elements.key.value,v=Number(f.elements.value.value);if(!Number.isFinite(v))return alert('Ingresa un valor válido');x.metricHistory=x.metricHistory||{};x.metricHistory[k]=x.metricHistory[k]||[];x.metricHistory[k].push({date:f.elements.date.value,value:v,period:f.elements.period.value,notes:f.elements.notes.value});x.metricHistory[k].sort((a,b)=>a.date.localeCompare(b.date));x.metrics[k]=x.metricHistory[k].at(-1).value;x.metrics[k+'_definition']=f.elements.definition.value;save();if(typeof hcxRememberForm==='function')hcxRememberForm(f);render();closeMetricEntry()}
 function toggleMetricHistory(k){let el=$('metric-history-'+k);if(el)el.classList.toggle('hide')}
 function metricHistoryView(x,k){let h=((x.metricHistory||{})[k]||[]);if(!h.length)return '<p class="muted">Aún no hay mediciones.</p>';let nums=h.map(v=>Number(v.value)),min=Math.min(...nums),max=Math.max(...nums),points=h.map((v,i)=>`${18+i*440/Math.max(1,h.length-1)},${112-(v.value-min)*85/(max-min||1)}`).join(' ');return `<div style="overflow:auto"><svg viewBox="0 0 480 135" aria-label="Tendencia de ${coreMetricNames[k]}"><line x1="18" y1="117" x2="460" y2="117" stroke="#42677c"/><polyline fill="none" stroke="#23c9c1" stroke-width="3" points="${points}"/>${h.map((v,i)=>`<circle cx="${18+i*440/Math.max(1,h.length-1)}" cy="${112-(v.value-min)*85/(max-min||1)}" r="4" fill="#e4f9ff"/>`).join('')}</svg><table><thead><tr><th>Fecha</th><th>Valor</th><th>Período</th><th>Observaciones</th></tr></thead><tbody>${h.slice().reverse().map(v=>`<tr><td>${safe(v.date)}</td><td>${safe(v.value)}</td><td>${safe(v.period||'—')}</td><td>${safe(v.notes||'—')}</td></tr>`).join('')}</tbody></table></div>`}
 function setObjective(v){current().objective=v;save()}function setField(k,v){current()[k]=v;save()}function setMetric(k,v){current().metrics[k]=v;save()}
@@ -106,6 +138,7 @@ function editAction(i){
  if(submit)submit.textContent='Guardar cambios';
  document.getElementById('action-cancel')?.classList.remove('hide');
  (editor||f.closest('.panel'))?.scrollIntoView({behavior:'smooth',block:'start'});
+ if(typeof hcxRememberForm==='function')hcxRememberForm(f);
  f.elements.namedItem('name')?.focus({preventScroll:true});
 }
 function cancelActionEdit(){

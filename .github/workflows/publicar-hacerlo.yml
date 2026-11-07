@@ -44,6 +44,9 @@ jobs:
           test -f src/modules/encuestas/encuestas.js
           node --check src/core/app.js
           node tests/acceso_navegacion_v1.cjs
+          node --check src/core/experiencia-segura.js
+          node tests/experiencia_segura_v1.cjs
+          node tests/abm_v2_integration.cjs
           node --check src/core/iniciativas-home.js
           node --check src/core/centro-inteligencia.js
           node --check src/modules/medicion/paneles.js
