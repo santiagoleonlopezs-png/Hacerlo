@@ -103,6 +103,8 @@ assert.match(frontend,/cacProviderNotice/);
 assert.match(frontend,/no permite consultar su resultado directamente/);
 assert.match(backend,/activation_email_items/,'Asociación por proveedor');
 assert.match(backend,/resend_email_id:providerId/);
+assert.match(backend,/reply_to:replyTo/,'Los mensajes responden al correo comercial aunque salgan del subdominio');
+assert.match(backend,/HACERLO_REPLY_TO_EMAIL/,'El correo de respuesta se puede configurar sin modificar código');
 assert.match(backend,/tracking_configured:/);
 assert.match(webhook,/validSignature\(req,raw,secret\)/);
 assert.match(webhook,/RESEND_WEBHOOK_SECRET/);
