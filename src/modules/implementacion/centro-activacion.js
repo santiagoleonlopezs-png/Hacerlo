@@ -343,7 +343,7 @@ function cacDeliveryHtml(){
   (ready?'<p>'+(
     status.tracking_configured===true?
     'Firma del webhook configurada. El seguimiento se activará cuando registres el endpoint y los eventos en Resend.':
-    'Seguimiento de aperturas, clics y entregas pendiente: configura el webhook y el secreto RESEND_WEBHOOK_SECRET.'
+    'La actualización manual desde Resend ya está disponible. Para recibir eventos en tiempo real y con mayor detalle, configura el webhook y RESEND_WEBHOOK_SECRET.'
    )+'</p>':'')+'</div>'+
   '<div class="cac-delivery-links"><button type="button" class="secondary" onclick="cacCheckDelivery(true)">Comprobar otra vez</button>'+
   (!ready?'<a href="https://supabase.com/dashboard/project/mflakxgdkpuhemgslgsa/functions" target="_blank" rel="noopener noreferrer">Configurar en Supabase ↗</a>':
@@ -450,6 +450,32 @@ function cacHistoryHtml(){
    (r.scheduled_for?' · '+cacSafe(new Date(r.scheduled_for).toLocaleString('es-CO')):'')+'</span>'+
    (typeof cacHistoryEventFields==='function'?cacHistoryEventFields(r):'')+'</div>'
  ).join('')+'</div>';
+}
+// Conciliación manual: GET a Resend para los últimos estados, sin enviar correos.
+async function cacRefreshDeliveryHistory(){
+ const x=current();
+ if(!cloudReady||!x?._cloudId||cacHistoryLoading)return;
+ const btn=document.getElementById('cac-history-refresh');
+ if(btn){btn.disabled=true;btn.textContent='Consultando Resend…';}
+ try{
+  const result=await cacFunctionCall({mode:'refresh',initiative_id:x._cloudId});
+  if(current()?._cloudId!==x._cloudId)return;
+  const total=Number(result?.checked||0),issues=Number(result?.errors||0);
+  cacMessage=total?'Se consultaron '+total+' correos en Resend. '+
+   (issues?'Hubo '+issues+' consultas sin respuesta. ':'')+
+   'Los estados obtenidos no prueban adopción.':
+   'No hay correos recientes pendientes de actualización.';
+  const note=document.getElementById('cac-notice');
+  if(note)note.textContent=cacMessage;
+  await cacLoadHistory(true);
+ }catch(err){
+  if(current()?._cloudId===x._cloudId){
+   cacMessage='No se pudo consultar el estado del proveedor: '+(err?.message||'Error desconocido')+
+    '. No se ha enviado ningún mensaje por esta consulta.';
+   const note=document.getElementById('cac-notice');if(note)note.textContent=cacMessage;
+  }
+ }finally{const button=document.getElementById('cac-history-refresh');
+  if(button){button.disabled=false;button.textContent='Actualizar desde Resend';}}
 }
 async function cacLoadHistory(force=false){
  const x=current();if(!x?._cloudId||!cloudReady)return;
@@ -585,7 +611,7 @@ function renderCentroActivacion(x){
   '<p class="cac-notice" id="cac-notice" role="status" aria-live="polite">'+cacSafe(cacMessage)+'</p>'+
   '<section class="cac-history"><div class="cac-heading"><div><small>TRAZABILIDAD</small>'+
   '<h3>Seguimiento de envíos</h3><p>Datos técnicos del servicio de correo: mensajes aceptados, rechazados o programados. No miden adopción ni entrega efectiva.</p></div>'+
-  '<button class="secondary" type="button" onclick="cacLoadHistory(true)">Actualizar</button></div>'+
+  '<button class="secondary" type="button" id="cac-history-refresh" onclick="cacRefreshDeliveryHistory()">Actualizar desde Resend</button></div>'+
   '<div id="cac-history">'+cacHistoryHtml()+'</div></section>'+
   '<section class="cac-behavior-metrics"><div><span class="cac-eyebrow">RESULTADOS CONDUCTUALES</span>'+
   '<h3>Indicadores de cambio en HACERLO</h3>'+
