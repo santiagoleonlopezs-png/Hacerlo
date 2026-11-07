@@ -227,6 +227,9 @@ Deno.serve(async(request:Request)=>{
  if(Number(body?.expected_count)!==count)return json({error:'La cantidad de destinatarios cambió. Revisa la vista previa antes de enviar.'},409);
  const resendKey=Deno.env.get('RESEND_API_KEY')||'';
  const from=Deno.env.get('HACERLO_FROM_EMAIL')||'';
+ // Mantener las respuestas en el buzón comercial, aunque el remitente use un subdominio.
+ const replyTo=(Deno.env.get('HACERLO_REPLY_TO_EMAIL')||'contacto@hacerlofc.com').trim();
+ if(!validEmail(replyTo))return json({error:'La dirección de respuesta de HACERLO no es válida.'},503);
  if(!resendKey||!from)return json({
   error:'El envío está deshabilitado porque falta configurar Resend en Supabase. No se ha enviado ningún correo.',
   code:'EMAIL_NOT_CONFIGURED',missing:[...(!resendKey?['RESEND_API_KEY']:[]),...(!from?['HACERLO_FROM_EMAIL']:[])]
@@ -285,7 +288,7 @@ Deno.serve(async(request:Request)=>{
      Authorization:'Bearer '+resendKey,'Content-Type':'application/json',
      'Idempotency-Key':requestKey+'-'+i
     },
-    body:JSON.stringify({from,to:[email],...content,...(scheduledIso?{scheduled_at:scheduledIso}:{})})
+    body:JSON.stringify({from,to:[email],reply_to:replyTo,...content,...(scheduledIso?{scheduled_at:scheduledIso}:{})})
    });
    if(response.ok){
     const result=await response.json().catch(()=>null);
