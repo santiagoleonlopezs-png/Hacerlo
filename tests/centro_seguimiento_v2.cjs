@@ -44,6 +44,8 @@ assert.match(ctx.cacHistoryMetricsHTML([{accepted_count:2}]),/sin información/)
 assert.match(ctx.cacHistoryMetricsHTML([{accepted_count:2}]),/—/,'No se muestra cero para entregas sin verificar');
 assert.match(ctx.cacHistoryEventFields(summary),/3 entregados/);
 assert.match(ctx.cacHistoryEventFields({}),/Entrega aún sin verificar/);
+assert.match(ctx.cacHistoryEventFields({status:'failed',accepted_count:0,failed_count:1,failure_summary:'Resend rechazó uno o más mensajes (403).'}),/No se envió ningún correo: el proveedor rechazó este intento \(código 403\)/);
+assert.match(ctx.cacHistoryMetricsHTML([{status:'failed',accepted_count:0,failed_count:1}]),/1 intento\(s\) no enviado\(s\)/);
 assert.match(ctx.cacHistoryEventFields({accepted_count:1,delivery_check_at:'2026-11-07T03:35:00Z',delivery_check_result:{sent:1}}),/entrega todavía no confirmada/);
 assert.match(ctx.cacHistoryEventFields({accepted_count:1}),/«Aceptado» no garantiza/);
 assert.match(ctx.cacHistoryMetricsHTML([summary]),/datos aún pueden estar incompletos/);
