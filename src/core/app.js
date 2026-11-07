@@ -71,6 +71,7 @@ async function deleteInitiative(id){
 }
 let recoveryMode=false;
 let inviteMode=false;
+let loginPending=false;
 function showRecoveryForm(flow='recovery'){
  const isInvite=flow==='invite';
  recoveryMode=true;inviteMode=isInvite;
@@ -114,13 +115,26 @@ document.addEventListener('DOMContentLoaded',()=>{
  });
  $('login-form').addEventListener('submit',async e=>{
   e.preventDefault();
+  if(loginPending)return;
+  loginPending=true;
+  const form=e.target,buttons=Array.from(form.querySelectorAll('button'));
+  form.setAttribute('aria-busy','true');
+  buttons.forEach(button=>button.disabled=true);
   const msg=$('login-msg');msg.textContent='Ingresando…';
-  const {error}=await sb.auth.signInWithPassword({
-    email:$('login-email').value.trim(),password:$('login-password').value
-  });
-  if(error){msg.textContent=error.message;return}
-  $('auth-gate').style.display='none';msg.textContent='';
-  try{await loadCloud()}catch(x){setCloudStatus(x.message,true)}
+  try{
+   const {error}=await sb.auth.signInWithPassword({
+     email:$('login-email').value.trim(),password:$('login-password').value
+   });
+   if(error){msg.textContent=error.message;return}
+   $('auth-gate').style.display='none';msg.textContent='';
+   try{await loadCloud()}catch(x){setCloudStatus(x.message,true)}
+  }catch(error){
+   msg.textContent='No se pudo iniciar sesión. Revisa tu conexión e inténtalo de nuevo.';
+  }finally{
+   loginPending=false;
+   form.setAttribute('aria-busy','false');
+   buttons.forEach(button=>button.disabled=false);
+  }
  });
  $('recovery-form').addEventListener('submit',async e=>{
   e.preventDefault();
@@ -146,6 +160,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     'Contraseña actualizada. Ya puedes iniciar sesión con la nueva contraseña.';
  });
  bootAuth();
+ document.addEventListener('keydown',event=>{
+  if(event.key==='Escape')setMobileNav(false,true);
+ });
 });
 async function logoutHacerlo(){await syncAll();await sb.auth.signOut();cloudReady=false;cloudOrgId=null;db={initiatives:[],selected:null};document.getElementById('auth-gate').style.display='flex';setCloudStatus('Sesión cerrada')}
 const current=()=>db.initiatives.find(x=>x.id===db.selected);
@@ -167,6 +184,7 @@ function trackPlatformUsage(moduleName,eventType='view'){
    .then(()=>{}).catch(()=>{});
 }
 function toggleNavStep(step){
+ if(expandedNavStep===step){expandedNavStep=null;nav();return}
  phase=step; expandedNavStep=step; page='RDAIM'; nav();render();
  if(phases[step])trackPlatformUsage(phases[step][1]);
 }
@@ -174,6 +192,18 @@ function openNavStep(step){
  phase=step;
  expandedNavStep=step;
  nav();
+}
+function setMobileNav(open,restoreFocus=false){
+ const button=$('nav-toggle'),sidebar=$('nav')?.closest?.('aside');
+ if(!button||!sidebar)return;
+ const wasOpen=button.getAttribute('aria-expanded')==='true';
+ sidebar.classList.toggle('is-mobile-open',open);
+ button.setAttribute('aria-expanded',String(open));
+ button.setAttribute('aria-label',open?'Cerrar menú de navegación':'Abrir menú de navegación');
+ if(!open&&wasOpen&&restoreFocus)button.focus();
+}
+function toggleMobileNav(){
+ setMobileNav($('nav-toggle')?.getAttribute('aria-expanded')!=='true');
 }
 function nav(){
  $('nav').innerHTML=`<div class="nav-workspace">${HACERLO_NAV_GROUPS[0].items.map(([n,icon])=>`<button type="button" class="nav nav-child ${page===n?'active':''}" onclick="go('${n}')"><span class="nav-symbol" aria-hidden="true">${icon}</span><span>${n}</span></button>`).join('')}</div><div class="nav-framework-label">Marco RDAIM</div>`+
@@ -196,6 +226,7 @@ function go(n){
   phase=HACERLO_PAGE_PHASE[n];expandedNavStep=phase;
  }
  page=n;nav();render();
+ setMobileNav(false,true);
  if((n==='Laboratorio'||n==='Inteligencia integrada')&&typeof labBridgeLoad==='function')void labBridgeLoad(current(),true);
  if(n==='RDAIM'||Object.prototype.hasOwnProperty.call(HACERLO_PAGE_PHASE,n)){
    const stage=n==='RDAIM'?phase:HACERLO_PAGE_PHASE[n];
@@ -218,7 +249,7 @@ function createInitiative(e){
  db.initiatives.push(o);db.selected=o.id;save();go('RDAIM');
 }
 function render(){let x=current(),a=$('app');if(x){x.behaviors=x.behaviors||[];x.audiences=x.audiences||[];x.indicators=x.indicators||[];x.actions=x.actions||[];x.metrics=x.metrics||{};x.metricHistory=x.metricHistory||{};x.measurements=x.measurements||[];x.notes=x.notes||{};x.systemVariables=x.systemVariables||[];x.systemLinks=x.systemLinks||[];x.evidenceRecords=x.evidenceRecords||[];x.modelRuns=x.modelRuns||[];x.scope=x.scope||'inside';}if(page==='Inteligencia integrada'){a.innerHTML=intelligencePage(x);return}if(page==='Inicio'){a.innerHTML=renderIntelligenceHome();return}if(page==='Iniciativas'){a.innerHTML=renderInitiativesHome();return}if(page==='Laboratorio'){a.innerHTML=renderLearningLabPage();return}if(page==='Centro de activación'){a.innerHTML=x?renderCentroActivacion(x):'<section class="panel"><h2>Centro de activación</h2><p>Selecciona una iniciativa para comenzar.</p></section>';return}if(page==='Movilización y refuerzo'){a.innerHTML=current()?renderMovilizacionEstudio(current()):'<section class="panel"><h2>Movilización y refuerzo</h2><p>Selecciona una iniciativa para continuar.</p></section>';return}
-if(!x){a.innerHTML='<div class="panel">Primero crea una iniciativa desde Inicio.</div>';return}
+if(!x){a.innerHTML='<div class="panel">Selecciona o crea una iniciativa desde Iniciativas. <button type="button" class="secondary" onclick="go(\'Iniciativas\')">Ver iniciativas</button></div>';return}
 let showStageSteps=page==='RDAIM';let head=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>${safe(x.name)}</h2><p class="muted">${safe(initiativeContextSummary(x))} · ${x.population} personas</p></div><select style="width:auto" onchange="choose(Number(this.value))">${db.initiatives.map(i=>`<option value="${i.id}" ${i.id===x.id?'selected':''}>${safe(i.name)}</option>`).join('')}</select></div>${showStageSteps?`<div class="steps">${phases.map((p,i)=>`<button class="step ${(page==='RDAIM'?phase:(HACERLO_PAGE_PHASE[page]??phase))===i?'selected':''}" style="--c:${p[2]}" onclick="openNavStep(${i});go('RDAIM')"><b>${p[0]}</b>${p[1]}</button>`).join('')}</div>`:''}</section>`;
 if(page==='Diseño de comportamientos')head=hcxHero('Diseño de comportamientos',x,'Define las acciones observables que producirán el resultado esperado.','RDAIM · DISEÑO','◈');
  if(page==='RDAIM'||page==='Diseño de comportamientos'){
