@@ -71,7 +71,9 @@ jobs:
           node --check src/modules/implementacion/laboratorio.js
           node --check src/modules/implementacion/laboratorio-recomendaciones.js
           node --check src/modules/implementacion/laboratorio-resultados.js
+          node --check src/modules/inteligencia/informe-ia.js
           node --check src/modules/inteligencia/ia.js
+          node tests/informe_ia_v1.cjs
           node --check src/modules/inteligencia/integrada.js
           node tests/laboratorio_acceso_v2.cjs
           node tests/laboratorio_resultados_v1.cjs
