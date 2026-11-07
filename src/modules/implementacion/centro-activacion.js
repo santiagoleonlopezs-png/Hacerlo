@@ -503,47 +503,82 @@ function cacStepEditor(x,row,step){
  const immutable=step.status!=='draft',mech=actionMechanisms(row.action);
  const options=mech.filter(v=>v==='comunicacion'||v==='reconocimiento');
  const field=(label,html)=>'<label class="cac-field"><span>'+label+'</span>'+html+'</label>';
- const select=(name,options,value)=>'<select name="'+name+'" '+(immutable?'disabled':'')+'>'+options.map(z=>
+ const select=(name,entries,value)=>'<select name="'+name+'" '+(immutable?'disabled':'')+'>'+entries.map(z=>
   '<option value="'+cacSafe(z[0])+'"'+(String(z[0])===String(value)?' selected':'')+'>'+cacSafe(z[1])+'</option>').join('')+'</select>';
  const audienceOptions=cacAudienceOptions(x,step);
- return '<section id="cac-editor" class="cac-editor">'+
-  '<div class="cac-editor-back"><button type="button" class="secondary" onclick="cacBackToCenter()">← Volver al Centro</button><span>El borrador se conserva al volver.</span></div>'+
-  '<div class="cac-heading"><div><small>'+(step.standalone?'ACTIVACIÓN INDEPENDIENTE':'PASO '+(cacSequenceSteps(row.action).indexOf(step)+1))+' · '+cacSafe(cacStage(step.stage).moment.toUpperCase())+'</small><h3>'+cacSafe(cacStage(step.stage).label)+
-  '</h3><p>Redacta el mensaje, escoge sus destinatarios y define cuándo activar esta etapa.</p></div>'+
-  (immutable?'<span class="cac-pill">'+cacSafe(cacStepLabel(step))+'</span>':'<button type="button" class="secondary" onclick="cacDeleteStep()">Eliminar paso</button>')+'</div>'+
+ const selectedCount=(step.audienceIds||[]).length+(step.contactIds||[]).length+(step.manualEmail?1:0);
+ const scheduleLabel=step.scheduledFor?'Programado para '+cacSafe(new Date(step.scheduledFor).toLocaleString('es-CO')):'Envío inmediato';
+ return '<section id="cac-editor" class="cac-editor cac-editor-focused">'+
+  '<div class="cac-editor-back"><button type="button" class="secondary" onclick="cacBackToCenter()">← Volver al Centro</button>'+
+  '<span>Tu borrador se conserva al regresar.</span></div>'+
+  '<div class="cac-heading cac-compose-heading"><div><small>'+(step.standalone?'MENSAJE INDEPENDIENTE':'SECUENCIA OPCIONAL · PASO '+(cacSequenceSteps(row.action).indexOf(step)+1))+
+  '</small><h3>'+(step.kind==='reconocimiento'?'Preparar reconocimiento':'Preparar comunicación')+'</h3>'+
+  '<p>Redacta un mensaje claro. Nada se enviará sin tu confirmación.</p></div>'+
+  (immutable?'<span class="cac-pill">'+cacSafe(cacStepLabel(step))+'</span>':
+   '<button type="button" class="secondary cac-editor-remove" onclick="cacDeleteStep()">Eliminar borrador</button>')+'</div>'+
+  '<div class="cac-compose-guide" aria-label="Pasos para activar">'+
+  '<span><b>1</b> Mensaje</span><span><b>2</b> Destinatarios</span><span><b>3</b> Confirmación</span></div>'+
   '<div class="cac-compose-grid"><form id="cac-form" onsubmit="cacSaveStep(event)" oninput="cacPreview()">'+
-  '<div class="cac-two">'+field('Propósito',select('stage',CAC_STAGES.map(z=>[z.id,z.label]),step.stage))+
-  field('Mecanismo',select('kind',options.map(v=>[v,v==='reconocimiento'?'Reconocimiento':'Comunicación']),step.kind))+'</div>'+
-  '<section class="cac-target-chooser"><div class="cac-target-header"><strong>¿A quién quieres escribirle?</strong><small>Elige una o combina varias opciones; no necesitas crear una audiencia.</small></div>'+
-  '<div class="cac-target-direct"><span class="cac-target-label">✉ Correo individual</span>'+
-  '<div class="cac-two">'+
-  field('Dirección de correo','<input type="email" name="manualEmail" maxlength="254" value="'+cacSafe(step.manualEmail||'')+'" placeholder="persona@empresa.com"'+(immutable?' readonly':'')+'>')+
-  field('Nombre (opcional)','<input type="text" name="manualName" maxlength="120" value="'+cacSafe(step.manualName||'')+'" placeholder="Nombre del destinatario"'+(immutable?' readonly':'')+'>')+
-  '</div><small>Puedes escribir un correo nuevo, aunque no esté registrado en HACERLO.</small></div>'+
-  cacContactOptions(x,step)+
-  '<details class="cac-recipient-details" '+((step.audienceIds||[]).length?'open':'')+'>'+
-  '<summary>Enviar a audiencias completas <small>'+Number((x.audiences||[]).length)+' disponibles</small></summary>'+
-  '<div class="cac-recipient-body"><div class="cac-audience-field"><div class="cac-audience-grid">'+
-  audienceOptions.replace(/^<div class="cac-audience-grid">/,'').replace(/<\/div>$/,'')+
-  '</div></div></div></details>'+
-  '<p class="cac-inline-help">Se eliminan duplicados. Cada persona recibe un correo privado. Máximo inicial: 40 destinatarios por activación.</p></section>'+
-  (immutable?'':'<div class="cac-ai-assist"><div><strong>✦ Un mensaje listo para ajustar</strong><small>La IA considera la intervención, las audiencias elegidas y los hallazgos disponibles. Tú siempre decides qué enviar.</small></div><button id="cac-ai-create" type="button" class="secondary" onclick="cacAiSuggest()">✦ Redactar con IA</button></div><p class="cac-ai-state" id="cac-ai-state" role="status">'+cacSafe(cacAiNotice)+'</p><div id="cac-ai-suggestion" class="cac-ai-suggestion" '+(cacAiSuggestion?.stepId===step.id?'':'hidden')+'>'+cacAiSuggestionHtml(step)+'</div>')+
-  field('Asunto','<input type="text" name="subject" maxlength="140" required '+(immutable?'readonly':'')+' value="'+cacSafe(step.title||'')+'" placeholder="¿Qué deben entender o hacer?">')+
-  field('Mensaje','<textarea name="message" maxlength="2400" rows="7" required '+(immutable?'readonly':'')+' placeholder="Escribe aquí el mensaje concreto.">'+cacSafe(step.body||'')+'</textarea>')+
-  field('Acción esperada o refuerzo','<textarea name="cta" maxlength="450" rows="2" '+(immutable?'readonly':'')+'>'+cacSafe(step.cta||'')+'</textarea>')+
-  field('Fecha y hora del envío (opcional)','<input type="datetime-local" name="scheduledFor" '+(immutable?'readonly':'')+' value="'+cacSafe(cacFormDate(step.scheduledFor))+'">')+
-  '<p class="cac-inline-help">Sin fecha, se envía ahora. Con fecha, se programa en Resend hasta 30 días antes. Puedes usar {{nombre}} y {{intervencion}} para personalizar el texto.</p>'+
-  (immutable?'':(
-   '<label class="cac-check"><input type="checkbox" name="authorized"><span>Confirmo que estoy autorizado para contactar a las personas y direcciones seleccionadas.</span></label>'+
-   '<div class="cac-actions"><button class="secondary" type="submit">Guardar borrador</button><button class="secondary" type="button" onclick="cacDuplicateForAudience()">Versión para otro destinatario</button>'+
-   '<button class="primary" type="button" id="cac-send" onclick="cacActivateStep()">Revisar destinatarios y activar</button></div>'
-  ))+
-  '<p class="cac-inline-help" id="cac-recipient-check">Revisión de destinatarios pendiente.</p>'+
-  '</form><aside class="cac-preview-panel"><div class="cac-preview-top">VISTA PREVIA DEL CORREO</div>'+
-  '<div class="cac-preview-paper" id="cac-preview"><div class="cac-preview-brand">✣ HACERLO <span>· ACTIVACIÓN CONDUCTUAL</span></div><h3>'+cacSafe(step.title||'Asunto del correo')+'</h3><div class="cac-preview-message">'+cacSafe(step.body||'Aquí aparecerá el mensaje.').replace(/\n/g,'<br>')+'</div>'+(step.cta?'<p class="cac-preview-cta"><b>Acción esperada</b><br>'+cacSafe(step.cta)+'</p>':'')+'</div>'+
-  '<div class="cac-preview-check"><b>Chequeo conductual</b><p>¿El mensaje expresa claramente qué hacer, cuándo hacerlo y por qué vale la pena?</p></div>'+
-  '</aside></div></section>';
+  '<section class="cac-form-block cac-message-block"><div class="cac-form-block-heading">'+
+   '<span class="cac-step-kicker">01 · CONTENIDO</span><h4>¿Qué necesitas comunicar?</h4>'+
+   '<p>Una idea concreta y una acción que las personas puedan realizar.</p></div>'+
+   (immutable?'':'<div class="cac-ai-assist"><div><strong>✦ Crear una propuesta con IA</strong>'+
+    '<small>Considera la intervención y el diagnóstico. Puedes editar todo.</small></div>'+
+    '<button id="cac-ai-create" type="button" class="secondary" onclick="cacAiSuggest()">✦ Redactar con IA</button></div>'+
+    '<p class="cac-ai-state" id="cac-ai-state" role="status">'+cacSafe(cacAiNotice)+'</p>'+
+    '<div id="cac-ai-suggestion" class="cac-ai-suggestion" '+(cacAiSuggestion?.stepId===step.id?'':'hidden')+'>'+cacAiSuggestionHtml(step)+'</div>')+
+   field('Asunto','<input type="text" name="subject" maxlength="140" required '+(immutable?'readonly':'')+
+    ' value="'+cacSafe(step.title||'')+'" placeholder="¿Qué deben entender o hacer?">')+
+   field('Mensaje','<textarea name="message" maxlength="2400" rows="6" required '+(immutable?'readonly':'')+
+    ' placeholder="Un mensaje sencillo, directo y útil.">'+cacSafe(step.body||'')+'</textarea>')+
+   field('Acción esperada o refuerzo','<textarea name="cta" maxlength="450" rows="2" '+(immutable?'readonly':'')+'>'+cacSafe(step.cta||'')+'</textarea>')+
+  '</section>'+
+  '<section class="cac-form-block cac-recipients-block"><div class="cac-form-block-heading">'+
+   '<span class="cac-step-kicker">02 · DESTINATARIOS</span><h4>¿A quién va dirigido?</h4>'+
+   '<p>Puedes elegir una persona, una audiencia o combinar ambas opciones.</p></div>'+
+   '<div class="cac-target-chooser"><div class="cac-target-direct"><span class="cac-target-label">✉ Correo individual</span>'+
+   '<div class="cac-two">'+
+    field('Dirección de correo','<input type="email" name="manualEmail" maxlength="254" value="'+cacSafe(step.manualEmail||'')+
+     '" placeholder="persona@empresa.com"'+(immutable?' readonly':'')+'>')+
+    field('Nombre (opcional)','<input type="text" name="manualName" maxlength="120" value="'+cacSafe(step.manualName||'')+
+     '" placeholder="Nombre del destinatario"'+(immutable?' readonly':'')+'>')+
+   '</div></div>'+
+   '<div class="cac-audience-picker">'+
+    '<details class="cac-recipient-details" '+((step.audienceIds||[]).length?'open':'')+'>'+
+    '<summary>Enviar a audiencias completas <small>'+Number((x.audiences||[]).length)+' disponibles</small></summary>'+
+    '<div class="cac-recipient-body"><div class="cac-audience-field"><div class="cac-audience-grid">'+
+     audienceOptions.replace(/^<div class="cac-audience-grid">/,'').replace(/<\/div>$/,'')+
+    '</div></div></div></details>'+
+    cacContactOptions(x,step)+'</div>'+
+   '<p class="cac-inline-help">'+(selectedCount?selectedCount+' selección(es) configurada(s). ':'')+
+    'HACERLO verificará correos únicos antes del envío. Hasta 40 personas por activación.</p>'+
+   '</div></section>'+
+   '<details class="cac-editor-more" '+(step.scheduledFor?'open':'')+'>'+
+    '<summary><span><strong>Personalizar momento y tipo de activación</strong><small>Opcional · '+scheduleLabel+'</small></span><span aria-hidden="true">⌄</span></summary>'+
+    '<div class="cac-editor-more-fields"><div class="cac-two">'+
+      field('Propósito',select('stage',CAC_STAGES.map(z=>[z.id,z.label]),step.stage))+
+      field('Mecanismo',select('kind',options.map(v=>[v,v==='reconocimiento'?'Reconocimiento':'Comunicación']),step.kind))+
+    '</div>'+
+    field('Fecha y hora del envío (opcional)','<input type="datetime-local" name="scheduledFor" '+(immutable?'readonly':'')+
+      ' value="'+cacSafe(cacFormDate(step.scheduledFor))+'">')+
+    '<p class="cac-inline-help">Sin fecha se envía ahora; con fecha se programa entre 10 minutos y 30 días antes. Usa {{nombre}} y {{intervencion}} para personalizar.</p></div>'+
+   '</details>'+
+   (immutable?'':'<div class="cac-confirm-block"><div class="cac-confirm-heading"><span class="cac-step-kicker">03 · REVISIÓN</span>'+
+    '<h4>Revisa y decide</h4><p>Guardar un borrador nunca envía un correo.</p></div>'+
+    '<label class="cac-check"><input type="checkbox" name="authorized"><span>Confirmo que tengo autorización para contactar a los destinatarios.</span></label>'+
+    '<div class="cac-actions"><button class="secondary" type="submit">Guardar borrador</button>'+
+     '<button class="secondary" type="button" onclick="cacDuplicateForAudience()">Versión para otro destinatario</button>'+
+     '<button class="primary" type="button" id="cac-send" onclick="cacActivateStep()">Revisar destinatarios y activar</button></div></div>')+
+   '<p class="cac-inline-help" id="cac-recipient-check">La verificación de destinatarios se realiza al activar.</p>'+
+   '</form><aside class="cac-preview-panel"><div class="cac-preview-top">VISTA PREVIA · ASÍ RECIBIRÁN EL CORREO</div>'+
+   '<div class="cac-preview-paper" id="cac-preview"><div class="cac-preview-brand">✣ HACERLO <span>· ACTIVACIÓN CONDUCTUAL</span></div>'+
+    '<h3>'+cacSafe(step.title||'Asunto del correo')+'</h3>'+
+    '<div class="cac-preview-message">'+cacSafe(step.body||'Aquí aparecerá el mensaje.').replace(/\n/g,'<br>')+'</div>'+
+    (step.cta?'<p class="cac-preview-cta"><b>Acción esperada</b><br>'+cacSafe(step.cta)+'</p>':'')+'</div>'+
+   '<div class="cac-preview-check"><b>Chequeo conductual</b><p>¿Queda claro qué hacer, cuándo y por qué importa?</p></div>'+
+   '</aside></div></section>';
 }
+
 function renderCentroActivacion(x){
  const rows=cacActions(x),row=cacAction(x),
   sequence=row?cacSequenceSteps(row.action):[],direct=row?cacDirectSteps(row.action):[],step=cacStep(row);
