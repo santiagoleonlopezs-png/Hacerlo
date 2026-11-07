@@ -482,3 +482,16 @@
  background:#103c4a;border-color:#428494;color:#cceef1;
 }
 .cac-home-streamlined [hidden]{display:none!important}
+
+/* Centro de activación · Trazabilidad comprensible v2.2 */
+.cac-home-streamlined .cac-provider-status{
+ padding:13px 15px;margin:12px 0 13px;
+ border:1px solid #4b8190;background:#113c4f;border-radius:10px;
+ font-size:11.5px;line-height:1.65;color:#d3f0ee;overflow-wrap:anywhere;
+}
+.cac-home-streamlined .cac-provider-links{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin:0 0 13px}
+.cac-home-streamlined .cac-provider-links>a{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#96e4d8;text-decoration:underline;text-underline-offset:3px;line-height:1.4}
+.cac-home-streamlined .cac-provider-links>a:focus-visible{outline:2px solid #8de8d9;outline-offset:3px}
+.cac-home-streamlined .cac-provider-links>small{font-size:10.5px;color:#a6c8d1;line-height:1.55}
+.cac-home-streamlined .cac-provider-summary{margin-top:14px}
+.cac-home-streamlined .cac-provider-events{line-height:1.6}
