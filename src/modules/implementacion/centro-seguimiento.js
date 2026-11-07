@@ -24,7 +24,7 @@ function cacHistoryMetricsHTML(rows){
  ];
  return '<div class="cac-provider-summary" aria-label="Métricas técnicas de los últimos envíos">'+
   chips.map(([label,value])=>'<div class="cac-provider-stat"><small>'+label+'</small><strong>'+Number(value).toLocaleString('es-CO')+'</strong></div>').join('')+
-  '</div><p class="cac-inline-help">Se muestran hasta 30 activaciones recientes; no es un consolidado histórico completo. *Aperturas y clics solo se contabilizan con seguimiento habilitado en Resend y pueden ser imprecisos por privacidad o protección del correo. No miden adopción.</p>';
+  '</div><p class="cac-inline-help">Estos números reflejan únicamente eventos confirmados o consultados; 0 entregados no significa que el correo haya fallado. Se muestran hasta 30 activaciones recientes. *Aperturas y clics pueden ser imprecisos por privacidad o protección del correo. No miden adopción.</p>';
 }
 function cacHistoryEventFields(row){
  const n=k=>Math.max(0,Number(row?.[k])||0);
@@ -36,8 +36,15 @@ function cacHistoryEventFields(row){
  if(n('complained_count'))parts.push(n('complained_count')+' quejas');
  if(n('suppressed_count'))parts.push(n('suppressed_count')+' suprimidos');
  if(n('failed_delivery_count'))parts.push(n('failed_delivery_count')+' fallos');
- return parts.length?'<small class="cac-provider-events">'+parts.join(' · ')+'</small>':
-  '<small class="cac-provider-events">Sin eventos de entrega registrados</small>';
+ if(parts.length)return '<small class="cac-provider-events">'+parts.join(' · ')+'</small>';
+ const result=row?.delivery_check_result||{};
+ const checked=!!row?.delivery_check_at;
+ const n=k=>Math.max(0,Number(result?.[k])||0);
+ const sent=n('sent')+n('queued')+n('scheduled');
+ if(sent)return '<small class="cac-provider-events">Resend: '+sent+
+  ' mensaje(s) en estado enviado o en proceso; entrega todavía no confirmada.</small>';
+ if(checked&&n('unknown'))return '<small class="cac-provider-events">El proveedor no devolvió un estado reconocido. Consulta Resend → Emails.</small>';
+ return '<small class="cac-provider-events">Entrega aún sin verificar. «Aceptado» no garantiza la llegada al destinatario.</small>';
 }
 function cacAudienceAdoptionSignal(x,action,audienceId){
  const ids=[action?.behaviorId,...(Array.isArray(action?.behaviorIds)?action.behaviorIds:[])]
