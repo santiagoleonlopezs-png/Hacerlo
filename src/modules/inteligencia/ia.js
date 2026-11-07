@@ -144,12 +144,12 @@ function integratedAIBlock(x){const a=x?.integratedAIAnalysis,attempt=x?.integra
 async function runIntegratedAI(){const x=current();if(!x||aiPendingRequests.has(x))return;aiPendingRequests.add(x);x.integratedAILastAttempt={startedAt:new Date().toISOString(),status:'pending'};let timer;try{render();
  const payload=initiativeAIPayload(x),sourceFingerprint=aiSourceFingerprint(x),coverage=payload.initiative.context_coverage;
  const {data:{session}}=await sb.auth.getSession();if(!session?.access_token)throw Error('Debes iniciar sesión.');
- const controller=new AbortController();timer=setTimeout(()=>controller.abort(),90000);
- const response=await fetch(HACERLO_ENGINE_URL+'/api/ai/interpret',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'X-Supabase-Apikey':SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify(payload),signal:controller.signal});
+ const controller=new AbortController();timer=setTimeout(()=>controller.abort(),143000);
+ const response=await fetch(SUPABASE_URL+'/functions/v1/hacerlo-ai-gateway',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify({action:'interpret',payload}),signal:controller.signal});
  if(!response.ok){let err={};try{err=await response.json();}catch(_){}throw Error(typeof err.detail==='string'?err.detail:'No se pudo consultar la IA (HTTP '+response.status+').');}
  const result=await response.json();if(!result||typeof result.system_reading!=='string')throw Error('La respuesta de IA no contiene una lectura válida.');
  x.integratedAIAnalysis={...result,generatedAt:new Date().toISOString(),sourceFingerprint,contextCoverage:coverage};x.integratedAILastAttempt={...x.integratedAILastAttempt,status:'success'};save();
- }catch(e){x.integratedAILastAttempt={...x.integratedAILastAttempt,status:'error',error:e.name==='AbortError'?'El servicio tardó demasiado. Puedes intentar de nuevo.':e.message};save();
+ }catch(e){x.integratedAILastAttempt={...x.integratedAILastAttempt,status:'error',error:e.name==='AbortError'?'El servicio tardó demasiado. Puedes intentar de nuevo.':e.message==='Failed to fetch'?'No fue posible establecer conexión con el servicio de IA. Intenta nuevamente.':e.message};save();
  }finally{if(timer)clearTimeout(timer);aiPendingRequests.delete(x);if(current()===x)render();}}
 
 async function loadPptxGen(){
