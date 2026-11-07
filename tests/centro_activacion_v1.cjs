@@ -20,7 +20,7 @@ const ctx={console,Date,Number,crypto:{randomUUID:()=>String(calls.save+1).padSt
  document:{getElementById:()=>null},
  sb:{functions:{invoke:()=>{calls.network++;throw Error('No deberia enviar')}}}};
 vm.createContext(ctx);vm.runInContext(code,ctx);
-assert.match(ctx.renderCentroActivacion(x),/Centro de Activación Conductual|ACTIVAR/);
+assert.match(ctx.renderCentroActivacion(x),/¿Qué quieres activar hoy\?|Nueva comunicación/);
 assert.match(ctx.renderCentroActivacion(x),/Nueva comunicación/);
 assert.match(ctx.renderCentroActivacion(x),/class="cac-launch"/);
 assert.match(ctx.renderCentroActivacion(x),/class="cac-extra-tools"/);
