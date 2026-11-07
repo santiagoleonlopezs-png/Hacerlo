@@ -48,6 +48,7 @@ Deno.serve(async(request:Request)=>{
   const senderValid=validEmail(sender);
   const missing=[...(!apiKey?['RESEND_API_KEY']:[]),...(!fromValue||!senderValid?['HACERLO_FROM_EMAIL']:[])];
   return json({ok:true,configured:missing.length===0,missing,
+    tracking_configured:!!Deno.env.get('RESEND_WEBHOOK_SECRET'),
     domain:senderValid?sender.split('@')[1]:'',
     note:missing.length?'Configura los secretos en Supabase antes de enviar.':
       'Configuración presente; la entrega y el dominio aún requieren un envío de prueba.'});
