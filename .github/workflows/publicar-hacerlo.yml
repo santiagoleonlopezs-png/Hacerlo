@@ -75,6 +75,7 @@ jobs:
           node tests/portfolio_home_v2.cjs
           node tests/initiative_lifecycle_v2.cjs
           node tests/home_rdaim_v2.cjs
+          node tests/home_acciones_hoy_v1.cjs
           node --check src/modules/encuestas/encuestas.js
           node --check src/modules/encuestas/motor.js
           node --check src/modules/encuestas/programacion.js
