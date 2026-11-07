@@ -460,9 +460,18 @@ async function cacLoadHistory(force=false){
    .select('id,subject,kind,status,recipient_count,accepted_count,failed_count,submitted_at,scheduled_for,sequence_step,delivered_count,opened_count,clicked_count,bounced_count,complained_count,suppressed_count,failed_delivery_count,delayed_count,event_updated_at')
    .eq('initiative_id',x._cloudId).order('submitted_at',{ascending:false}).limit(30);
   if(error)throw error;
-  cacHistory=data||[];
- }catch(err){cacMessage='No se pudo consultar el historial: '+(err?.message||'');}
- finally{cacHistoryLoading=false;const target=document.getElementById('cac-history');if(target)target.innerHTML=cacHistoryHtml();}
+  if(current()?._cloudId===x._cloudId)cacHistory=data||[];
+ }catch(err){if(current()?._cloudId===x._cloudId)cacMessage='No se pudo consultar el historial: '+(err?.message||'');}
+ finally{
+  cacHistoryLoading=false;
+  if(current()?._cloudId!==x._cloudId){
+   cacHistory=[];cacHistoryFor='';
+   if(current()?._cloudId)void cacLoadHistory();
+  }else{
+   const target=document.getElementById('cac-history');
+   if(target)target.innerHTML=cacHistoryHtml();
+  }
+ }
 }
 function cacStepEditor(x,row,step){
  const immutable=step.status!=='draft',mech=actionMechanisms(row.action);
