@@ -107,6 +107,10 @@ assert.match(backend,/activationSender='HACERLO <activacion@notificaciones\.hace
 assert.match(backend,/const from=activationSender/,'El servidor utiliza el remitente del Centro de Activación');
 assert.match(backend,/const fromValue=activationSender/,'El estado reporta el dominio real del remitente');
 assert.match(backend,/reply_to:replyTo/,'Los mensajes responden al correo comercial aunque salgan del subdominio');
+assert.match(backend,/service\.rpc\('hacerlo_resend_activation_key'\)/,'La clave proviene de Vault solo desde el servidor');
+assert.doesNotMatch(backend,/const resendKey\s*=\s*['"]re_/,'La clave no debe estar literal en el código');
+assert.match(backend,/accepted===0\?\{error:lastError/,'El rechazo del proveedor devuelve un mensaje claro');
+
 assert.match(backend,/HACERLO_REPLY_TO_EMAIL/,'El correo de respuesta se puede configurar sin modificar código');
 assert.match(backend,/tracking_configured:/);
 assert.match(webhook,/validSignature\(req,raw,secret\)/);
