@@ -7,6 +7,8 @@ const allowedOrigins=new Set([
  'https://app.hacerlofc.com','https://hacerlofc.com','https://www.hacerlofc.com',
  'https://santiagoleonlopezs-png.github.io'
 ]);
+// Remitente propio del Centro de Activación; cambiarlo requiere despliegue, no altera el correo comercial.
+const activationSender='HACERLO <activacion@notificaciones.hacerlofc.com>';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const validEmail=(s:string)=>s.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 const escapeHtml=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c));
@@ -43,10 +45,10 @@ Deno.serve(async(request:Request)=>{
  // listo para enviar antes de confirmar una comunicación real.
  if(mode==='status'){
   const apiKey=Deno.env.get('RESEND_API_KEY')||'';
-  const fromValue=Deno.env.get('HACERLO_FROM_EMAIL')||'';
+  const fromValue=activationSender;
   const sender=fromValue.match(/<([^<>]+)>/)?.[1]||fromValue.trim();
   const senderValid=validEmail(sender);
-  const missing=[...(!apiKey?['RESEND_API_KEY']:[]),...(!fromValue||!senderValid?['HACERLO_FROM_EMAIL']:[])];
+  const missing=[...(!apiKey?['RESEND_API_KEY']:[]),...(!senderValid?['SENDER_INVALID']:[])];
   return json({ok:true,configured:missing.length===0,missing,
     tracking_configured:!!Deno.env.get('RESEND_WEBHOOK_SECRET'),
     domain:senderValid?sender.split('@')[1]:'',
@@ -226,13 +228,13 @@ Deno.serve(async(request:Request)=>{
   note:'Destinatarios únicos verificados. Cada persona recibirá un correo privado.'});
  if(Number(body?.expected_count)!==count)return json({error:'La cantidad de destinatarios cambió. Revisa la vista previa antes de enviar.'},409);
  const resendKey=Deno.env.get('RESEND_API_KEY')||'';
- const from=Deno.env.get('HACERLO_FROM_EMAIL')||'';
+ const from=activationSender;
  // Mantener las respuestas en el buzón comercial, aunque el remitente use un subdominio.
  const replyTo=(Deno.env.get('HACERLO_REPLY_TO_EMAIL')||'contacto@hacerlofc.com').trim();
  if(!validEmail(replyTo))return json({error:'La dirección de respuesta de HACERLO no es válida.'},503);
  if(!resendKey||!from)return json({
   error:'El envío está deshabilitado porque falta configurar Resend en Supabase. No se ha enviado ningún correo.',
-  code:'EMAIL_NOT_CONFIGURED',missing:[...(!resendKey?['RESEND_API_KEY']:[]),...(!from?['HACERLO_FROM_EMAIL']:[])]
+  code:'EMAIL_NOT_CONFIGURED',missing:[...(!resendKey?['RESEND_API_KEY']:[]),...(!from?['SENDER_INVALID']:[])]
  },503);
  const service=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
  // Cuota por fábrica: reduce envíos accidentales y el uso indebido del proveedor.
