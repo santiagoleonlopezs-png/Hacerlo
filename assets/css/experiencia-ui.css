@@ -98,6 +98,13 @@ main:has(#app .ee-hero)>.hero{display:none}
 .hcx-ai-result ul{font-size:13px;line-height:1.6;color:#c6dce4;padding-left:20px}
 .hcx-ai-result li+li{margin-top:7px}
 .hcx-ai-result .hcx-ai-choice p{margin:9px 0;overflow-wrap:anywhere}
+/* Inteligencia integrada · hipótesis compactas: lectura cómoda sin saturar. */
+.hcx-intel .hcx-ai-hypothesis-card{padding:14px 16px;margin:9px 0;min-width:0}
+.hcx-intel .hcx-ai-hypothesis-card>b{display:block;font-size:15px;font-weight:660;line-height:1.42;letter-spacing:-.1px;color:#eaf7fd;overflow-wrap:anywhere}
+.hcx-intel .hcx-ai-hypothesis-card>p{font-size:13.5px;line-height:1.6;font-weight:400;color:#c9dde7;margin:8px 0 10px;overflow-wrap:anywhere}
+.hcx-intel .hcx-ai-hypothesis-card>small{display:block;font-size:11.5px;line-height:1.55;font-weight:400;color:#95b7c8;overflow-wrap:anywhere}
+@media(max-width:640px){.hcx-intel .hcx-ai-hypothesis-card{padding:13px}.hcx-intel .hcx-ai-hypothesis-card>b{font-size:14px}.hcx-intel .hcx-ai-hypothesis-card>p{font-size:13px}}
+
 .hcx-intel .hcx-main-panel>.flex{align-items:center;gap:11px}
 .hcx-intel .hcx-main-panel #integrated-ai-status{font-size:11px;line-height:1.5;margin-top:8px}
 .hcx-fold .hcx-fold-content .panel{margin-left:0;margin-right:0}
