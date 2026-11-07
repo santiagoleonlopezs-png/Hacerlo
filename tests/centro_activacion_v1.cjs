@@ -4,10 +4,10 @@ const read=p=>fs.readFileSync(p,'utf8');
 const app=read('src/core/app.js'),index=read('index.html'),code=read('src/modules/implementacion/mecanismos.js')+'\n'+read('src/modules/implementacion/centro-activacion.js');
 assert.match(app,/\['Intervenciones','▥'\],\['Plan de cambio','▤'\],\['Centro de activación','✧'\],\['Laboratorio','◇'\]/);
 assert.match(app,/page==='Centro de activación'/);
-assert.match(index,/centro-activacion\.js\?v=2\.2\.0/);
+assert.match(index,/centro-activacion\.js\?v=2\.2\.1/);
 assert.match(index,/centro-activacion\.css\?v=2\.2\.0/);
 assert.match(index,/centro-senales\.js\?v=1\.0\.0/);
-assert.match(index,/centro-seguimiento\.js\?v=1\.1\.0/);
+assert.match(index,/centro-seguimiento\.js\?v=1\.1\.1/);
 const action={name:'Nuevo proceso',hypothesis:'Mejorar adopción',mechanisms:['comunicacion','reconocimiento']};
 const x={name:'Iniciativa',actions:[action],audiences:[{id:'a1',name:'Equipo A',email:'a@example.com'}],
  audiencePeople:[{id:'p1',audienceId:'a1',email:'a@example.com'},{id:'p2',audienceId:'a1',email:'b@example.com'}]};
@@ -87,7 +87,9 @@ assert.match(ctx.renderCentroActivacion(x),/Qué intervención quieres activar/)
 assert.match(ctx.renderCentroActivacion(x),/Dar sentido/);
 assert.match(ctx.renderCentroActivacion(x),/Recordar/);
 assert.match(ctx.renderCentroActivacion(x),/Reforzar/);
-assert.match(ctx.renderCentroActivacion(x),/Seguimiento de envíos/,'Los estados del proveedor tienen nombre técnico');
+assert.match(ctx.renderCentroActivacion(x),/Resultados de las comunicaciones/,'El seguimiento tiene un nombre comprensible');
+assert.match(ctx.renderCentroActivacion(x),/Envíos y entregas/,'Los resultados de envío son claros');
+assert.doesNotMatch(ctx.renderCentroActivacion(x),/Configuración presente · pendiente de prueba/,'No se declara una prueba pendiente cuando ya hay envíos');
 assert.match(ctx.renderCentroActivacion(x),/Indicadores de cambio en HACERLO/,'Los resultados conductuales se distinguen del proveedor');
 assert.match(ctx.renderCentroActivacion(x),/Ver indicadores/);
 assert.match(app,/cacPrepareNavigation\(n\)/,'Navegar por menú restablece la vista de Centro de activación');
