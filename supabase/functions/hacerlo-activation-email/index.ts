@@ -322,6 +322,7 @@ Deno.serve(async(request:Request)=>{
   failure_summary:lastError
  }).eq('id',log.id);
  return json({ok:accepted>0,status,accepted_count:accepted,failed_count:failed,
+  ...(accepted===0?{error:lastError||'Resend no aceptó el envío; no se registraron destinatarios aceptados.'}:{}),
   recipient_count:count,log_id:log.id,
   scheduled_for:scheduledIso||null,
   note:scheduledIso?'Programado en el proveedor; todavía no se ha entregado.':'Aceptado por el proveedor no equivale a entregado ni leído.'},accepted>0?200:502);
