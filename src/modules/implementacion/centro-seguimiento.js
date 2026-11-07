@@ -32,7 +32,7 @@ function cacHistoryMetricsHTML(rows){
   '</div><p class="cac-inline-help">'+(hasResults
    ?'Se muestran resultados registrados de hasta 30 comunicaciones. Los datos aún pueden estar incompletos si no se han recibido todos los eventos.'
    :'Todavía no recibimos datos de entrega. El guion (—) significa «sin información», no cero entregas o rebotes.')+
-  ' *Aperturas y clics pueden ser imprecisos por privacidad y no demuestran cambios de comportamiento.</p>';
+  ' *Las aperturas se registran solo cuando el seguimiento está habilitado y el correo permite detectarlas; los clics requieren enlaces. Ninguna de estas métricas demuestra adopción.</p>';
 }
 function cacHistoryEventFields(row){
  const n=k=>Math.max(0,Number(row?.[k])||0);
