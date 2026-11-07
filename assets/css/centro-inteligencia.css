@@ -73,3 +73,54 @@
 .hcx-metric-missing{font-size:10px;color:#83a6b6}
 .hcx-portfolio-metric-table button{width:auto;white-space:nowrap;font-size:11px;padding:8px 11px}
 .hcx-portfolio-metrics>.notice{margin:14px 0 0;font-size:10px;line-height:1.5}
+
+/* Inicio · acciones en curso hoy (consolidado de iniciativas) */
+.ci-running{margin:18px 0 0;border:1px solid #31677a;background:radial-gradient(ellipse at 90% 3%,rgba(26,175,156,.11),transparent 46%),linear-gradient(135deg,#0e3044,#092238 88%);border-radius:17px;padding:22px;min-width:0}
+.ci-running-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px;flex-wrap:wrap}
+.ci-running-head h3{font-size:18px;letter-spacing:-.3px;line-height:1.3;margin:6px 0 5px;font-weight:660;color:#f0fbff}
+.ci-running-head h3 span{color:#90cbd0;font-weight:540}
+.ci-running-head p{font-size:11.5px;color:#a6c7d3;line-height:1.55;margin:0;max-width:690px}
+.ci-running-summary{display:flex;align-items:center;gap:7px;border:1px solid #326376;border-radius:11px;padding:10px 13px;background:#10364a;color:#abcbd6;white-space:nowrap}
+.ci-running-summary strong{font-size:16px;line-height:1.1;font-variant-numeric:tabular-nums;color:#eafaff}
+.ci-running-summary span{font-size:10.5px}
+.ci-running-summary i{width:1px;height:17px;background:#427288;margin:0 6px}
+.ci-running-summary .ci-running-late-count{color:#f6be8d}
+.ci-running-list{display:grid;gap:8px}
+.ci-running-row{display:flex;align-items:center;gap:13px;width:100%;min-width:0;padding:12px 15px;min-height:73px;text-align:left;border:1px solid #2c586c;border-radius:11px;background:rgba(8,35,53,.65);color:#ecf8fc;transition:background .15s ease,border-color .15s ease}
+.ci-running-row:hover{border-color:#43b9b0;background:#113e52}
+.ci-running-row:focus-visible{outline:2px solid #71e9d7;outline-offset:2px}
+.ci-running-status{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#114a58;border:1px solid #347a7e;font-size:19px;line-height:1;color:#8be5d5;flex:0 0 34px}
+.ci-running-status.is-late{border-color:#b77d4e;background:#55412d;color:#ffcb9a;font-size:17px;font-weight:800}
+.ci-running-info{display:grid;gap:6px;flex:1.15 1 240px;min-width:0}
+.ci-running-info strong{display:block;font-size:12.5px;line-height:1.45;color:#f2fdff;font-weight:620;overflow-wrap:anywhere}
+.ci-running-origin{font-size:10.5px;color:#81d7cd;overflow-wrap:anywhere}
+.ci-running-details{display:grid;gap:5px;flex:0.8 1 190px;min-width:0;color:#c7dee6;font-size:11.5px;line-height:1.35}
+.ci-running-details small{font-size:10px;color:#8eafbf;line-height:1.5}
+.ci-running-state{font-size:10px;line-height:1.4;white-space:nowrap;color:#8edfd5;border:1px solid #2c6c70;border-radius:50px;padding:7px 10px;background:#12404c}
+.ci-running-state.is-late{color:#f5c08e;border-color:#805e3e;background:#463626}
+.ci-running-arrow{font-size:18px;color:#73dacc;flex:none}
+.ci-running-more{margin-top:10px}
+.ci-running-more>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:9px 4px;color:#98e2d6;font-size:11px}
+.ci-running-more>summary::-webkit-details-marker{display:none}
+.ci-running-more>summary span{font-size:16px}
+.ci-running-more .ci-running-list{padding-top:9px}
+.ci-running-empty{display:flex;align-items:center;gap:13px;border:1px dashed #3b7380;background:#0d3745;border-radius:11px;padding:19px}
+.ci-running-empty>span{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:#124e4d;color:#98f1cd;font-size:19px;flex:none}
+.ci-running-empty>div{display:grid;gap:5px}
+.ci-running-empty strong{font-size:12px;font-weight:630}
+.ci-running-empty small{font-size:10.5px;color:#a7c9d0;line-height:1.5}
+@media(max-width:900px){
+ .ci-running-row{flex-wrap:wrap}
+ .ci-running-info{flex:1 1 200px}
+ .ci-running-details{flex:1 1 170px}
+}
+@media(max-width:600px){
+ .ci-running{padding:15px}
+ .ci-running-row{gap:10px;padding:12px}
+ .ci-running-status{width:28px;height:28px;flex-basis:28px}
+ .ci-running-info{flex:1 1 calc(100% - 50px)}
+ .ci-running-details{padding-left:38px;flex:1 1 60%}
+ .ci-running-state{margin-left:38px}
+ .ci-running-arrow{margin-left:auto}
+ .ci-running-summary{flex-wrap:wrap;white-space:normal}
+}
