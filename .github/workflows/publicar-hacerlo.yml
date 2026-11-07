@@ -52,6 +52,7 @@ jobs:
           node --check src/modules/implementacion/movilizacion-estudio.js
           node --check src/modules/implementacion/centro-activacion.js
           node tests/centro_activacion_v1.cjs
+          node tests/centro_activacion_feedback_v1.cjs
           node --check src/modules/implementacion/centro-senales.js
           node tests/centro_senales_v1.cjs
           node --check src/modules/implementacion/centro-seguimiento.js
