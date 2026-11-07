@@ -333,26 +333,26 @@ function cacDeliveryHtml(){
  const status=cacDeliveryStatus;
  const ready=status?.configured===true;
  const missing=Array.isArray(status?.missing)?status.missing:[];
+ const hasSends=cacHistory.some(r=>Number(r.accepted_count||0)>0);
  const detail=ready
-  ?'Resend está configurado en Supabase. Para comprobar la entrega real, haz primero un envío de prueba a tu propio correo.'
-  :status?.unavailable?'No fue posible comprobar el servicio. El envío seguirá requiriendo la verificación del servidor.'
-  :'No se pueden enviar comunicaciones todavía. Falta configurar '+missing.join(' y ')+'. Puedes seguir redactando y guardando borradores.';
- return '<div class="cac-delivery-copy"><span class="cac-eyebrow">ESTADO DEL CORREO</span>'+
-  '<strong>'+(ready?'Configuración presente · pendiente de prueba':'Conexión de correo pendiente')+'</strong>'+
+  ?(hasSends?'HACERLO ya envió comunicaciones. Aquí podrás consultar su entrega y detectar mensajes que necesitan atención.':'HACERLO está listo para enviar comunicaciones. Sus resultados aparecerán aquí después del primer envío.')
+  :status?.unavailable?'No pudimos comprobar la conexión de correo. Puedes volver a intentarlo; los borradores se conservan.'
+  :'El envío aún no está disponible. Una persona administradora debe completar la conexión del correo.';
+ const tracking=ready?(status.tracking_configured===true
+   ?'La conexión para recibir resultados está preparada. Confirma en Resend que los eventos de entrega y rebote estén activados.'
+   :'Los resultados de entrega todavía no se actualizan automáticamente. Hay que conectar los avisos de Resend para conocer entregas y rebotes.') :'';
+ return '<div class="cac-delivery-copy"><span class="cac-eyebrow">ESTADO DE LAS COMUNICACIONES</span>'+
+  '<strong>'+(ready?(hasSends?'Envíos activos':'Listo para enviar'):'Envíos no disponibles')+'</strong>'+
   '<p>'+cacSafe(detail)+'</p>'+
-  (ready?'<p>'+(
-    status.tracking_configured===true?
-    'Firma del webhook configurada. El seguimiento se activará cuando registres el endpoint y los eventos en Resend.':
-    'La actualización manual desde Resend ya está disponible. Para recibir eventos en tiempo real y con mayor detalle, configura el webhook y RESEND_WEBHOOK_SECRET.'
-   )+'</p>':'')+'</div>'+
-  '<div class="cac-delivery-links"><button type="button" class="secondary" onclick="cacCheckDelivery(true)">Comprobar otra vez</button>'+
-  (!ready?'<a href="https://supabase.com/dashboard/project/mflakxgdkpuhemgslgsa/functions" target="_blank" rel="noopener noreferrer">Configurar en Supabase ↗</a>':
-   '<a href="https://resend.com/webhooks" target="_blank" rel="noopener noreferrer">Revisar webhooks en Resend ↗</a>')+
+  (tracking?'<p>'+cacSafe(tracking)+'</p>':'')+'</div>'+
+  '<div class="cac-delivery-links"><button type="button" class="secondary" onclick="cacCheckDelivery(true)">Comprobar conexión</button>'+
+  (!ready?'<a href="https://supabase.com/dashboard/project/mflakxgdkpuhemgslgsa/functions" target="_blank" rel="noopener noreferrer">Revisar conexión ↗</a>':
+   '<a href="https://resend.com/webhooks" target="_blank" rel="noopener noreferrer">Conectar resultados automáticos ↗</a>')+
   '</div>'+
-  (ready?'<details class="cac-webhook-help"><summary>Cómo activar el seguimiento de entregas, aperturas y clics</summary>'+
-   '<p>En Resend crea un webhook HTTPS con eventos de entrega, aperturas, clics, rebotes, quejas y supresiones. Utiliza esta dirección:</p>'+
+  (ready?'<details class="cac-webhook-help"><summary>Configuración avanzada del seguimiento</summary>'+
+   '<p>En Resend registra una conexión de eventos (webhook) para entregas, rebotes, fallos, aperturas, clics y quejas. Dirección de HACERLO:</p>'+
    '<code>https://mflakxgdkpuhemgslgsa.supabase.co/functions/v1/hacerlo-resend-webhook</code>'+
-   '<p>Copia el secreto de firma de Resend (whsec_…) en Supabase → Edge Functions → Secrets con el nombre RESEND_WEBHOOK_SECRET. No lo compartas por chat. Habilita el seguimiento de aperturas y clics en Resend solo cuando sea adecuado y esté permitido para tus destinatarios.</p></details>':'');
+   '<p>Guarda el secreto de firma de Resend (whsec_…) en Supabase → Edge Functions → Secrets como RESEND_WEBHOOK_SECRET. Nunca compartas ese valor. Las aperturas y clics son señales técnicas, no miden adopción; habilítalas solo si corresponden.</p></details>':'');
 }
 function cacDeliveryRefresh(){
  const el=document.getElementById('cac-delivery');
@@ -529,7 +529,7 @@ async function cacRefreshDeliveryHistory(){
  const x=current();
  if(!cloudReady||!x?._cloudId||cacHistoryLoading)return;
  const btn=document.getElementById('cac-history-refresh');
- if(btn){btn.disabled=true;btn.textContent='Consultando Resend…';}
+ if(btn){btn.disabled=true;btn.textContent='Comprobando…';}
  const note=document.getElementById('cac-provider-status');
  const show=msg=>{
   cacProviderNotice=msg;
@@ -548,7 +548,7 @@ async function cacRefreshDeliveryHistory(){
   const delayed=Number(states.delivery_delayed||0);
   let message='';
   if(denied){
-   message='Resend aceptó el envío, pero la clave actual solo permite enviar: no puede consultar su estado. Revisa el correo en Resend → Emails. Para seguimiento automático, configura el webhook; no hace falta ampliar los permisos de la clave.';
+   message='Los mensajes se enviaron, pero esta conexión no permite consultar su resultado directamente. Para ver entregas y rebotes en HACERLO, activa los resultados automáticos en Resend. Puedes comprobar el detalle en Resend → Emails; no se enviaron mensajes nuevos.';
   }else if(issues&&!checked){
    message='No fue posible consultar el estado del proveedor. Comprueba el historial en Resend → Emails. No se ha enviado otro correo.';
   }else if(blocked){
@@ -574,7 +574,7 @@ async function cacRefreshDeliveryHistory(){
   }
  }finally{
   const button=document.getElementById('cac-history-refresh');
-  if(button){button.disabled=false;button.textContent='Actualizar desde Resend';}
+  if(button){button.disabled=false;button.textContent='Comprobar estados';}
  }
 }
 async function cacLoadHistory(force=false){
@@ -769,17 +769,17 @@ function renderCentroActivacion(x){
   'Comunica, reconoce y refuerza comportamientos desde cada intervención.',
   'RDAIM · IMPLEMENTACIÓN','✧'):'<h2>Centro de Activación Conductual</h2>';
  const technical='<details class="cac-technical" ontoggle="cacFoldToggle(this)"><summary><span class="cac-fold-mark">◷</span>'+
-  '<span class="cac-fold-copy"><strong>Seguimiento y configuración</strong>'+
-  '<small>Correos, entregas e indicadores · Información complementaria</small></span>'+
+  '<span class="cac-fold-copy"><strong>Resultados de las comunicaciones</strong>'+
+  '<small>Conoce qué se envió, qué llegó y qué necesita atención</small></span>'+
   '<span class="cac-fold-chevron" aria-hidden="true">⌄</span></summary>'+
   '<div class="cac-technical-content">'+
   '<section class="cac-delivery" id="cac-delivery" data-ready="'+String(cacDeliveryStatus?.configured===true)+'">'+cacDeliveryHtml()+'</section>'+
-  '<section class="cac-history"><div class="cac-heading"><div><small>ACTIVIDAD DEL PROVEEDOR</small>'+
-   '<h3>Seguimiento de envíos</h3><p>Datos técnicos del correo, diferentes del cambio de comportamiento. Una apertura no demuestra adopción.</p></div>'+
-   '<button class="secondary" type="button" id="cac-history-refresh" onclick="cacRefreshDeliveryHistory()">Actualizar desde Resend</button></div>'+
+  '<section class="cac-history"><div class="cac-heading"><div><small>ESTADO DE LOS MENSAJES</small>'+
+   '<h3>Envíos y entregas</h3><p>Revisa las entregas confirmadas, los rechazos y los resultados que todavía no se han podido comprobar. Abrir un correo no significa adoptar un comportamiento.</p></div>'+
+   '<button class="secondary" type="button" id="cac-history-refresh" onclick="cacRefreshDeliveryHistory()">Comprobar estados</button></div>'+
    '<p class="cac-provider-status" id="cac-provider-status" role="status" aria-live="polite" '+(cacProviderNotice?'':'hidden')+'>'+cacSafe(cacProviderNotice)+'</p>'+
    '<div class="cac-provider-links"><a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer">Consultar correos en Resend ↗</a>'+
-   '<small>El estado aceptado solo confirma recepción por Resend, no llegada a tu bandeja.</small></div>'+
+   '<small>«Aceptado» significa que se recibió la solicitud de envío, no que el correo haya llegado.</small></div>'+
    '<div id="cac-history">'+cacHistoryHtml()+'</div></section>'+
   '<section class="cac-behavior-metrics"><div><span class="cac-eyebrow">RESULTADOS CONDUCTUALES</span>'+
    '<h3>Indicadores de cambio en HACERLO</h3>'+
