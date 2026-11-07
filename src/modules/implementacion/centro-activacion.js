@@ -79,7 +79,7 @@ function cacBackToCenter(){
  cacEditorOpen=false;cacStepId=null;
  cacMessage='Volviste al Centro. El borrador se conservó sin enviarse.';
  render();
- document.querySelector?.('.cac-control')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+ document.querySelector?.('.cac-launch')?.scrollIntoView?.({behavior:'smooth',block:'start'});
 }
 function cacChooseAction(index){
  if(cacBusy||!cacKeepVisibleDraft())return;
@@ -579,6 +579,13 @@ function cacStepEditor(x,row,step){
    '</aside></div></section>';
 }
 
+// Al abrir una sección secundaria, plegar las otras para reducir la carga visual.
+function cacFoldToggle(el){
+ if(!el?.open)return;
+ const root=el.closest?.('.cac-home');
+ root?.querySelectorAll?.(':scope > details.cac-simple-fold, :scope > details.cac-extra-tools, :scope > details.cac-technical')
+  ?.forEach(d=>{if(d!==el)d.open=false});
+}
 function renderCentroActivacion(x){
  const rows=cacActions(x),row=cacAction(x),
   sequence=row?cacSequenceSteps(row.action):[],direct=row?cacDirectSteps(row.action):[],step=cacStep(row);
@@ -633,7 +640,7 @@ function renderCentroActivacion(x){
   }
   let sequenceSection='';
   if(sequence.length){
-   sequenceSection='<details class="cac-sequence cac-simple-fold"><summary><span class="cac-fold-mark">◇</span>'+
+   sequenceSection='<details class="cac-sequence cac-simple-fold" ontoggle="cacFoldToggle(this)"><summary><span class="cac-fold-mark">◇</span>'+
     '<span class="cac-fold-copy"><strong>Secuencia opcional</strong><small>'+sequence.length+
      ' pasos · Puedes activar cualquiera sin completar los demás</small></span><span class="cac-fold-chevron" aria-hidden="true">⌄</span></summary>'+
     '<div class="cac-fold-content"><div class="cac-fold-actions"><button class="secondary" type="button" onclick="cacAddStep()">＋ Añadir paso</button></div>'+
@@ -647,7 +654,7 @@ function renderCentroActivacion(x){
   }
   const signal=typeof cacSignalPanel==='function'?cacSignalPanel(x,row):'';
   const journeys=typeof cacJourneysHTML==='function'?cacJourneysHTML(x,row):'';
-  const more='<details class="cac-extra-tools"><summary><span class="cac-fold-mark">✧</span>'+
+  const more='<details class="cac-extra-tools" ontoggle="cacFoldToggle(this)"><summary><span class="cac-fold-mark">✧</span>'+
     '<span class="cac-fold-copy"><strong>Personalización y refuerzos inteligentes</strong>'+
     '<small>Recomendaciones basadas en evidencia y recorridos por audiencia</small></span>'+
     '<span class="cac-fold-chevron" aria-hidden="true">⌄</span></summary>'+
@@ -658,7 +665,7 @@ function renderCentroActivacion(x){
  const title=typeof hcxHero==='function'?hcxHero('Centro de Activación Conductual',x,
   'Comunica, reconoce y refuerza comportamientos desde cada intervención.',
   'RDAIM · IMPLEMENTACIÓN','✧'):'<h2>Centro de Activación Conductual</h2>';
- const technical='<details class="cac-technical"><summary><span class="cac-fold-mark">◷</span>'+
+ const technical='<details class="cac-technical" ontoggle="cacFoldToggle(this)"><summary><span class="cac-fold-mark">◷</span>'+
   '<span class="cac-fold-copy"><strong>Seguimiento y configuración</strong>'+
   '<small>Correos, entregas e indicadores · Información complementaria</small></span>'+
   '<span class="cac-fold-chevron" aria-hidden="true">⌄</span></summary>'+
