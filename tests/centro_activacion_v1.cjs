@@ -87,7 +87,7 @@ assert.match(ctx.renderCentroActivacion(x),/Qué intervención quieres activar/)
 assert.match(ctx.renderCentroActivacion(x),/Dar sentido/);
 assert.match(ctx.renderCentroActivacion(x),/Recordar/);
 assert.match(ctx.renderCentroActivacion(x),/Reforzar/);
-assert.match(ctx.renderCentroActivacion(x),/Resultados de las comunicaciones/,'El seguimiento tiene un nombre comprensible');
+assert.match(ctx.renderCentroActivacion(x),/Resultados de tu activación/,'El seguimiento tiene un nombre comprensible');
 assert.match(ctx.renderCentroActivacion(x),/Envíos y entregas/,'Los resultados de envío son claros');
 assert.doesNotMatch(ctx.renderCentroActivacion(x),/Configuración presente · pendiente de prueba/,'No se declara una prueba pendiente cuando ya hay envíos');
 assert.match(ctx.renderCentroActivacion(x),/Indicadores de cambio en HACERLO/,'Los resultados conductuales se distinguen del proveedor');
