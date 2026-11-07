@@ -2,7 +2,7 @@
  * Cada paso pertenece a la acción original. Nunca enviar automáticamente al guardar. */
 let cacActionIndex=null,cacStepId=null,cacEditorOpen=false,cacHistory=[],cacHistoryFor='',cacHistoryLoading=false,cacBusy=false,cacMessage='';
 let cacAiBusy=false,cacAiSuggestion=null,cacAiNotice='';
-let cacDeliveryStatus=null,cacDeliveryLoading=false;
+let cacDeliveryStatus=null,cacDeliveryLoading=false,cacProviderNotice='';
 const CAC_STAGES=[
  {id:'sentido',label:'Dar sentido',moment:'Antes',description:'Explica el para qué del cambio'},
  {id:'activar',label:'Activar',moment:'Durante',description:'Pide una acción observable y realizable'},
@@ -524,30 +524,58 @@ function cacHistoryHtml(){
  ).join('')+'</div>';
 }
 // Conciliación manual: GET a Resend para los últimos estados, sin enviar correos.
+// Consultar el último estado del proveedor, sin reenviar el mensaje.
 async function cacRefreshDeliveryHistory(){
  const x=current();
  if(!cloudReady||!x?._cloudId||cacHistoryLoading)return;
  const btn=document.getElementById('cac-history-refresh');
  if(btn){btn.disabled=true;btn.textContent='Consultando Resend…';}
+ const note=document.getElementById('cac-provider-status');
+ const show=msg=>{
+  cacProviderNotice=msg;
+  if(note){note.hidden=false;note.textContent=msg;}
+ };
+ show('Consultando el estado de los correos anteriores. Esto no enviará ningún mensaje nuevo.');
  try{
   const result=await cacFunctionCall({mode:'refresh',initiative_id:x._cloudId});
   if(current()?._cloudId!==x._cloudId)return;
-  const total=Number(result?.checked||0),issues=Number(result?.errors||0);
-  cacMessage=total?'Se consultaron '+total+' correos en Resend. '+
-   (issues?'Hubo '+issues+' consultas sin respuesta. ':'')+
-   'Los estados obtenidos no prueban adopción.':
-   'No hay correos recientes pendientes de actualización.';
-  const note=document.getElementById('cac-notice');
-  if(note)note.textContent=cacMessage;
+  const checked=Number(result?.checked||0),issues=Number(result?.errors||0);
+  const denied=Number(result?.permission_denied||0);
+  const states=result?.statuses||{};
+  const delivered=Number(states.delivered||0)+Number(states.opened||0)+Number(states.clicked||0);
+  const waiting=Number(states.sent||0)+Number(states.queued||0)+Number(states.scheduled||0);
+  const blocked=Number(states.bounced||0)+Number(states.failed||0)+Number(states.suppressed||0);
+  const delayed=Number(states.delivery_delayed||0);
+  let message='';
+  if(denied){
+   message='Resend aceptó el envío, pero la clave actual solo permite enviar: no puede consultar su estado. Revisa el correo en Resend → Emails. Para seguimiento automático, configura el webhook; no hace falta ampliar los permisos de la clave.';
+  }else if(issues&&!checked){
+   message='No fue posible consultar el estado del proveedor. Comprueba el historial en Resend → Emails. No se ha enviado otro correo.';
+  }else if(blocked){
+   message='Resend registra '+blocked+' correo(s) con rechazo, supresión o error. Consulta el detalle en Resend → Emails antes de corregir o reintentar.';
+  }else if(delayed){
+   message='Resend indica '+delayed+' correo(s) con entrega retrasada. El proveedor puede reintentar; no lo envíes de nuevo todavía.';
+  }else if(delivered){
+   message='Resend confirma '+delivered+' entrega(s) o interacciones posteriores. Si no aparece en tu bandeja, revisa Spam, No deseado y cuarentena.';
+  }else if(waiting){
+   message='Resend informa '+waiting+' correo(s) enviados o en cola, pero aún no confirma entrega. Consulta los eventos en Resend → Emails.';
+  }else if(!checked&&cacHistory.length){
+   message='No hubo correos pendientes de una nueva consulta (o se revisaron hace menos de un minuto). La entrega no se puede dar por confirmada.';
+  }else{
+   message='Se consultaron '+checked+' correo(s). No hay una entrega confirmada todavía. Consulta Resend → Emails para ver su línea de tiempo.';
+  }
+  if(issues&&!denied)message+=' Algunas consultas no se completaron ('+issues+').';
+  show(message);
   await cacLoadHistory(true);
  }catch(err){
   if(current()?._cloudId===x._cloudId){
-   cacMessage='No se pudo consultar el estado del proveedor: '+(err?.message||'Error desconocido')+
-    '. No se ha enviado ningún mensaje por esta consulta.';
-   const note=document.getElementById('cac-notice');if(note)note.textContent=cacMessage;
+   show('No se pudo consultar Resend: '+(err?.message||'Error desconocido')+
+    '. La consulta no envió correos. Comprueba el mensaje en Resend → Emails.');
   }
- }finally{const button=document.getElementById('cac-history-refresh');
-  if(button){button.disabled=false;button.textContent='Actualizar desde Resend';}}
+ }finally{
+  const button=document.getElementById('cac-history-refresh');
+  if(button){button.disabled=false;button.textContent='Actualizar desde Resend';}
+ }
 }
 async function cacLoadHistory(force=false){
  const x=current();if(!x?._cloudId||!cloudReady)return;
@@ -555,7 +583,7 @@ async function cacLoadHistory(force=false){
  cacHistoryFor=x._cloudId;cacHistoryLoading=true;
  try{
   const {data,error}=await sb.from('activation_sends')
-   .select('id,subject,kind,status,recipient_count,accepted_count,failed_count,submitted_at,scheduled_for,sequence_step,delivered_count,opened_count,clicked_count,bounced_count,complained_count,suppressed_count,failed_delivery_count,delayed_count,event_updated_at')
+   .select('id,subject,kind,status,recipient_count,accepted_count,failed_count,submitted_at,scheduled_for,sequence_step,delivered_count,opened_count,clicked_count,bounced_count,complained_count,suppressed_count,failed_delivery_count,delayed_count,event_updated_at,delivery_check_at,delivery_check_result')
    .eq('initiative_id',x._cloudId).order('submitted_at',{ascending:false}).limit(30);
   if(error)throw error;
   if(current()?._cloudId===x._cloudId)cacHistory=data||[];
@@ -697,7 +725,8 @@ function renderCentroActivacion(x){
    '</section>';
   let directSection='';
   if(direct.length){
-   const sorted=direct.slice().reverse();
+   // Comunicación antes que reconocimiento; dentro de cada tipo, más recientes primero.
+   const sorted=direct.slice().reverse().sort((a,b)=>Number(a.kind!=='comunicacion')-Number(b.kind!=='comunicacion'));
    const cards=items=>items.map(s=>
     '<button class="cac-direct-item'+(step?.id===s.id?' is-active':'')+'" type="button" onclick="cacChooseStep(\''+cacSafe(s.id)+'\')">'+
     '<span>'+cacSafe(s.kind==='reconocimiento'?'✧ Reconocimiento':'✉ Comunicación')+'</span>'+
@@ -748,6 +777,9 @@ function renderCentroActivacion(x){
   '<section class="cac-history"><div class="cac-heading"><div><small>ACTIVIDAD DEL PROVEEDOR</small>'+
    '<h3>Seguimiento de envíos</h3><p>Datos técnicos del correo, diferentes del cambio de comportamiento. Una apertura no demuestra adopción.</p></div>'+
    '<button class="secondary" type="button" id="cac-history-refresh" onclick="cacRefreshDeliveryHistory()">Actualizar desde Resend</button></div>'+
+   '<p class="cac-provider-status" id="cac-provider-status" role="status" aria-live="polite" '+(cacProviderNotice?'':'hidden')+'>'+cacSafe(cacProviderNotice)+'</p>'+
+   '<div class="cac-provider-links"><a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer">Consultar correos en Resend ↗</a>'+
+   '<small>El estado aceptado solo confirma recepción por Resend, no llegada a tu bandeja.</small></div>'+
    '<div id="cac-history">'+cacHistoryHtml()+'</div></section>'+
   '<section class="cac-behavior-metrics"><div><span class="cac-eyebrow">RESULTADOS CONDUCTUALES</span>'+
    '<h3>Indicadores de cambio en HACERLO</h3>'+
