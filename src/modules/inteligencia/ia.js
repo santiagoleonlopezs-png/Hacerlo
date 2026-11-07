@@ -14,7 +14,7 @@ function renderLocalAIResult(a){
    ((findings.length||hypotheses.length)?'<details class="hcx-ai-result-extra"><summary>Examinar hallazgos e hipótesis ('+
      (findings.length+hypotheses.length)+')</summary><div class="hcx-result-body">'+
      (findings.length?'<h3>Hallazgos estructurales</h3><ul>'+findings.map(z=>'<li>'+safe(z)+'</li>').join('')+'</ul>':'')+
-     (hypotheses.length?'<h3>Hipótesis para contrastar</h3>'+hypotheses.map(z=>'<article class="dash-card"><b>'+safe(z.title||'Hipótesis')+
+     (hypotheses.length?'<h3>Hipótesis para contrastar</h3>'+hypotheses.map(z=>'<article class="dash-card hcx-ai-hypothesis-card"><b>'+safe(z.title||'Hipótesis')+
        '</b><p>'+safe(z.rationale||'')+'</p><small class="muted">'+safe(z.evidence_limit||'')+'</small></article>').join(''):'')+'</div></details>':'')+
    (measures.length?'<details class="hcx-ai-result-extra"><summary>Ver qué medir ('+measures.length+')</summary><ul>'+
       measures.map(z=>'<li>'+safe(z)+'</li>').join('')+'</ul></details>':'')+
