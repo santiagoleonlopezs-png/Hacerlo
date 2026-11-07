@@ -339,9 +339,15 @@ function cacDeliveryHtml(){
   :'No se pueden enviar comunicaciones todavía. Falta configurar '+missing.join(' y ')+'. Puedes seguir redactando y guardando borradores.';
  return '<div class="cac-delivery-copy"><span class="cac-eyebrow">ESTADO DEL CORREO</span>'+
   '<strong>'+(ready?'Configuración presente · pendiente de prueba':'Conexión de correo pendiente')+'</strong>'+
-  '<p>'+cacSafe(detail)+'</p></div>'+
+  '<p>'+cacSafe(detail)+'</p>'+
+  (ready?'<p>'+(
+    status.tracking_configured===true?
+    'Firma del webhook configurada. El seguimiento se activará cuando registres el endpoint y los eventos en Resend.':
+    'Seguimiento de aperturas, clics y entregas pendiente: configura el webhook y el secreto RESEND_WEBHOOK_SECRET.'
+   )+'</p>':'')+'</div>'+
   '<div class="cac-delivery-links"><button type="button" class="secondary" onclick="cacCheckDelivery(true)">Comprobar otra vez</button>'+
-  (!ready?'<a href="https://supabase.com/dashboard/project/mflakxgdkpuhemgslgsa/functions" target="_blank" rel="noopener noreferrer">Configurar en Supabase ↗</a>':'')+
+  (!ready?'<a href="https://supabase.com/dashboard/project/mflakxgdkpuhemgslgsa/functions" target="_blank" rel="noopener noreferrer">Configurar en Supabase ↗</a>':
+   status.tracking_configured===true?'':'<a href="https://resend.com/webhooks" target="_blank" rel="noopener noreferrer">Configurar eventos en Resend ↗</a>')+
   '</div>';
 }
 function cacDeliveryRefresh(){
@@ -432,11 +438,13 @@ async function cacActivateStep(){
 function cacHistoryHtml(){
  if(!cacHistory.length)return '<p class="cac-muted">Aún no hay envíos registrados para esta iniciativa.</p>';
  const labels={sent:'Aceptado por Resend',scheduled:'Programado',partial:'Parcial',failed:'Error',processing:'En proceso'};
- return '<div class="cac-history-list">'+cacHistory.map(r=>
+ return (typeof cacHistoryMetricsHTML==='function'?cacHistoryMetricsHTML(cacHistory):'')+
+  '<div class="cac-history-list">'+cacHistory.map(r=>
   '<div class="cac-history-row"><div><strong>'+cacSafe(r.subject||'Comunicación')+'</strong><small>'+
    cacSafe(new Date(r.submitted_at).toLocaleString('es-CO'))+' · '+cacSafe(r.sequence_step?cacStage(r.sequence_step).label:(r.kind==='reconocimiento'?'Reconocimiento':'Comunicación'))+
    '</small></div><span class="cac-state">'+cacSafe(labels[r.status]||r.status)+'</span><span>'+Number(r.accepted_count||0)+'/'+Number(r.recipient_count||0)+' aceptados'+
-   (r.scheduled_for?' · '+cacSafe(new Date(r.scheduled_for).toLocaleString('es-CO')):'')+'</span></div>'
+   (r.scheduled_for?' · '+cacSafe(new Date(r.scheduled_for).toLocaleString('es-CO')):'')+'</span>'+
+   (typeof cacHistoryEventFields==='function'?cacHistoryEventFields(r):'')+'</div>'
  ).join('')+'</div>';
 }
 async function cacLoadHistory(force=false){
@@ -445,7 +453,7 @@ async function cacLoadHistory(force=false){
  cacHistoryFor=x._cloudId;cacHistoryLoading=true;
  try{
   const {data,error}=await sb.from('activation_sends')
-   .select('id,subject,kind,status,recipient_count,accepted_count,failed_count,submitted_at,scheduled_for,sequence_step')
+   .select('id,subject,kind,status,recipient_count,accepted_count,failed_count,submitted_at,scheduled_for,sequence_step,delivered_count,opened_count,clicked_count,bounced_count,complained_count,suppressed_count,failed_delivery_count,delayed_count,event_updated_at')
    .eq('initiative_id',x._cloudId).order('submitted_at',{ascending:false}).limit(30);
   if(error)throw error;
   cacHistory=data||[];
@@ -543,7 +551,9 @@ function renderCentroActivacion(x){
     '<em>'+cacSafe(cacStepLabel(s))+(s.scheduledFor?' · '+cacSafe(new Date(s.scheduledFor).toLocaleDateString('es-CO')):'')+
     '</em></span></button>'
    ).join('')+'</div></section>';
-  content=choose+options+directSection+sequenceSection+(cacEditorOpen&&step?cacStepEditor(x,row,step):'');
+  content=choose+options+
+   (typeof cacJourneysHTML==='function'?cacJourneysHTML(x,row):'')+
+   directSection+sequenceSection+(cacEditorOpen&&step?cacStepEditor(x,row,step):'');
  }
  const title=typeof hcxHero==='function'?hcxHero('Centro de Activación Conductual',x,
   'Comunica, reconoce y refuerza comportamientos, con secuencias opcionales y envíos a audiencias.',
