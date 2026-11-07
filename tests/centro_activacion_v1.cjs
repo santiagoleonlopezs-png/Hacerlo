@@ -4,8 +4,8 @@ const read=p=>fs.readFileSync(p,'utf8');
 const app=read('src/core/app.js'),index=read('index.html'),code=read('src/modules/implementacion/mecanismos.js')+'\n'+read('src/modules/implementacion/centro-activacion.js');
 assert.match(app,/\['Intervenciones','▥'\],\['Plan de cambio','▤'\],\['Centro de activación','✧'\],\['Laboratorio','◇'\]/);
 assert.match(app,/page==='Centro de activación'/);
-assert.match(index,/centro-activacion\.js\?v=1\.6\.0/);
-assert.match(index,/centro-activacion\.css\?v=1\.5\.0/);
+assert.match(index,/centro-activacion\.js\?v=2\.0\.0/);
+assert.match(index,/centro-activacion\.css\?v=2\.0\.0/);
 assert.match(index,/centro-senales\.js\?v=1\.0\.0/);
 assert.match(index,/centro-seguimiento\.js\?v=1\.0\.0/);
 const action={name:'Nuevo proceso',hypothesis:'Mejorar adopción',mechanisms:['comunicacion','reconocimiento']};
@@ -22,6 +22,11 @@ const ctx={console,Date,Number,crypto:{randomUUID:()=>String(calls.save+1).padSt
 vm.createContext(ctx);vm.runInContext(code,ctx);
 assert.match(ctx.renderCentroActivacion(x),/Centro de Activación Conductual|ACTIVAR/);
 assert.match(ctx.renderCentroActivacion(x),/Nueva comunicación/);
+assert.match(ctx.renderCentroActivacion(x),/class="cac-launch"/);
+assert.match(ctx.renderCentroActivacion(x),/class="cac-extra-tools"/);
+assert.match(ctx.renderCentroActivacion(x),/class="cac-technical"/);
+assert.match(ctx.renderCentroActivacion(x),/class="cac-action-menu"/,'Crear secuencia es una opción secundaria');
+
 assert.match(ctx.renderCentroActivacion(x),/Nuevo reconocimiento/);
 assert.match(ctx.renderCentroActivacion(x),/Crear secuencia opcional/);
 ctx.cacStartDirect('comunicacion');
@@ -31,6 +36,17 @@ assert.equal(action.activationSequence[0].standalone,true,'Mensaje independiente
 assert.equal(ctx.cacSequenceSteps(action).length,0,'La secuencia sigue siendo opcional');
 const editor=ctx.renderCentroActivacion(x);
 assert.match(editor,/id="cac-editor"/);
+assert.match(editor,/class="cac-compose-guide"/,'El editor explica el recorrido en 3 pasos');
+assert.match(editor,/class="cac-form-block cac-message-block"/,'El mensaje es la primera tarea');
+assert.match(editor,/class="cac-form-block cac-recipients-block"/,'Los destinatarios son la segunda tarea');
+assert.match(editor,/class="cac-editor-more"/,'Las opciones de programación están plegadas');
+assert.match(editor,/class="cac-confirm-block"/,'La confirmación aparece al final');
+assert.ok(editor.indexOf('name="subject"')<editor.indexOf('name="manualEmail"'),'Redactar antes de configurar destinatarios');
+assert.ok(editor.indexOf('name="manualEmail"')<editor.indexOf('name="authorized"'),'Destinatarios antes de confirmar');
+assert.match(editor,/class="cac-technical"/,'Seguimiento técnico accesible pero plegado');
+assert.doesNotMatch(editor,/class="cac-introduction"/,'Sin banner explicativo duplicado');
+assert.doesNotMatch(editor,/class="cac-direct-list"/,'Modo redacción sin tarjetas que distraigan');
+
 assert.match(editor,/onclick="cacBackToCenter\(\)"/);
 assert.match(editor,/class="cac-recipient-details"/,'Audiencias y personas se eligen sin formularios anidados');
 assert.doesNotMatch(editor,/<label class="cac-field"><span>Audiencias destinatarias/);
@@ -105,5 +121,10 @@ assert.doesNotMatch(style,/var\(--card,#fff\)/,'No utilizar superficies blancas 
 assert.match(style,/\.cac-audience-field \.cac-audience-option input\[type="checkbox"\]/,'El checkbox tiene tamaño propio');
 assert.match(style,/\.cac-editor-back/,'La navegación de regreso tiene estilo');
 assert.match(style,/\.cac-behavior-metrics/,'Los indicadores conductuales tienen panel propio');
-assert.match(ctx.renderCentroActivacion({...x,actions:[]}),/Tu primera activación comienza con una intervención/);
+assert.match(style,/\.cac-launch-main/,'Experiencia con selector y acciones principales');
+assert.match(style,/\.cac-editor-focused/,'Editor focalizado y coherente');
+assert.match(style,/\.cac-form-block-heading/,'Estructura editorial legible');
+assert.match(style,/\.cac-extra-content/,'Opciones complementarias plegadas');
+
+assert.match(ctx.renderCentroActivacion({...x,actions:[]}),/Activa un comportamiento desde una acción existente/);
 console.log('Centro de activación OK: línea gráfica oscura, acciones sin prerrequisitos, secuencias opcionales y cero envíos involuntarios.');
