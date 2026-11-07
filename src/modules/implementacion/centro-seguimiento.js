@@ -14,17 +14,25 @@ function cacProviderStats(rows){
 function cacHistoryMetricsHTML(rows){
  if(!rows?.length)return '';
  const z=cacProviderStats(rows);
+ // La ausencia de eventos NO equivale a cero entregas: un envío puede haber
+ // llegado o rebotado aunque el seguimiento todavía no esté conectado.
+ const hasResults=rows.some(r=>Boolean(r?.event_updated_at||r?.delivery_check_at)||
+  ['delivered_count','opened_count','clicked_count','bounced_count','complained_count','suppressed_count','failed_delivery_count','delayed_count'].some(k=>Number(r?.[k])>0));
  const chips=[
   ['Aceptados',z.accepted_count],
-  ['Entregados',z.delivered_count],
-  ['Aperturas*',z.opened_count],
-  ['Clics*',z.clicked_count],
-  ['Rebotes',z.bounced_count],
-  ['Quejas',z.complained_count]
+  ['Entregados',hasResults?z.delivered_count:null],
+  ['Aperturas*',hasResults?z.opened_count:null],
+  ['Clics*',hasResults?z.clicked_count:null],
+  ['Rebotes',hasResults?z.bounced_count:null],
+  ['Quejas',hasResults?z.complained_count:null]
  ];
- return '<div class="cac-provider-summary" aria-label="Métricas técnicas de los últimos envíos">'+
-  chips.map(([label,value])=>'<div class="cac-provider-stat"><small>'+label+'</small><strong>'+Number(value).toLocaleString('es-CO')+'</strong></div>').join('')+
-  '</div><p class="cac-inline-help">Estos números reflejan únicamente eventos confirmados o consultados; 0 entregados no significa que el correo haya fallado. Se muestran hasta 30 activaciones recientes. *Aperturas y clics pueden ser imprecisos por privacidad o protección del correo. No miden adopción.</p>';
+ return '<div class="cac-provider-summary" aria-label="Estado de los últimos envíos">'+
+  chips.map(([label,value])=>'<div class="cac-provider-stat"><small>'+label+'</small><strong>'+
+  (value===null?'—':Number(value).toLocaleString('es-CO'))+'</strong></div>').join('')+
+  '</div><p class="cac-inline-help">'+(hasResults
+   ?'Se muestran resultados registrados de hasta 30 comunicaciones. Los datos aún pueden estar incompletos si no se han recibido todos los eventos.'
+   :'Todavía no recibimos datos de entrega. El guion (—) significa «sin información», no cero entregas o rebotes.')+
+  ' *Aperturas y clics pueden ser imprecisos por privacidad y no demuestran cambios de comportamiento.</p>';
 }
 function cacHistoryEventFields(row){
  const n=k=>Math.max(0,Number(row?.[k])||0);
