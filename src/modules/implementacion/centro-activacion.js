@@ -495,7 +495,7 @@ async function cacActivateStep(){
    if(lookupError)throw Error('No se pudo comprobar el envío anterior. Consulta el historial antes de reintentar.');
    if(lastAttempt){
     const confirmedRejected=lastAttempt.status==='failed'&&Number(lastAttempt.accepted_count)===0&&
-     /Resend rechazó uno o más mensajes \\((?:400|401|403|422)\\)/.test(String(lastAttempt.failure_summary||''));
+     /Resend rechazó uno o más mensajes \((?:400|401|403|422)\)/.test(String(lastAttempt.failure_summary||''));
     if(!confirmedRejected)throw Error('Este intento ya se procesó o está pendiente. Consulta el historial antes de reintentar.');
     step.requestKey='';
     save();
