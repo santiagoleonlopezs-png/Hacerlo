@@ -596,6 +596,9 @@ async function cacLoadHistory(force=false){
   }else{
    const target=document.getElementById('cac-history');
    if(target)target.innerHTML=cacHistoryHtml();
+   // Mantener sincronizado el mensaje del estado con el historial real.
+   const delivery=document.getElementById('cac-delivery');
+   if(delivery)delivery.innerHTML=cacDeliveryHtml();
   }
  }
 }
