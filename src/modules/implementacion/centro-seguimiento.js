@@ -44,6 +44,7 @@ function cacAudienceAdoptionSignal(x,action,audienceId){
   .filter(Boolean).map(String);
  const behavior=(x.behaviors||[]).find(b=>ids.includes(String(b?.id)));
  if(!behavior)return null;
+ if(behavior.scope==='specific'&&!(behavior.audienceIds||[]).some(id=>String(id)===String(audienceId)))return null;
  const counts={understands:0,tries:0,performs:0,sustains:0};
  for(const person of x.audiencePeople||[]){
   if(String(person?.audienceId)!==String(audienceId))continue;
