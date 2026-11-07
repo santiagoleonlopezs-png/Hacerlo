@@ -12,7 +12,7 @@ const initiatives=[
   {name:'Solo cierre',end:'2026-11-18',status:'Completada'}]}
 ];
 const db={initiatives,selected:11};let page='',saves=0;
-const ctx={db,console,Date,save:()=>{saves++},go:v=>{page=v},current:()=>initiatives.find(i=>i.id===db.selected),
+const ctx={db,console,Date,document:{getElementById:()=>null},save:()=>{saves++},go:v=>{page=v},current:()=>initiatives.find(i=>i.id===db.selected),
  safe:v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))};
 vm.createContext(ctx);vm.runInContext(code,ctx);
 assert.equal(ctx.atRows('all').length,4,'Sin fecha se omite');
