@@ -608,7 +608,7 @@ async function cacLoadHistory(force=false){
  cacHistoryFor=x._cloudId;cacHistoryLoading=true;
  try{
   const {data,error}=await sb.from('activation_sends')
-   .select('id,subject,kind,status,recipient_count,accepted_count,failed_count,submitted_at,scheduled_for,sequence_step,delivered_count,opened_count,clicked_count,bounced_count,complained_count,suppressed_count,failed_delivery_count,delayed_count,event_updated_at,delivery_check_at,delivery_check_result')
+   .select('id,subject,kind,status,recipient_count,accepted_count,failed_count,failure_summary,submitted_at,scheduled_for,sequence_step,delivered_count,opened_count,clicked_count,bounced_count,complained_count,suppressed_count,failed_delivery_count,delayed_count,event_updated_at,delivery_check_at,delivery_check_result')
    .eq('initiative_id',x._cloudId).order('submitted_at',{ascending:false}).limit(30);
   if(error)throw error;
   if(current()?._cloudId===x._cloudId)cacHistory=data||[];
