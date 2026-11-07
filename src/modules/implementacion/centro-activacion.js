@@ -347,8 +347,12 @@ function cacDeliveryHtml(){
    )+'</p>':'')+'</div>'+
   '<div class="cac-delivery-links"><button type="button" class="secondary" onclick="cacCheckDelivery(true)">Comprobar otra vez</button>'+
   (!ready?'<a href="https://supabase.com/dashboard/project/mflakxgdkpuhemgslgsa/functions" target="_blank" rel="noopener noreferrer">Configurar en Supabase ↗</a>':
-   status.tracking_configured===true?'':'<a href="https://resend.com/webhooks" target="_blank" rel="noopener noreferrer">Configurar eventos en Resend ↗</a>')+
-  '</div>';
+   '<a href="https://resend.com/webhooks" target="_blank" rel="noopener noreferrer">Revisar webhooks en Resend ↗</a>')+
+  '</div>'+
+  (ready?'<details class="cac-webhook-help"><summary>Cómo activar el seguimiento de entregas, aperturas y clics</summary>'+
+   '<p>En Resend crea un webhook HTTPS con eventos de entrega, aperturas, clics, rebotes, quejas y supresiones. Utiliza esta dirección:</p>'+
+   '<code>https://mflakxgdkpuhemgslgsa.supabase.co/functions/v1/hacerlo-resend-webhook</code>'+
+   '<p>Copia el secreto de firma de Resend (whsec_…) en Supabase → Edge Functions → Secrets con el nombre RESEND_WEBHOOK_SECRET. No lo compartas por chat. Habilita el seguimiento de aperturas y clics en Resend solo cuando sea adecuado y esté permitido para tus destinatarios.</p></details>':'');
 }
 function cacDeliveryRefresh(){
  const el=document.getElementById('cac-delivery');
@@ -508,7 +512,11 @@ function cacStepEditor(x,row,step){
 function renderCentroActivacion(x){
  const rows=cacActions(x),row=cacAction(x),
   sequence=row?cacSequenceSteps(row.action):[],direct=row?cacDirectSteps(row.action):[],step=cacStep(row);
- if(x?._cloudId&&!cacHistoryLoading&&cacHistoryFor!==x._cloudId)void cacLoadHistory();
+ if(x?._cloudId&&cacHistoryFor!==x._cloudId){
+  cacHistory=[];
+  cacHistoryFor='';
+  if(!cacHistoryLoading)void cacLoadHistory();
+ }
  if(cloudReady&&!cacDeliveryStatus&&!cacDeliveryLoading)void cacCheckDelivery();
  let content='';
  if(!rows.length){
