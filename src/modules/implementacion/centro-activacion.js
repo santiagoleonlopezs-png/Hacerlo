@@ -223,17 +223,17 @@ async function cacAiSuggest(){
    if(draft.contactIds.includes(String(p.id))&&p.audienceId)contextAudienceIds.add(String(p.audienceId));
   }
   const controller=new AbortController();
-  timer=setTimeout(()=>controller.abort(),80000);
-  const res=await fetch(HACERLO_ENGINE_URL+'/api/ai/activation-message',{
+  timer=setTimeout(()=>controller.abort(),143000);
+  const res=await fetch(SUPABASE_URL+'/functions/v1/hacerlo-ai-gateway',{
    method:'POST',headers:{'Content-Type':'application/json',
     Authorization:'Bearer '+session.access_token,
-    'X-Supabase-Apikey':SUPABASE_PUBLISHABLE_KEY},
-   body:JSON.stringify({
+    apikey:SUPABASE_PUBLISHABLE_KEY},
+   body:JSON.stringify({action:'activation',payload:{
     initiative_id:x._cloudId,action_index:row.index,
     kind:draft.kind,stage:draft.stage,audience_ids:[...contextAudienceIds].slice(0,20),
     // La IA propone desde el diagnóstico; el texto privado del borrador no sale del navegador.
     subject:'',message:'',cta:''
-   }),signal:controller.signal
+   }}),signal:controller.signal
   });
   let response={};
   try{response=await res.json();}catch{}
