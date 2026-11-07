@@ -351,3 +351,10 @@
 @media(max-width:1080px){.cac-provider-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:780px){.cac-journey-groups{grid-template-columns:1fr}}
 @media(max-width:550px){.cac-provider-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.cac-journey-content{padding:0 13px 15px}.cac-journey-step{grid-template-columns:1fr;gap:5px}}
+
+.cac-webhook-help{flex:1 0 100%;min-width:0;border-top:1px solid #2c5e6b;padding-top:10px;margin-top:3px}
+.cac-webhook-help>summary{cursor:pointer;list-style:none;color:#83dfcf;font-size:11px}
+.cac-webhook-help>summary::-webkit-details-marker{display:none}
+.cac-webhook-help p{color:#a8c7d2;font-size:10.5px;line-height:1.6;margin:9px 0 0}
+.cac-webhook-help code{display:block;background:#061d2d;border:1px solid #315a69;border-radius:8px;color:#b1e9e1;overflow-wrap:anywhere;padding:11px 12px;margin:9px 0;font-size:10.5px}
+.cac-journey-evidence{color:#91dfd2!important;font-size:10px!important;line-height:1.5}
