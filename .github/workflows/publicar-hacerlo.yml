@@ -52,6 +52,8 @@ jobs:
           node --check src/modules/implementacion/movilizacion-estudio.js
           node --check src/modules/implementacion/centro-activacion.js
           node tests/centro_activacion_v1.cjs
+          node --check src/modules/implementacion/centro-senales.js
+          node tests/centro_senales_v1.cjs
           node tests/centro_activacion_ia_v1.cjs
           python -m py_compile backend/app.py backend/activation_drafting.py
           PYTHONPATH=backend python -m unittest discover -s backend/tests -p test_activation_drafting.py -v
