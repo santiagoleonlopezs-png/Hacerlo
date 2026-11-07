@@ -18,6 +18,7 @@ const ctx={
  cacEnsureMechanism:(a,k)=>{a.mechanisms=[...new Set([...a.mechanisms,k])]},
  cacEnsureNew:(a,stage,kind)=>({id:'step-2',kind,stage,title:'Plantilla',status:'draft'}),
  cacSteps:a=>a.activationSequence||[],
+ cacStep:row=>(row?.action?.activationSequence||[]).at(-1),
  cacStage:s=>({label:{activar:'Activar',sentido:'Dar sentido',recordar:'Recordar',sostener:'Reforzar'}[s]||'Activar'}),
  cacStepLabel:s=>s.status==='sent'?'Aceptado':'Borrador',
  cacSafe:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
