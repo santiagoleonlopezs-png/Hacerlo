@@ -53,6 +53,87 @@ Deno.serve(async(request:Request)=>{
     note:missing.length?'Configura los secretos en Supabase antes de enviar.':
       'Configuración presente; la entrega y el dominio aún requieren un envío de prueba.'});
  }
+ // Conciliación explícita y de solo lectura del estado más reciente en Resend.
+ // No requiere webhook; no crea ni reenvía mensajes. Limitada a correos propios.
+ if(mode==='refresh'){
+  const initiativeId=text(body?.initiative_id,60);
+  if(!uuid.test(initiativeId))return json({error:'Selecciona una iniciativa válida.'},400);
+  const {data:initiative,error:initiativeError}=await caller.from('initiatives')
+   .select('id,organization_id').eq('id',initiativeId).maybeSingle();
+  if(initiativeError||!initiative)return json({error:'No tienes acceso a esta iniciativa.'},403);
+  const {data:canEdit,error:permissionError}=await caller.rpc('can_edit_org',{p_org:initiative.organization_id});
+  if(permissionError||canEdit!==true)return json({error:'Necesitas permiso de edición en una fábrica activa.'},403);
+  const resendKey=Deno.env.get('RESEND_API_KEY')||'';
+  if(!resendKey)return json({error:'No se ha configurado Resend.'},503);
+  const service=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+  const {data:sends,error:sendsError}=await service.from('activation_sends').select('id')
+   .eq('initiative_id',initiativeId).eq('organization_id',initiative.organization_id)
+   .order('submitted_at',{ascending:false}).limit(10);
+  if(sendsError)return json({error:'No se pudo consultar el historial de envíos.'},503);
+  const ids=(sends||[]).map((s:any)=>s.id);
+  if(!ids.length)return json({ok:true,checked:0,note:'No hay correos de esta iniciativa para verificar.'});
+  const {data:items,error:itemsError}=await service.from('activation_email_items')
+   .select('id,activation_id,organization_id,resend_email_id,last_synced_at,delivered_at,opened_at,clicked_at,bounced_at,complained_at,suppressed_at,failed_at,delayed_at,delivery_status')
+   .in('activation_id',ids).eq('organization_id',initiative.organization_id)
+   .order('created_at',{ascending:false}).limit(100);
+  if(itemsError)return json({error:'No se pudieron consultar los identificadores de los correos.'},503);
+  let checked=0,changed=0,failed=0;
+  const touched=new Set<string>();
+  for(const item of items||[]){
+   if(checked>=10)break;
+   const last=item.last_synced_at?new Date(item.last_synced_at).getTime():0;
+   if(Date.now()-last<15*60*1000)continue;
+   if(!/^[a-z0-9-]{8,180}$/i.test(item.resend_email_id))continue;
+   checked++;
+   try{
+    const response=await fetch('https://api.resend.com/emails/'+encodeURIComponent(item.resend_email_id),{
+     headers:{Authorization:'Bearer '+resendKey}
+    });
+    if(!response.ok){failed++;continue;}
+    const mail=await response.json();
+    const event=String(mail?.last_event||'').toLowerCase();
+    const known=['sent','delivered','opened','clicked','bounced','suppressed','complained','failed','delivery_delayed','scheduled'];
+    const patch:Record<string,unknown>={last_synced_at:now()};
+    if(known.includes(event)){
+     const observed=now();
+     const map:Record<string,string>={
+      delivered:'delivered_at',opened:'opened_at',clicked:'clicked_at',bounced:'bounced_at',
+      complained:'complained_at',suppressed:'suppressed_at',failed:'failed_at',
+      delivery_delayed:'delayed_at'
+     };
+     const col=map[event];
+     if(col&&!item[col])patch[col]=observed;
+     // Abierto/clicado implica que Resend registró interacción posterior a entrega.
+     // Esta inferencia operativa nunca se utiliza como evidencia de adopción.
+     if(['opened','clicked'].includes(event)&&!item.delivered_at)patch.delivered_at=observed;
+     if(event==='clicked'&&!item.opened_at)patch.opened_at=observed;
+     if(['delivered','bounced','suppressed','complained','failed','delivery_delayed'].includes(event))
+      patch.delivery_status=event==='delivery_delayed'?'delayed':event;
+    }
+    const {error:updateError}=await service.from('activation_email_items')
+     .update(patch).eq('id',item.id).eq('organization_id',initiative.organization_id);
+    if(updateError){failed++;continue;}
+    touched.add(item.activation_id);changed++;
+   }catch{failed++;}
+  }
+  for(const activationId of touched){
+   const {data:rows,error:statsError}=await service.from('activation_email_items')
+    .select('delivered_at,opened_at,clicked_at,bounced_at,complained_at,suppressed_at,failed_at,delayed_at')
+    .eq('activation_id',activationId).eq('organization_id',initiative.organization_id);
+   if(statsError){failed++;continue;}
+   const count=(key:string)=>(rows||[]).filter((row:any)=>!!row[key]).length;
+   const {error:totalError}=await service.from('activation_sends').update({
+    delivered_count:count('delivered_at'),opened_count:count('opened_at'),
+    clicked_count:count('clicked_at'),bounced_count:count('bounced_at'),
+    complained_count:count('complained_at'),suppressed_count:count('suppressed_at'),
+    failed_delivery_count:count('failed_at'),delayed_count:count('delayed_at'),
+    event_updated_at:now()
+   }).eq('id',activationId).eq('initiative_id',initiativeId).eq('organization_id',initiative.organization_id);
+   if(totalError)failed++;
+  }
+  return json({ok:true,checked,updated:changed,errors:failed,
+   note:'Consulta del último estado de Resend. No sustituye los eventos completos del webhook y no mide adopción.'});
+ }
  const initiativeId=text(body?.initiative_id,60);
  const actionIndex=body?.action_index;
  const kind=body?.kind;
