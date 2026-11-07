@@ -39,11 +39,11 @@ function cacHistoryEventFields(row){
  if(parts.length)return '<small class="cac-provider-events">'+parts.join(' · ')+'</small>';
  const result=row?.delivery_check_result||{};
  const checked=!!row?.delivery_check_at;
- const n=k=>Math.max(0,Number(result?.[k])||0);
- const sent=n('sent')+n('queued')+n('scheduled');
+ const statusCount=k=>Math.max(0,Number(result?.[k])||0);
+ const sent=statusCount('sent')+statusCount('queued')+statusCount('scheduled');
  if(sent)return '<small class="cac-provider-events">Resend: '+sent+
   ' mensaje(s) en estado enviado o en proceso; entrega todavía no confirmada.</small>';
- if(checked&&n('unknown'))return '<small class="cac-provider-events">El proveedor no devolvió un estado reconocido. Consulta Resend → Emails.</small>';
+ if(checked&&statusCount('unknown'))return '<small class="cac-provider-events">El proveedor no devolvió un estado reconocido. Consulta Resend → Emails.</small>';
  return '<small class="cac-provider-events">Entrega aún sin verificar. «Aceptado» no garantiza la llegada al destinatario.</small>';
 }
 function cacAudienceAdoptionSignal(x,action,audienceId){
