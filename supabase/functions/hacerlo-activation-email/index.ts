@@ -39,6 +39,19 @@ Deno.serve(async(request:Request)=>{
  let body:any;
  try{body=await request.json()}catch{return json({error:'Solicitud inválida.'},400)}
  const mode=body?.mode;
+ // Comprobación sin revelar credenciales: el usuario puede ver si está
+ // listo para enviar antes de confirmar una comunicación real.
+ if(mode==='status'){
+  const apiKey=Deno.env.get('RESEND_API_KEY')||'';
+  const fromValue=Deno.env.get('HACERLO_FROM_EMAIL')||'';
+  const sender=fromValue.match(/<([^<>]+)>/)?.[1]||fromValue.trim();
+  const senderValid=validEmail(sender);
+  const missing=[...(!apiKey?['RESEND_API_KEY']:[]),...(!fromValue||!senderValid?['HACERLO_FROM_EMAIL']:[])];
+  return json({ok:true,configured:missing.length===0,missing,
+    domain:senderValid?sender.split('@')[1]:'',
+    note:missing.length?'Configura los secretos en Supabase antes de enviar.':
+      'Configuración presente; la entrega y el dominio aún requieren un envío de prueba.'});
+ }
  const initiativeId=text(body?.initiative_id,60);
  const actionIndex=body?.action_index;
  const kind=body?.kind;
@@ -122,13 +135,16 @@ Deno.serve(async(request:Request)=>{
  if(Number(body?.expected_count)!==count)return json({error:'La cantidad de destinatarios cambió. Revisa la vista previa antes de enviar.'},409);
  const resendKey=Deno.env.get('RESEND_API_KEY')||'';
  const from=Deno.env.get('HACERLO_FROM_EMAIL')||'';
- if(!resendKey||!from)return json({error:'Falta configurar RESEND_API_KEY y HACERLO_FROM_EMAIL como secretos de Supabase. No se ha enviado ningún correo.'},503);
+ if(!resendKey||!from)return json({
+  error:'El envío está deshabilitado porque falta configurar Resend en Supabase. No se ha enviado ningún correo.',
+  code:'EMAIL_NOT_CONFIGURED',missing:[...(!resendKey?['RESEND_API_KEY']:[]),...(!from?['HACERLO_FROM_EMAIL']:[])]
+ },503);
  const service=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
  // Cuota por fábrica: reduce envíos accidentales y el uso indebido del proveedor.
  const midnight=new Date();midnight.setUTCHours(0,0,0,0);
  const {data:existingQuota,error:quotaError}=await service.from('activation_sends').select('recipient_count')
   .eq('organization_id',initiative.organization_id).gte('submitted_at',midnight.toISOString())
-  .in('status',['processing','sent','partial']);
+  .in('status',['processing','sent','scheduled','partial']);
  if(quotaError)return json({error:'No se pudo comprobar el límite de envío.'},503);
  const used=(existingQuota||[]).reduce((sum:number,row:any)=>sum+Number(row.recipient_count||0),0);
  if(used+count>160)return json({error:'Se alcanzó el límite de seguridad de 160 destinatarios diarios por fábrica.'},429);
