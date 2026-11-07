@@ -39,7 +39,7 @@ assert.equal(summary.opened_count,2);
 assert.equal(summary.bounced_count,1);
 assert.equal(summary.complained_count,1);
 assert.match(ctx.cacHistoryMetricsHTML([summary]),/Entregados/);
-assert.match(ctx.cacHistoryMetricsHTML([summary]),/no es un consolidado histórico completo/);
+assert.match(ctx.cacHistoryMetricsHTML([summary]),/Se muestran hasta 30 activaciones recientes/);
 assert.match(ctx.cacHistoryEventFields(summary),/3 entregados/);
 assert.match(ctx.cacHistoryEventFields({}),/Entrega aún sin verificar/);
 assert.match(ctx.cacHistoryEventFields({accepted_count:1,delivery_check_at:'2026-11-07T03:35:00Z',delivery_check_result:{sent:1}}),/aún no confirmada/);
