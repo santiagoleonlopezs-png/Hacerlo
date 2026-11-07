@@ -772,7 +772,7 @@ function renderCentroActivacion(x){
   'Comunica, reconoce y refuerza comportamientos desde cada intervención.',
   'RDAIM · IMPLEMENTACIÓN','✧'):'<h2>Centro de Activación Conductual</h2>';
  const technical='<details class="cac-technical" ontoggle="cacFoldToggle(this)"><summary><span class="cac-fold-mark">◷</span>'+
-  '<span class="cac-fold-copy"><strong>Resultados de las comunicaciones</strong>'+
+  '<span class="cac-fold-copy"><strong>Resultados de tu activación</strong>'+
   '<small>Conoce qué se envió, qué llegó y qué necesita atención</small></span>'+
   '<span class="cac-fold-chevron" aria-hidden="true">⌄</span></summary>'+
   '<div class="cac-technical-content">'+
