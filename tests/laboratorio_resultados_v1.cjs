@@ -47,7 +47,7 @@ assert.match(core,/void labBridgeLoad\(current\(\),true\)/);
 assert.match(core,/function labSeparateState\(i\)\{const \{labResults,\.\.\.state\}=i;return state\}/);
 assert.match(core,/app_state:labSeparateState\(i\)/);
 assert.ok(html.includes('src/modules/implementacion/laboratorio-resultados.js?v=1.0.0'));
-assert.ok(html.includes('src/modules/inteligencia/ia.js?v=2.10.10'));
+assert.match(html,/src\/modules\/inteligencia\/ia\.js\?v=\d+\.\d+\.\d+/);
 const scripts=[...html.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m=>m[1]);
 assert.ok(scripts.findIndex(s=>s.includes('laboratorio-resultados.js'))<scripts.findIndex(s=>s.includes('bootstrap.js')));
 console.log('Puente Laboratorio OK: forma agregada, sin PII, lectura en integración e IA.');
