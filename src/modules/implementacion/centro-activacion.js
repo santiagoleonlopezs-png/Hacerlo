@@ -486,7 +486,22 @@ async function cacActivateStep(){
   }
   if(sendBtn)sendBtn.textContent=scheduled?'Programando en Resend…':'Enviando…';
   cacActionFeedback('Confirmación recibida. Procesando el envío en Resend…','info');
-  // El identificador evita reintentos duplicados ante una respuesta incierta.
+  // Un rechazo definitivo del proveedor (sin correos aceptados) permite
+  // generar otro identificador; un resultado incierto conserva el anterior.
+  if(step.requestKey){
+   const {data:lastAttempt,error:lookupError}=await sb.from('activation_sends')
+    .select('status,accepted_count,failure_summary')
+    .eq('initiative_id',x._cloudId).eq('request_key',step.requestKey).maybeSingle();
+   if(lookupError)throw Error('No se pudo comprobar el envío anterior. Consulta el historial antes de reintentar.');
+   if(lastAttempt){
+    const confirmedRejected=lastAttempt.status==='failed'&&Number(lastAttempt.accepted_count)===0&&
+     /Resend rechazó uno o más mensajes \\((?:400|401|403|422)\\)/.test(String(lastAttempt.failure_summary||''));
+    if(!confirmedRejected)throw Error('Este intento ya se procesó o está pendiente. Consulta el historial antes de reintentar.');
+    step.requestKey='';
+    save();
+   }
+  }
+  // Reutilizar el identificador ante fallos inciertos evita envíos duplicados.
   const key=step.requestKey||crypto.randomUUID();
   step.requestKey=key;save();
   const result=await cacFunctionCall({...payload,mode:'send',request_key:key,expected_count:n,consent_attested:true});
