@@ -460,3 +460,25 @@
 @media(max-width:770px){.cac-launch{padding:18px}.cac-launch-choose{width:100%}.cac-home-streamlined .cac-direct-list{grid-template-columns:1fr}.cac-launch-counts{white-space:normal}.cac-launch-bottom{align-items:flex-start}}
 @media(max-width:540px){.cac-launch-actions{width:100%}.cac-launch-actions>button{flex:1 1 100%}.cac-action-menu{flex:1 1 100%}.cac-simple-list{padding:15px}.cac-simple-fold>summary,.cac-extra-tools>summary,.cac-technical>summary{padding:14px}.cac-editor-focused{padding:13px}.cac-form-block{padding:13px}.cac-form-block .cac-two,.cac-editor-more-fields .cac-two{grid-template-columns:1fr}.cac-confirm-block{padding:13px}.cac-confirm-block .cac-actions .primary{width:100%;margin-left:0}.cac-editor-focused .cac-compose-guide{padding:7px}.cac-compose-guide>span{padding:3px;font-size:9.5px}}
 @media(prefers-reduced-motion:reduce){.cac-fold-chevron,.cac-home-streamlined button{transition:none}}
+
+/* HACERLO · Retroalimentación visible junto a la acción de activar · v2.1 */
+.cac-home-streamlined .cac-send-state,
+.cac-home-streamlined .cac-action-feedback{
+ margin:0;padding:11px 13px;border-radius:10px;
+ border:1px solid #42737b;background:#103d4b;color:#d2eef1;
+ font-size:11.5px;line-height:1.6;overflow-wrap:anywhere;
+}
+.cac-home-streamlined .cac-send-state[data-tone="warning"],
+.cac-home-streamlined .cac-send-state:not([data-tone]){
+ background:#493722;border-color:#997c53;color:#ffe2b7;
+}
+.cac-home-streamlined .cac-action-feedback[data-tone="error"]{
+ background:#46302b;border-color:#b77b69;color:#ffe5d9;
+}
+.cac-home-streamlined .cac-action-feedback[data-tone="success"]{
+ background:#123e40;border-color:#43907b;color:#c6f5e2;
+}
+.cac-home-streamlined .cac-action-feedback[data-tone="info"]{
+ background:#103c4a;border-color:#428494;color:#cceef1;
+}
+.cac-home-streamlined [hidden]{display:none!important}
