@@ -42,7 +42,7 @@ assert.match(ctx.cacHistoryMetricsHTML([summary]),/Entregados/);
 assert.match(ctx.cacHistoryMetricsHTML([summary]),/Se muestran hasta 30 activaciones recientes/);
 assert.match(ctx.cacHistoryEventFields(summary),/3 entregados/);
 assert.match(ctx.cacHistoryEventFields({}),/Entrega aún sin verificar/);
-assert.match(ctx.cacHistoryEventFields({accepted_count:1,delivery_check_at:'2026-11-07T03:35:00Z',delivery_check_result:{sent:1}}),/aún no confirmada/);
+assert.match(ctx.cacHistoryEventFields({accepted_count:1,delivery_check_at:'2026-11-07T03:35:00Z',delivery_check_result:{sent:1}}),/entrega todavía no confirmada/);
 assert.match(ctx.cacHistoryEventFields({accepted_count:1}),/«Aceptado» no garantiza/);
 assert.match(ctx.cacHistoryMetricsHTML([summary]),/0 entregados no significa/);
 const journey=ctx.cacJourneysHTML(initiative,{action:initiative.actions[0]});
