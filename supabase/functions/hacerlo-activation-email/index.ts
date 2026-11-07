@@ -38,13 +38,19 @@ Deno.serve(async(request:Request)=>{
  const caller=createClient(url,anon,{global:{headers:{Authorization:bearer}},auth:{persistSession:false,autoRefreshToken:false}});
  const {data:{user},error:userError}=await caller.auth.getUser(bearer.slice(7));
  if(userError||!user||user.is_anonymous)return json({error:'Sesión inválida.'},401);
+ const service=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+ // Clave privada cifrada en Supabase Vault. Solo la función con service_role puede consultarla.
+ const activationResendKey=async():Promise<string>=>{
+  const {data,error}=await service.rpc('hacerlo_resend_activation_key');
+  return !error&&typeof data==='string'&&/^re_[a-zA-Z0-9_-]{20,}$/.test(data)?data:'';
+ };
  let body:any;
  try{body=await request.json()}catch{return json({error:'Solicitud inválida.'},400)}
  const mode=body?.mode;
  // Comprobación sin revelar credenciales: el usuario puede ver si está
  // listo para enviar antes de confirmar una comunicación real.
  if(mode==='status'){
-  const apiKey=Deno.env.get('RESEND_API_KEY')||'';
+  const apiKey=await activationResendKey();
   const fromValue=activationSender;
   const sender=fromValue.match(/<([^<>]+)>/)?.[1]||fromValue.trim();
   const senderValid=validEmail(sender);
@@ -227,7 +233,7 @@ Deno.serve(async(request:Request)=>{
   contacts:contactNames,manual_count:manualEmail?1:0,
   note:'Destinatarios únicos verificados. Cada persona recibirá un correo privado.'});
  if(Number(body?.expected_count)!==count)return json({error:'La cantidad de destinatarios cambió. Revisa la vista previa antes de enviar.'},409);
- const resendKey=Deno.env.get('RESEND_API_KEY')||'';
+ const resendKey=await activationResendKey();
  const from=activationSender;
  // Mantener las respuestas en el buzón comercial, aunque el remitente use un subdominio.
  const replyTo=(Deno.env.get('HACERLO_REPLY_TO_EMAIL')||'contacto@hacerlofc.com').trim();
@@ -236,7 +242,6 @@ Deno.serve(async(request:Request)=>{
   error:'El envío está deshabilitado porque falta configurar Resend en Supabase. No se ha enviado ningún correo.',
   code:'EMAIL_NOT_CONFIGURED',missing:[...(!resendKey?['RESEND_API_KEY']:[]),...(!from?['SENDER_INVALID']:[])]
  },503);
- const service=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
  // Cuota por fábrica: reduce envíos accidentales y el uso indebido del proveedor.
  const midnight=new Date();midnight.setUTCHours(0,0,0,0);
  const {data:existingQuota,error:quotaError}=await service.from('activation_sends').select('recipient_count')
