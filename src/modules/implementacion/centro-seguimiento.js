@@ -39,12 +39,53 @@ function cacHistoryEventFields(row){
  return parts.length?'<small class="cac-provider-events">'+parts.join(' · ')+'</small>':
   '<small class="cac-provider-events">Sin eventos de entrega registrados</small>';
 }
-function cacCreateForAudience(id){
+function cacAudienceAdoptionSignal(x,action,audienceId){
+ const ids=[action?.behaviorId,...(Array.isArray(action?.behaviorIds)?action.behaviorIds:[])]
+  .filter(Boolean).map(String);
+ const behavior=(x.behaviors||[]).find(b=>ids.includes(String(b?.id)));
+ if(!behavior)return null;
+ const counts={understands:0,tries:0,performs:0,sustains:0};
+ for(const person of x.audiencePeople||[]){
+  if(String(person?.audienceId)!==String(audienceId))continue;
+  const latest=(person.adoptionHistory||[])
+    .filter(r=>String(r.behaviorId)===String(behavior.id)&&Object.hasOwn(counts,r.stage))
+    .sort((a,b)=>String(b.observedOn||'').localeCompare(String(a.observedOn||''))||
+      String(b.recordedAt||'').localeCompare(String(a.recordedAt||'')))[0];
+  if(latest)counts[latest.stage]++;
+ }
+ const total=Object.values(counts).reduce((n,z)=>n+z,0);
+ if(!total)return null;
+ const [stage,count]=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+ const recommendations={
+  understands:{kind:'comunicacion',next:'activar',label:'Apoyar la acción',detail:'La evidencia registra comprensión; todavía se necesita verificar la práctica.'},
+  tries:{kind:'comunicacion',next:'recordar',label:'Reforzar la práctica',detail:'Hay registros de ejecución en prueba; conviene explorar qué apoyo facilita continuar.'},
+  performs:{kind:'comunicacion',next:'recordar',label:'Sostener la práctica',detail:'Hay registros de ejecución autónoma; una ayuda en el momento oportuno puede ser útil.'},
+  sustains:{kind:'reconocimiento',next:'sostener',label:'Revisar reconocimiento',detail:'Hay registros de sostenimiento. Verifica los logros antes de reconocer.'}
+ };
+ return {...recommendations[stage],total,count,observedStage:stage,behavior:behavior.name};
+}
+function cacSuggestForAudience(id){
+ const x=current(),row=cacAction(x);
+ const signal=row&&cacAudienceAdoptionSignal(x,row.action,id);
+ if(!signal)return;
+ cacCreateForAudience(id,signal.next,signal.kind);
+ const step=cacStep(cacAction(current()));
+ if(!step||step.status!=='draft')return;
+ step.basis={source:'adopcion_audiencia',observedStage:signal.observedStage,
+  recordedCount:signal.count,totalObserved:signal.total,observedBehavior:signal.behavior,
+  reason:signal.detail,recordedAt:new Date().toISOString()};
+ cacMessage='Borrador preparado a partir de '+signal.count+' observaciones de «'+signal.observedStage+
+  '». Comprueba la evidencia y adapta el mensaje antes de elegir enviarlo.';
+ save();render();
+}
+function cacCreateForAudience(id,stage='activar',kind='comunicacion'){
  if(cacBusy||!cacKeepVisibleDraft())return;
  const x=current(),row=cacAction(x);
  if(!row||!(x.audiences||[]).some(a=>String(a.id)===String(id)))return;
- cacEnsureMechanism(row.action,'comunicacion');
- const step=cacEnsureNew(row.action,'activar','comunicacion');
+ if(!['sentido','activar','recordar','sostener'].includes(stage)||
+   !['comunicacion','reconocimiento'].includes(kind))return;
+ cacEnsureMechanism(row.action,kind);
+ const step=cacEnsureNew(row.action,stage,kind);
  step.standalone=true;step.audienceIds=[String(id)];
  step.contactIds=[];step.manualEmail='';step.manualName='';
  row.action.activationSequence=[...cacSteps(row.action),step];
@@ -79,7 +120,14 @@ function cacJourneysHTML(x,row){
   '<div class="cac-journey-content">'+
   (audiences.length?'<div class="cac-journey-groups">'+linked.map(({audience,rows})=>
    '<article class="cac-journey-group"><div class="cac-journey-group-head"><div><strong>'+cacSafe(audience.name||'Audiencia')+'</strong>'+
-    '<small>'+rows.length+' '+(rows.length===1?'activación':'activaciones')+' en este recorrido</small></div>'+
+    '<small>'+rows.length+' '+(rows.length===1?'activación':'activaciones')+' en este recorrido</small>'+
+    (typeof cacAudienceAdoptionSignal==='function'&&cacAudienceAdoptionSignal(x,action,audience.id)?
+      '<small class="cac-journey-evidence">✧ '+cacAudienceAdoptionSignal(x,action,audience.id).count+
+        ' de '+cacAudienceAdoptionSignal(x,action,audience.id).total+
+        ' observaciones de adopción orientan un posible refuerzo</small>':'')+'</div>'+
+    (cacAudienceAdoptionSignal(x,action,audience.id)?
+     '<button class="secondary" type="button" data-cac-audience="'+cacSafe(audience.id)+
+     '" onclick="cacSuggestForAudience(this.dataset.cacAudience)">✧ Sugerir refuerzo</button>':'')+
     '<button class="secondary" type="button" data-cac-audience="'+cacSafe(audience.id)+
     '" onclick="cacCreateForAudience(this.dataset.cacAudience)">+ Mensaje</button></div>'+
     (rows.length?'<div class="cac-journey-steps">'+renderer(rows)+'</div>':
