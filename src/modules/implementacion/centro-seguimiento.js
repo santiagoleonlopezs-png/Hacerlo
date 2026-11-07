@@ -14,6 +14,7 @@ function cacProviderStats(rows){
 function cacHistoryMetricsHTML(rows){
  if(!rows?.length)return '';
  const z=cacProviderStats(rows);
+ const rejected=rows.filter(r=>r?.status==='failed'&&Number(r?.accepted_count||0)===0).length;
  // La ausencia de eventos NO equivale a cero entregas: un envío puede haber
  // llegado o rebotado aunque el seguimiento todavía no esté conectado.
  const hasResults=rows.some(r=>Boolean(r?.event_updated_at||r?.delivery_check_at)||
@@ -32,10 +33,15 @@ function cacHistoryMetricsHTML(rows){
   '</div><p class="cac-inline-help">'+(hasResults
    ?'Se muestran resultados registrados de hasta 30 comunicaciones. Los datos aún pueden estar incompletos si no se han recibido todos los eventos.'
    :'Todavía no recibimos datos de entrega. El guion (—) significa «sin información», no cero entregas o rebotes.')+
+  (rejected?' '+rejected+' intento(s) no enviado(s) por rechazo del proveedor; no se cuentan como aceptados.':'')+
   ' *Las aperturas se registran solo cuando el seguimiento está habilitado y el correo permite detectarlas; los clics requieren enlaces. Ninguna de estas métricas demuestra adopción.</p>';
 }
 function cacHistoryEventFields(row){
  const n=k=>Math.max(0,Number(row?.[k])||0);
+ if(row?.status==='failed'&&n('accepted_count')===0){
+  const code=String(row?.failure_summary||'').match(/\((4\d\d|5\d\d)\)/)?.[1];
+  return '<small class="cac-provider-events">No se envió ningún correo: el proveedor rechazó este intento'+(code?' (código '+code+')':'')+'.</small>';
+ }
  const parts=[];
  if(n('delivered_count'))parts.push(n('delivered_count')+' entregados');
  if(n('opened_count'))parts.push(n('opened_count')+' aperturas*');
