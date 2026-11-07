@@ -360,6 +360,7 @@ function cacDeliveryRefresh(){
   el.innerHTML=cacDeliveryHtml();
   el.setAttribute('data-ready',String(cacDeliveryStatus?.configured===true));
  }
+ cacRefreshSendConnection();
 }
 async function cacCheckDelivery(force=false){
  if(!cloudReady)return null;
@@ -374,31 +375,92 @@ async function cacCheckDelivery(force=false){
  }finally{cacDeliveryLoading=false;cacDeliveryRefresh();}
  return cacDeliveryStatus;
 }
-async function cacActivateStep(){
- if(cacBusy)return;
- const x=current(),row=cacAction(x),step=cacStep(row),form=document.getElementById('cac-form');
- if(!row||!step||!form)return;
- if(step.status!=='draft')return alert('Este paso ya fue enviado o programado. No se duplicará.');
- let draft;try{draft=cacDraft(form,step,row)}catch{return alert('Revisa la fecha de programación.');}
- if(!draft.title||!draft.body||(!draft.audienceIds.length&&!draft.contactIds.length&&!draft.manualEmail))
-  return alert('Escribe el asunto, el mensaje y al menos un destinatario: persona, correo directo o audiencia.');
+// Mostrar siempre el resultado junto al botón: el usuario no debe buscar errores
+// al inicio de la pantalla o depender de ventanas emergentes del navegador.
+function cacActionFeedback(message,tone='error'){
+ cacMessage=String(message||'');
+ const el=document.getElementById?.('cac-action-feedback');
+ if(el){
+  el.hidden=false;el.textContent=cacMessage;
+  el.dataset.tone=tone;
+  el.setAttribute?.('role',tone==='error'?'alert':'status');
+  el.scrollIntoView?.({block:'nearest',behavior:'smooth'});
+ }
+ const header=document.getElementById?.('cac-notice');
+ if(header)header.textContent=cacMessage;
+}
+function cacSendConnectionHtml(){
+ if(!cloudReady)return 'Para activar un envío, primero inicia sesión y sincroniza la iniciativa.';
+ const status=cacDeliveryStatus;
+ if(!status||status.unavailable)return '';
+ if(status.configured)return '';
+ const missing=Array.isArray(status.missing)?status.missing:[];
+ return 'Envío detenido: falta '+(missing.length?missing.join(' y '):'configurar el correo')+
+  ' en Supabase. Puedes seguir guardando borradores.';
+}
+function cacRefreshSendConnection(){
+ const el=document.getElementById?.('cac-send-state');
+ if(!el)return;
+ const msg=cacSendConnectionHtml();
+ el.hidden=!msg;
+ el.textContent=msg;
+ el.dataset.tone=cacDeliveryStatus?.configured===false?'warning':'info';
+}
+function cacActivationValidation(draft,authorized,connected,synced){
+ if(!draft.title)return 'Completa el asunto en el paso 01 antes de activar.';
+ if(!draft.body)return 'Completa el mensaje en el paso 01 antes de activar.';
+ if(!draft.audienceIds.length&&!draft.contactIds.length&&!draft.manualEmail)
+  return 'Selecciona al menos una audiencia, una persona o un correo individual en el paso 02.';
  if(draft.manualEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.manualEmail))
-  return alert('El correo individual no tiene un formato válido.');
- if(!form.querySelector('input[name="authorized"]')?.checked)return alert('Confirma que cuentas con autorización para comunicarte con esas personas.');
- if(!cloudReady||!x._cloudId)return alert('Debes tener la iniciativa sincronizada con Supabase para enviar.');
- const scheduled=draft.scheduledFor?new Date(draft.scheduledFor):null;
- if(scheduled&&(+scheduled-Date.now()<600000||+scheduled-Date.now()>30*86400000))return alert('Programa entre 10 minutos y 30 días a partir de ahora.');
- cacBusy=true;const sendBtn=document.getElementById('cac-send');if(sendBtn){sendBtn.disabled=true;sendBtn.textContent='Revisando destinatarios…';}
+  return 'Revisa la dirección del correo individual en el paso 02.';
+ if(!authorized)return 'Marca la autorización para contactar a los destinatarios antes de activar.';
+ if(!connected||!synced)return 'Inicia sesión y sincroniza esta iniciativa para poder enviar.';
+ if(draft.scheduledFor){
+  const delta=new Date(draft.scheduledFor).getTime()-Date.now();
+  if(!Number.isFinite(delta)||delta<600000||delta>30*86400000)
+   return 'La programación debe estar entre 10 minutos y 30 días a partir de ahora.';
+ }
+ return '';
+}
+async function cacActivateStep(){
+ if(cacBusy){cacActionFeedback('Ya se está verificando esta activación. No es necesario volver a pulsar.','info');return;}
+ const x=current(),row=cacAction(x),step=cacStep(row),form=document.getElementById?.('cac-form');
+ if(!row||!step||!form){
+  cacActionFeedback('No se encontró el borrador actual. Vuelve al Centro y abre nuevamente la comunicación.');
+  return;
+ }
+ if(step.status!=='draft'){
+  cacActionFeedback('Esta comunicación ya se envió o programó. Puedes crear otra versión, pero no duplicar el envío.');
+  return;
+ }
+ let draft;
+ try{draft=cacDraft(form,step,row);}
+ catch{
+  cacActionFeedback('La fecha de programación no es válida. Revísala en las opciones de envío.');
+  return;
+ }
+ const authorized=!!form.querySelector('input[name="authorized"]')?.checked;
+ const issue=cacActivationValidation(draft,authorized,cloudReady,x?._cloudId);
+ if(issue){
+  cacActionFeedback(issue);
+  return;
+ }
+ cacBusy=true;
+ const sendBtn=document.getElementById?.('cac-send');
+ if(sendBtn){sendBtn.disabled=true;sendBtn.textContent='Verificando antes de enviar…';}
+ cacActionFeedback('Verificando la conexión y los destinatarios. Aún no se ha enviado ningún correo.','info');
  try{
   cacStoreDraft(row,step,draft);
   const config=await cacCheckDelivery(true);
   if(!config?.configured){
-   const absent=Array.isArray(config?.missing)&&config.missing.length
-    ?' ('+config.missing.join(', ')+')':'';
-   throw Error('Conexión de Resend pendiente'+absent+'. Configúrala en Supabase → Edge Functions → Secrets. No se envió ningún correo.');
+   const missing=Array.isArray(config?.missing)?config.missing:[];
+   const detail=missing.length?missing.join(' y '):'la configuración de Resend';
+   throw Error('No se puede enviar todavía: falta '+detail+
+    ' en Supabase → Edge Functions → Secrets. Tu borrador está guardado; no se envió ningún correo.');
   }
+  cacActionFeedback('Conexión verificada. Comprobando destinatarios en el servidor…','info');
   const saved=await confirmCloudSave();
-  if(!saved.ok)throw Error(saved.message||'No fue posible guardar la secuencia en Supabase.');
+  if(!saved?.ok)throw Error(saved?.message||'No fue posible guardar el borrador en Supabase.');
   const payload={
    initiative_id:x._cloudId,action_index:row.index,kind:draft.kind,audience_ids:draft.audienceIds,
    contact_ids:draft.contactIds,manual_email:draft.manualEmail,manual_name:draft.manualName,
@@ -407,16 +469,24 @@ async function cacActivateStep(){
   };
   const preview=await cacFunctionCall({...payload,mode:'preview'});
   const n=Number(preview.recipient_count||0);
+  if(!Number.isSafeInteger(n)||n<1)throw Error('No se encontraron destinatarios válidos. Comprueba sus correos.');
   const names=[...(preview.contacts||[]),...(preview.audiences||[]),
-    ...(preview.manual_count?['Correo escrito: '+draft.manualEmail]:[])].join(', ');
-  document.getElementById('cac-recipient-check').textContent=n+' destinatario(s) único(s) validado(s) por el servidor · '+names;
-  const confirmation='Intervención: '+row.action.name+'\nPaso: '+cacStage(draft.stage).label+
+    ...(preview.manual_count?['Correo individual: '+draft.manualEmail]:[])].join(', ');
+  const countNote=document.getElementById?.('cac-recipient-check');
+  if(countNote)countNote.textContent=n+' correo(s) único(s) validados · '+names;
+  const scheduled=draft.scheduledFor?new Date(draft.scheduledFor):null;
+  const confirmation='Intervención: '+row.action.name+'\nPropósito: '+cacStage(draft.stage).label+
    '\nDestinatarios: '+names+'\nDirecciones únicas: '+n+'\n'+
    (scheduled?'Programación: '+scheduled.toLocaleString('es-CO'):'Envío: ahora')+
    '\n\n¿Confirmas el envío de este mensaje desde HACERLO?';
-  if(!confirm(confirmation)){cacMessage='No se envió. Puedes seguir editando el paso.';return;}
+  cacActionFeedback('Se validaron '+n+' destinatario(s). Falta tu confirmación para activar.','info');
+  if(!confirm(confirmation)){
+   cacActionFeedback('Activación cancelada. No se envió ningún correo y tu borrador se conservó.','info');
+   return;
+  }
   if(sendBtn)sendBtn.textContent=scheduled?'Programando en Resend…':'Enviando…';
-  // Persistir el identificador en el cliente: reintentos no generan duplicados.
+  cacActionFeedback('Confirmación recibida. Procesando el envío en Resend…','info');
+  // El identificador evita reintentos duplicados ante una respuesta incierta.
   const key=step.requestKey||crypto.randomUUID();
   step.requestKey=key;save();
   const result=await cacFunctionCall({...payload,mode:'send',request_key:key,expected_count:n,consent_attested:true});
@@ -425,17 +495,19 @@ async function cacActivateStep(){
   step.acceptedCount=result.accepted_count||0;
   step.failedCount=result.failed_count||0;
   step.activatedAt=new Date().toISOString();
-  cacMessage=step.status==='scheduled'?'Paso programado en el proveedor.':'Solicitud de envío procesada por el proveedor.';
+  cacActionFeedback(step.status==='scheduled'?
+   'Solicitud programada en Resend. Consulta Seguimiento para confirmar su entrega.':
+   'Solicitud aceptada por Resend. Puedes consultar el estado de entrega en Seguimiento.','success');
   save();void cacLoadHistory(true);render();
  }catch(err){
-  const reason=err?.message||'Error desconocido';
-  const configError=/Resend pendiente|no est[aá] configurad|falta configurar|EMAIL_NOT_CONFIGURED/i.test(reason);
-  cacMessage='No se completó la activación: '+reason+
-   (configError?' El borrador se conservó; no se efectuó ningún envío.':
-    ' Si el envío pudo iniciarse, consulta el historial antes de reintentar.');
-  const p=document.getElementById('cac-notice');if(p)p.textContent=cacMessage;
+  const reason=err?.message||'Ocurrió un error desconocido.';
+  const couldHaveSent=!!step.requestKey;
+  cacActionFeedback('No se completó la activación: '+reason+
+   (couldHaveSent?' Consulta el historial antes de reintentar para evitar duplicados.':
+    ' El borrador se conserva; no se efectuó ningún envío.'),'error');
  }finally{
-  cacBusy=false;const button=document.getElementById('cac-send');
+  cacBusy=false;
+  const button=document.getElementById?.('cac-send');
   if(button){button.disabled=false;button.textContent='Revisar destinatarios y activar';}
  }
 }
@@ -566,9 +638,11 @@ function cacStepEditor(x,row,step){
    (immutable?'':'<div class="cac-confirm-block"><div class="cac-confirm-heading"><span class="cac-step-kicker">03 · REVISIÓN</span>'+
     '<h4>Revisa y decide</h4><p>Guardar un borrador nunca envía un correo.</p></div>'+
     '<label class="cac-check"><input type="checkbox" name="authorized"><span>Confirmo que tengo autorización para contactar a los destinatarios.</span></label>'+
+    '<p id="cac-send-state" class="cac-send-state" role="status" '+(cacSendConnectionHtml()?'':'hidden')+'>'+cacSafe(cacSendConnectionHtml())+'</p>'+
     '<div class="cac-actions"><button class="secondary" type="submit">Guardar borrador</button>'+
      '<button class="secondary" type="button" onclick="cacDuplicateForAudience()">Versión para otro destinatario</button>'+
-     '<button class="primary" type="button" id="cac-send" onclick="cacActivateStep()">Revisar destinatarios y activar</button></div></div>')+
+     '<button class="primary" type="button" id="cac-send" onclick="cacActivateStep()">Revisar destinatarios y activar</button></div>'+
+    '<p id="cac-action-feedback" class="cac-action-feedback" role="status" aria-live="polite" hidden></p></div>')+
    '<p class="cac-inline-help" id="cac-recipient-check">La verificación de destinatarios se realiza al activar.</p>'+
    '</form><aside class="cac-preview-panel"><div class="cac-preview-top">VISTA PREVIA · ASÍ RECIBIRÁN EL CORREO</div>'+
    '<div class="cac-preview-paper" id="cac-preview"><div class="cac-preview-brand">✣ HACERLO <span>· ACTIVACIÓN CONDUCTUAL</span></div>'+
