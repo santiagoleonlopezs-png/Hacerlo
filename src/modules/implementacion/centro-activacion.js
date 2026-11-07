@@ -2,6 +2,7 @@
  * Cada paso pertenece a la acción original. Nunca enviar automáticamente al guardar. */
 let cacActionIndex=null,cacStepId=null,cacEditorOpen=false,cacHistory=[],cacHistoryFor='',cacHistoryLoading=false,cacBusy=false,cacMessage='';
 let cacAiBusy=false,cacAiSuggestion=null,cacAiNotice='';
+let cacDeliveryStatus=null,cacDeliveryLoading=false;
 const CAC_STAGES=[
  {id:'sentido',label:'Dar sentido',moment:'Antes',description:'Explica el para qué del cambio'},
  {id:'activar',label:'Activar',moment:'Durante',description:'Pide una acción observable y realizable'},
@@ -326,6 +327,43 @@ async function cacFunctionCall(body){
  if(data?.error)throw new Error(data.error);
  return data;
 }
+function cacDeliveryHtml(){
+ if(!cloudReady)return '<div class="cac-delivery-copy"><strong>Conexión de envío</strong><p>Inicia sesión y selecciona una iniciativa para comprobar el correo.</p></div>';
+ if(!cacDeliveryStatus)return '<div class="cac-delivery-copy"><strong>Conexión de envío</strong><p>Comprobando el servicio seguro de correos…</p></div>';
+ const status=cacDeliveryStatus;
+ const ready=status?.configured===true;
+ const missing=Array.isArray(status?.missing)?status.missing:[];
+ const detail=ready
+  ?'Resend está configurado en Supabase. Para comprobar la entrega real, haz primero un envío de prueba a tu propio correo.'
+  :status?.unavailable?'No fue posible comprobar el servicio. El envío seguirá requiriendo la verificación del servidor.'
+  :'No se pueden enviar comunicaciones todavía. Falta configurar '+missing.join(' y ')+'. Puedes seguir redactando y guardando borradores.';
+ return '<div class="cac-delivery-copy"><span class="cac-eyebrow">ESTADO DEL CORREO</span>'+
+  '<strong>'+(ready?'Configuración presente · pendiente de prueba':'Conexión de correo pendiente')+'</strong>'+
+  '<p>'+cacSafe(detail)+'</p></div>'+
+  '<div class="cac-delivery-links"><button type="button" class="secondary" onclick="cacCheckDelivery(true)">Comprobar otra vez</button>'+
+  (!ready?'<a href="https://supabase.com/dashboard/project/mflakxgdkpuhemgslgsa/functions" target="_blank" rel="noopener noreferrer">Configurar en Supabase ↗</a>':'')+
+  '</div>';
+}
+function cacDeliveryRefresh(){
+ const el=document.getElementById('cac-delivery');
+ if(el){
+  el.innerHTML=cacDeliveryHtml();
+  el.setAttribute('data-ready',String(cacDeliveryStatus?.configured===true));
+ }
+}
+async function cacCheckDelivery(force=false){
+ if(!cloudReady)return null;
+ if(cacDeliveryLoading)return cacDeliveryStatus;
+ if(cacDeliveryStatus&&!force)return cacDeliveryStatus;
+ cacDeliveryLoading=true;
+ try{
+  const result=await cacFunctionCall({mode:'status'});
+  cacDeliveryStatus=result;
+ }catch(err){
+  cacDeliveryStatus={configured:false,unavailable:true};
+ }finally{cacDeliveryLoading=false;cacDeliveryRefresh();}
+ return cacDeliveryStatus;
+}
 async function cacActivateStep(){
  if(cacBusy)return;
  const x=current(),row=cacAction(x),step=cacStep(row),form=document.getElementById('cac-form');
@@ -343,6 +381,12 @@ async function cacActivateStep(){
  cacBusy=true;const sendBtn=document.getElementById('cac-send');if(sendBtn){sendBtn.disabled=true;sendBtn.textContent='Revisando destinatarios…';}
  try{
   cacStoreDraft(row,step,draft);
+  const config=await cacCheckDelivery(true);
+  if(!config?.configured){
+   const absent=Array.isArray(config?.missing)&&config.missing.length
+    ?' ('+config.missing.join(', ')+')':'';
+   throw Error('Conexión de Resend pendiente'+absent+'. Configúrala en Supabase → Edge Functions → Secrets. No se envió ningún correo.');
+  }
   const saved=await confirmCloudSave();
   if(!saved.ok)throw Error(saved.message||'No fue posible guardar la secuencia en Supabase.');
   const payload={
@@ -374,8 +418,11 @@ async function cacActivateStep(){
   cacMessage=step.status==='scheduled'?'Paso programado en el proveedor.':'Solicitud de envío procesada por el proveedor.';
   save();void cacLoadHistory(true);render();
  }catch(err){
-  cacMessage='No se completó la activación: '+(err?.message||'Error desconocido')+
-   '. Si el envío quedó en curso, consulta el historial antes de reintentarlo.';
+  const reason=err?.message||'Error desconocido';
+  const configError=/Resend pendiente|no est[aá] configurad|falta configurar|EMAIL_NOT_CONFIGURED/i.test(reason);
+  cacMessage='No se completó la activación: '+reason+
+   (configError?' El borrador se conservó; no se efectuó ningún envío.':
+    ' Si el envío pudo iniciarse, consulta el historial antes de reintentar.');
   const p=document.getElementById('cac-notice');if(p)p.textContent=cacMessage;
  }finally{
   cacBusy=false;const button=document.getElementById('cac-send');
@@ -454,6 +501,7 @@ function renderCentroActivacion(x){
  const rows=cacActions(x),row=cacAction(x),
   sequence=row?cacSequenceSteps(row.action):[],direct=row?cacDirectSteps(row.action):[],step=cacStep(row);
  if(x?._cloudId&&!cacHistoryLoading&&cacHistoryFor!==x._cloudId)void cacLoadHistory();
+ if(cloudReady&&!cacDeliveryStatus&&!cacDeliveryLoading)void cacCheckDelivery();
  let content='';
  if(!rows.length){
   content='<section class="cac-empty"><div class="cac-empty-symbol" aria-hidden="true">✧</div><div class="cac-empty-copy"><span class="cac-eyebrow">EMPIEZA CUANDO QUIERAS</span><h3>Tu primera activación comienza con una intervención</h3>'+
@@ -504,6 +552,8 @@ function renderCentroActivacion(x){
   '<section class="cac-introduction"><div class="cac-intro-copy"><span class="cac-eyebrow">DEL DISEÑO A LA ACCIÓN</span>'+
   '<p>Comunica, reconoce o programa refuerzos. <strong>Tú decides cuándo y cómo.</strong></p></div>'+
   '<div class="cac-capabilities"><span>✉ Audiencias</span><span>◷ Secuencias opcionales</span><span>✧ Reconocimiento</span></div></section>'+
+  '<section class="cac-delivery" id="cac-delivery" data-ready="'+String(cacDeliveryStatus?.configured===true)+'">'+cacDeliveryHtml()+'</section>'+
+  (typeof cacSignalPanel==='function'?cacSignalPanel(x,row):'')+
   content+
   '<p class="cac-notice" id="cac-notice" role="status" aria-live="polite">'+cacSafe(cacMessage)+'</p>'+
   '<section class="cac-history"><div class="cac-heading"><div><small>TRAZABILIDAD</small>'+
