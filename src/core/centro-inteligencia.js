@@ -72,6 +72,64 @@ function ciSignalRow(s){
  '<span class="ci-signal-type">'+safe(s.label)+'</span><span class="ci-signal-body"><strong>'+safe(s.title)+'</strong><small>'+safe(s.context)+' · '+safe(s.detail)+'</small></span>'+
  '<span class="ci-signal-arrow" aria-hidden="true">↗</span></button>';
 }
+/* Ejecución transversal: solo acciones realmente iniciadas y aún sin completar.
+   No interpretar un plazo futuro o un estado "Pendiente" como prueba de ejecución. */
+function ciActionsRunningToday(today=ciLocalDate(new Date())){
+ const rows=[];
+ for(const initiative of(db.initiatives||[])){
+  (initiative.actions||[]).forEach((action,index)=>{
+   if(normalizedStatus(action.status)!=='En ejecución')return;
+   const start=ciDateKey(action.start),end=ciDateKey(action.end);
+   if(!start||start>today)return;
+   rows.push({
+    initiativeId:initiative.id,initiativeName:String(initiative.name||'Sin nombre'),
+    index,name:String(action.name||'Acción sin título'),owner:String(action.owner||'Sin responsable'),
+    start,end,overdue:!!end&&end<today,finishesToday:end===today
+   });
+  });
+ }
+ return rows.sort((a,b)=>Number(b.overdue)-Number(a.overdue)||
+   (a.end||'9999-12-31').localeCompare(b.end||'9999-12-31')||
+   a.initiativeName.localeCompare(b.initiativeName,'es')||
+   a.name.localeCompare(b.name,'es'));
+}
+function ciRunningActionRow(a){
+ const description=a.overdue?'Fecha de fin vencida':a.finishesToday?'Finaliza hoy':'En ejecución';
+ return '<button class="ci-running-row'+(a.overdue?' is-late':'')+'" type="button"'+
+  ' data-ci-id="'+safe(String(a.initiativeId))+'" data-ci-target="Intervenciones" onclick="ciOpenSignal(this)"'+
+  ' aria-label="Abrir acción '+safe(a.name)+' de '+safe(a.initiativeName)+'">'+
+  '<span class="ci-running-status'+(a.overdue?' is-late':'')+'">'+
+    (a.overdue?'!':'↗')+'</span>'+
+  '<span class="ci-running-info"><strong>'+safe(a.name)+'</strong>'+
+    '<span class="ci-running-origin">'+safe(a.initiativeName)+'</span></span>'+
+  '<span class="ci-running-details"><span>'+safe(a.owner)+'</span>'+
+   '<small>Inicio '+ciDayLabel(a.start)+' · Fin '+(a.end?ciDayLabel(a.end):'Sin definir')+'</small></span>'+
+  '<span class="ci-running-state'+(a.overdue?' is-late':'')+'">'+description+'</span>'+
+  '<span class="ci-running-arrow" aria-hidden="true">↗</span></button>';
+}
+function ciRunningTodayPanel(){
+ const today=ciLocalDate(new Date()),items=ciActionsRunningToday(today);
+ const projects=new Set(items.map(i=>String(i.initiativeId))).size,late=items.filter(i=>i.overdue).length;
+ const visible=items.slice(0,8),extra=items.slice(8);
+ const formatted=new Intl.DateTimeFormat('es-CO',{day:'numeric',month:'long',year:'numeric'})
+  .format(new Date(today+'T12:00:00'));
+ return '<section class="ci-running" aria-label="Acciones en curso hoy · Todas las iniciativas">'+
+  '<div class="ci-running-head"><div><span class="ci-eyebrow">EJECUCIÓN · PORTAFOLIO</span>'+
+   '<h3>Acciones en curso <span>· Hoy</span></h3>'+
+   '<p>Consolidadas de todas las iniciativas. Solo acciones en ejecución que ya tienen fecha de inicio.</p></div>'+
+   '<div class="ci-running-summary"><strong>'+items.length+'</strong><span>en curso</span>'+
+     '<i></i><strong>'+projects+'</strong><span>iniciativas</span>'+
+     (late?'<i></i><strong class="ci-running-late-count">'+late+'</strong><span>vencidas</span>':'')+
+   '</div></div>'+
+  (items.length?
+    '<div class="ci-running-list">'+visible.map(ciRunningActionRow).join('')+'</div>'+
+    (extra.length?'<details class="ci-running-more"><summary>Ver las '+extra.length+' acciones restantes <span aria-hidden="true">⌄</span></summary>'+
+     '<div class="ci-running-list">'+extra.map(ciRunningActionRow).join('')+'</div></details>':''):
+    '<div class="ci-running-empty"><span aria-hidden="true">✓</span><div><strong>No hay acciones en curso registradas para hoy.</strong>'+
+     '<small>Este espacio se actualizará cuando una acción tenga fecha de inicio y estado «En ejecución».</small></div></div>')+
+  '<p class="ci-caveat">Corte: '+safe(formatted)+'. Las acciones completadas, futuras o pendientes no se incluyen. Las vencidas permanecen visibles hasta que se cierre su ejecución.</p>'+
+  '</section>';
+}
 function renderIntelligenceHome(){
  const all=db.initiatives||[],signals=ciSignals(),e=ciEvidence();
  const behaviors=all.reduce((n,i)=>n+(i.behaviors||[]).length,0);
@@ -117,5 +175,5 @@ function renderIntelligenceHome(){
  '<p>Profundiza en los sistemas, revisa las mediciones o continúa con la gestión de iniciativas.</p></div>'+
  '<div class="ci-next-actions"><button type="button" onclick="ciGoProjects()">Ver iniciativas ↗</button>'+
  '<button type="button" onclick="ciOpenStage(2)">Explorar análisis ↗</button>'+
- '<button type="button" onclick="ciOpenStage(4)">Ir a medición ↗</button></div></div></div>';
+ '<button type="button" onclick="ciOpenStage(4)">Ir a medición ↗</button></div></div>'+ciRunningTodayPanel()+'</div>';
 }
