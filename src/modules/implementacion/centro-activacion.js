@@ -513,12 +513,22 @@ async function cacActivateStep(){
 }
 function cacHistoryHtml(){
  if(!cacHistory.length)return '<p class="cac-muted">Aún no hay envíos registrados para esta iniciativa.</p>';
- const labels={sent:'Aceptado por Resend',scheduled:'Programado',partial:'Parcial',failed:'Error',processing:'En proceso'};
+ const labels={sent:'Aceptado para envío',scheduled:'Programado',partial:'Parcial',failed:'Error',processing:'En proceso'};
+ const finalLabel=r=>{
+  const count=key=>Math.max(0,Number(r?.[key])||0);
+  const accepted=count('accepted_count'),delivered=count('delivered_count');
+  const bounced=count('bounced_count'),failed=count('failed_delivery_count'),blocked=count('suppressed_count');
+  if(delivered&&accepted&&delivered>=accepted)return 'Entregado';
+  if(delivered||((bounced||failed||blocked)&&accepted>1))return 'Entrega parcial';
+  if(bounced)return 'Rebotado';
+  if(failed||blocked)return 'No entregado';
+  return labels[r.status]||r.status;
+ };
  return (typeof cacHistoryMetricsHTML==='function'?cacHistoryMetricsHTML(cacHistory):'')+
   '<div class="cac-history-list">'+cacHistory.map(r=>
   '<div class="cac-history-row"><div><strong>'+cacSafe(r.subject||'Comunicación')+'</strong><small>'+
    cacSafe(new Date(r.submitted_at).toLocaleString('es-CO'))+' · '+cacSafe(r.sequence_step?cacStage(r.sequence_step).label:(r.kind==='reconocimiento'?'Reconocimiento':'Comunicación'))+
-   '</small></div><span class="cac-state">'+cacSafe(labels[r.status]||r.status)+'</span><span>'+Number(r.accepted_count||0)+'/'+Number(r.recipient_count||0)+' aceptados'+
+   '</small></div><span class="cac-state">'+cacSafe(finalLabel(r))+'</span><span>'+Number(r.accepted_count||0)+'/'+Number(r.recipient_count||0)+' aceptados'+
    (r.scheduled_for?' · '+cacSafe(new Date(r.scheduled_for).toLocaleString('es-CO')):'')+'</span>'+
    (typeof cacHistoryEventFields==='function'?cacHistoryEventFields(r):'')+'</div>'
  ).join('')+'</div>';
@@ -778,7 +788,7 @@ function renderCentroActivacion(x){
   '<div class="cac-technical-content">'+
   '<section class="cac-delivery" id="cac-delivery" data-ready="'+String(cacDeliveryStatus?.configured===true)+'">'+cacDeliveryHtml()+'</section>'+
   '<section class="cac-history"><div class="cac-heading"><div><small>ESTADO DE LOS MENSAJES</small>'+
-   '<h3>Envíos y entregas</h3><p>Revisa las entregas confirmadas, los rechazos y los resultados que todavía no se han podido comprobar. Abrir un correo no significa adoptar un comportamiento.</p></div>'+
+   '<h3>Entregas e interacciones</h3><p>Consulta qué mensajes llegaron, cuáles fueron rechazados y qué aperturas o clics se registraron. Estas señales no demuestran por sí solas adopción.</p></div>'+
    '<button class="secondary" type="button" id="cac-history-refresh" onclick="cacRefreshDeliveryHistory()">Comprobar estados</button></div>'+
    '<p class="cac-provider-status" id="cac-provider-status" role="status" aria-live="polite" '+(cacProviderNotice?'':'hidden')+'>'+cacSafe(cacProviderNotice)+'</p>'+
    '<div class="cac-provider-links"><a href="https://resend.com/emails" target="_blank" rel="noopener noreferrer">Consultar correos en Resend ↗</a>'+
