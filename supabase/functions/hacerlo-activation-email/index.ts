@@ -195,8 +195,19 @@ Deno.serve(async(request:Request)=>{
     },
     body:JSON.stringify({from,to:[email],...content,...(scheduledIso?{scheduled_at:scheduledIso}:{})})
    });
-   if(response.ok){accepted++;}
-   else{failed++;lastError='Resend rechazó uno o más mensajes ('+response.status+').';}
+   if(response.ok){
+    const result=await response.json().catch(()=>null);
+    // Vincular cada correo al envío sin guardar nombres ni direcciones.
+    const providerId=typeof result?.id==='string'?result.id:'';
+    accepted++;
+    if(providerId){
+     const {error:trackError}=await service.from('activation_email_items').insert({
+      activation_id:log.id,organization_id:initiative.organization_id,
+      resend_email_id:providerId,delivery_status:'accepted'
+     });
+     if(trackError)lastError='Resend aceptó el mensaje, pero falló el registro del seguimiento. Revisa Resend antes de reintentar.';
+    }else lastError='Resend aceptó el mensaje sin identificador de seguimiento.';
+   }else{failed++;lastError='Resend rechazó uno o más mensajes ('+response.status+').';}
   }catch{failed++;lastError='Error de comunicación con el servicio de correo.';}
   await service.from('activation_sends').update({
    accepted_count:accepted,failed_count:failed,
