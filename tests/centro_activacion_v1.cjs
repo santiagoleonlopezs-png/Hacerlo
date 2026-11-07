@@ -4,10 +4,10 @@ const read=p=>fs.readFileSync(p,'utf8');
 const app=read('src/core/app.js'),index=read('index.html'),code=read('src/modules/implementacion/mecanismos.js')+'\n'+read('src/modules/implementacion/centro-activacion.js');
 assert.match(app,/\['Intervenciones','▥'\],\['Plan de cambio','▤'\],\['Centro de activación','✧'\],\['Laboratorio','◇'\]/);
 assert.match(app,/page==='Centro de activación'/);
-assert.match(index,/centro-activacion\.js\?v=2\.1\.0/);
-assert.match(index,/centro-activacion\.css\?v=2\.1\.0/);
+assert.match(index,/centro-activacion\.js\?v=2\.2\.0/);
+assert.match(index,/centro-activacion\.css\?v=2\.2\.0/);
 assert.match(index,/centro-senales\.js\?v=1\.0\.0/);
-assert.match(index,/centro-seguimiento\.js\?v=1\.0\.0/);
+assert.match(index,/centro-seguimiento\.js\?v=1\.1\.0/);
 const action={name:'Nuevo proceso',hypothesis:'Mejorar adopción',mechanisms:['comunicacion','reconocimiento']};
 const x={name:'Iniciativa',actions:[action],audiences:[{id:'a1',name:'Equipo A',email:'a@example.com'}],
  audiencePeople:[{id:'p1',audienceId:'a1',email:'a@example.com'},{id:'p2',audienceId:'a1',email:'b@example.com'}]};
@@ -114,6 +114,14 @@ assert.equal(plain.activationSequence.length,1,'Una intervención sin mecanismos
 assert.ok(plain.mechanisms.includes('reconocimiento'),'Se vincula el mecanismo al iniciar, sin prerequisitos');
 assert.ok(!plain.mechanisms.includes('ninguno'),'No aplica se sustituye por el mecanismo usado');
 assert.equal(calls.network,0,'No se envía nada al crear un borrador');
+ctx.cacBackToCenter();
+ctx.cacStartDirect('comunicacion');
+ctx.cacBackToCenter();
+const cardsHtml=ctx.renderCentroActivacion(x).split('<div class="cac-direct-list">')[1]||'';
+assert.ok(cardsHtml.indexOf('✉ Comunicación')>=0&&cardsHtml.indexOf('✧ Reconocimiento')>=0);
+assert.ok(cardsHtml.indexOf('✉ Comunicación')<cardsHtml.indexOf('✧ Reconocimiento'),'Comunicación debe aparecer antes que reconocimiento aunque se cree después');
+assert.equal(calls.network,0,'Ordenar las tarjetas no envía mensajes');
+
 const style=read('assets/css/centro-activacion.css');
 assert.match(style,/--cac-surface:#0c283c/,'Identidad cromática HACERLO');
 assert.match(style,/\.cac-control,\.cac-sequence,\.cac-editor,\.cac-history,\.cac-empty,\.cac-entry/,'Paneles comparten la misma superficie oscura');
