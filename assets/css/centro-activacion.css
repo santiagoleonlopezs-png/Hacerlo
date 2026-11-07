@@ -358,3 +358,6 @@
 .cac-webhook-help p{color:#a8c7d2;font-size:10.5px;line-height:1.6;margin:9px 0 0}
 .cac-webhook-help code{display:block;background:#061d2d;border:1px solid #315a69;border-radius:8px;color:#b1e9e1;overflow-wrap:anywhere;padding:11px 12px;margin:9px 0;font-size:10.5px}
 .cac-journey-evidence{color:#91dfd2!important;font-size:10px!important;line-height:1.5}
+
+/* Ayuda de webhook a ancho completo sin comprimir los controles */
+.cac-delivery{flex-wrap:wrap}
