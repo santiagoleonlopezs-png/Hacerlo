@@ -23,3 +23,7 @@
 .sdx-loop:disabled{opacity:.85}
 
 .sdx-empty>.sdx-existing{pointer-events:auto;margin-top:13px;font-size:11px}
+
+.sdx-origin{margin-top:18px;padding:14px;border:1px solid #315b6b;border-radius:12px;background:#0a2435}.sdx-origin small,.sdx-origin strong{display:block}.sdx-origin small{color:#72dfcf;margin-bottom:6px}
+
+.sdx-source-picker{margin-bottom:18px}.sdx-source-picker summary{cursor:pointer;color:#8be6d6;padding:8px 0}.sdx-source-picker summary small{color:#92b7c9;font-weight:400;margin-left:5px}

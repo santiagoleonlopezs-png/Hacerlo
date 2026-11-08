@@ -149,7 +149,7 @@ async function main(){
   assert.match(element('app').innerHTML,/Elige una acción/);
   assert.match(element('app').innerHTML,/abm-scenario/);
   assert.match(element('app').innerHTML,/Profundizar con datos y ciencia/);
-  const controls={behaviorIndex:{value:'0'},scenario:{value:'friction'},
+  const controls={interventionRef:{value:'custom'},interventionName:{value:'Simplificar el registro'},interventionConfirmed:{value:'yes'},behaviorIndex:{value:'0'},scenario:{value:'friction'},
     mode:{value:'observed'},initialPct:{value:'10'},periods:{value:'5'},
     runs:{value:'6'},sampleSize:{value:'50'},seed:{value:'2026'},
     capability_0:{value:'0.60'},opportunity_0:{value:'0.45'},
@@ -165,6 +165,9 @@ async function main(){
   assert.equal(calls[0].payload.edges[0].weight,.8);
   assert.match(calls[0].auth,/^Bearer /);
   assert.equal(current().modelRuns.length,1);
+  assert.equal(current().modelRuns[0].result.plannedIntervention.name,'Simplificar el registro');
+  assert.equal(current().modelRuns[0].settings.intervention.scenario,'friction');
+  assert.equal(calls[0].payload.scenario,'friction');
   assert.match(element('abm-status').textContent,/ejecutada y guardada/);
   assert.match(element('abm-output').innerHTML,/Dos caminos|Escenarios comparados/);
   assert.match(element('abm-output').innerHTML,/10.0/);

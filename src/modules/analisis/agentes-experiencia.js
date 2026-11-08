@@ -19,6 +19,7 @@ function abmScenarioSelect(value){
   const form=document.getElementById('abm-form');
   if(!form||!ABM_SCENARIO_CARDS.some(s=>s.id===value))return;
   form.elements.scenario.value=value;
+  if(form.elements.interventionConfirmed)form.elements.interventionConfirmed.value='yes';
   form.querySelectorAll('[data-abm-scenario]').forEach(btn=>{
     const active=btn.dataset.abmScenario===value;
     btn.setAttribute('aria-pressed',String(active));
@@ -79,7 +80,7 @@ function renderABMVisualResult(r){
       (hasDelta?(d>0?'+':'')+d.toFixed(1):'—')+
       '<span> puntos porcentuales</span></div>'+
     '<h3>'+safe(status)+'</h3>'+
-    '<p class="abm-result-caption">Si probáramos <strong>'+safe(names[r.scenario]||'esta intervención')+
+    '<p class="abm-result-caption">Si probáramos <strong>'+safe(r.plannedIntervention?.name||names[r.scenario]||'esta intervención')+
       '</strong>, el modelo produciría esta comparación bajo los supuestos elegidos.</p>'+
     '<div class="abm-comparison"><div class="abm-compare-row"><div><small>Sin cambiar nada</small><strong>'+abmReadablePct(b)+'</strong></div>'+
       '<div class="abm-compare-track"><span class="abm-bar-base" style="width:'+Math.max(0,Math.min(100,b*100))+'%"></span></div></div>'+
@@ -124,7 +125,7 @@ function renderABMScenarioComparison(x,active){
   for(const run of (x.modelRuns||[])){
     if(run.engine!=='abm-v1'||run.behaviorId!==active.behaviorId||
        run.modelFingerprint!==active.modelFingerprint||!run.result?.final)continue;
-    scenarios.set(run.scenario,run);
+    scenarios.set((run.settings?.intervention?.ref||'example')+'|'+(run.settings?.intervention?.name||'')+'|'+run.scenario,run);
   }
   const unique=[...scenarios.values()];
   if(unique.length<2)return '<p class="abm-repeat-hint">¿Quieres comparar distintas decisiones? Elige otra tarjeta y vuelve a simular manteniendo los demás supuestos.</p>';
@@ -132,8 +133,8 @@ function renderABMScenarioComparison(x,active){
   const cards=unique.map(run=>{
     const d=100*Number(run.result.final.difference?.mean||0);
     const final=100*Number(run.result.final.intervention?.mean||0);
-    return '<div class="abm-past-scenario'+(run.scenario===active.scenario?' is-current':'')+'">'+
-      '<small>'+safe(labels[run.scenario]||run.scenario)+'</small>'+
+    return '<div class="abm-past-scenario'+(run===active?' is-current':'')+'">'+
+      '<small>'+safe(run.settings?.intervention?.name||labels[run.scenario]||run.scenario)+'</small>'+
       '<strong>'+(d>0?'+':'')+d.toFixed(1)+' pp</strong>'+
       '<div class="abm-past-track"><i style="width:'+Math.max(0,Math.min(100,final))+'%"></i></div>'+
       '<span>Adopción simulada: '+final.toFixed(1)+'%</span></div>';
@@ -251,7 +252,7 @@ function renderABMExperiencePage(x){
        '<label class="abm-field">Comportamiento<select name="behaviorIndex" onchange="setABMBehavior(this.value)">'+behaviorsOptions+'</select></label>'+
        '<div class="abm-audience-picker"><div class="abm-audience-heading"><strong>¿En cuáles audiencias quieres probar esta decisión?</strong><button class="secondary" type="button" onclick="abmSelectAllAudiences()">Seleccionar todas</button></div>'+'<p class="muted">Solo puedes elegir audiencias asociadas a este comportamiento en Diseño.</p><div class="abm-audience-options" role="group" aria-label="Audiencias para simular">'+eligible.map(a=>'<label class="abm-audience-option"><input type="checkbox" data-abm-audience value="'+safe(a.id)+'" '+(selectedIds.has(String(a.id))?'checked ':'')+'onchange="abmToggleAudience(this.value,this.checked)"><span>'+safe(a.name)+'</span></label>').join('')+'</div>'+'<p id="abm-audience-summary" class="abm-audience-summary" role="status">'+target.length+' seleccionada'+(target.length===1?'':'s')+(target.length?' · '+safe(target.slice(0,3).map(a=>a.name).join(', ')):' · selecciona al menos una')+'</p></div></section>'+
        '<section class="abm-block"><div class="abm-step-title"><span>02</span><div><h2>¿Qué harías para impulsar el cambio?</h2><p>Elige una decisión. Después podrás probar otra y compararlas.</p></div></div>'+
-       '<div class="abm-scenario-grid" role="group" aria-label="Decisiones para simular">'+scenarioCards+'</div>'+
+       renderABMPlannedIntervention(x,settings)+'<div class="abm-scenario-grid" role="group" aria-label="Decisiones para simular">'+scenarioCards+'</div>'+
        '<select name="scenario" class="abm-visually-hidden" aria-label="Escenario seleccionado">'+ABM_SCENARIO_CARDS.map(s=>'<option value="'+s.id+'"'+(s.id===scenario?' selected':'')+'>'+s.title+'</option>').join('')+'</select>'+
        '<p class="abm-choice-hint" id="abm-choice-hint">'+safe(currentCard.detail)+' Se compara con no aplicar esa palanca.</p></section>'+
        '<section class="abm-block"><div class="abm-step-title"><span>03</span><div><h2>¿Desde dónde empezamos?</h2><p>Ajusta cuántas personas estimas que ya realizan el comportamiento.</p></div></div>'+
@@ -282,4 +283,37 @@ function renderABMExperiencePage(x){
      (research?'<details class="abm-science-drawer"><summary><span>⚗</span><span><strong>Profundizar con datos y ciencia</strong><small>Calibración retrospectiva, sensibilidad y límites del modelo</small></span><span>⌄</span></summary>'+research+'</details>':'')+
      '<p class="abm-footnote">HACERLO utiliza mecanismos de capacidad, oportunidad, motivación, umbrales de adopción e influencia social. Los escenarios son exploratorios; una decisión real necesita medición y contraste posterior.</p>'+
   '</div>';
+}
+
+
+function abmInterventionCatalog(x){
+ const key=(prefix,item)=>prefix+':'+String(item.id||JSON.stringify([item.name||item.title||'',item.createdAt||'']));
+ return [
+  ...(x.actions||[]).map(a=>({ref:key('action',a),name:String(a.name||'Acción sin nombre'),kind:'Acción de la iniciativa',detail:String(a.hypothesis||a.description||''),status:String(a.status||'Pendiente')})),
+  ...(x.integratedAIAnalysis?.interventions||[]).map(a=>({ref:'ai:'+String(x.integratedAIAnalysis.generatedAt||'')+':'+key('',a),name:String(a.name||'Propuesta de HACERLO'),kind:'Recomendación de Inteligencia HACERLO',detail:String(a.why||''),status:'Por contrastar'})),
+  ...(x.networkAnalysis?.intervention_hypotheses||[]).filter(h=>h.action).map(h=>({ref:key('network',h),name:String(h.action),kind:'Oportunidad del grafo',detail:String(h.rationale||''),status:'Por contrastar'}))
+ ].filter((a,i,all)=>all.findIndex(v=>v.ref===a.ref)===i);
+}
+function renderABMPlannedIntervention(x,settings){
+ const list=abmInterventionCatalog(x),choice=settings.intervention||{},found=list.find(a=>a.ref===choice.ref),ref=found?.ref||(choice.ref==='custom'?'custom':'');
+ return '<div class="abm-planned-choice"><label>¿Qué acción quieres probar?<select name="interventionRef" onchange="abmPlannedChoice(this)"><option value="">Explorar una palanca libremente</option>'+['Acción de la iniciativa','Recomendación de Inteligencia HACERLO','Oportunidad del grafo'].map(kind=>{const items=list.filter(a=>a.kind===kind);return items.length?'<optgroup label="'+safe(kind)+'">'+items.map(a=>'<option value="'+safe(a.ref)+'"'+(a.ref===ref?' selected':'')+'>'+safe(a.name)+' · '+safe(a.status)+'</option>').join('')+'</optgroup>':'';}).join('')+'<option value="custom"'+(ref==='custom'?' selected':'')+'>Escribir una acción para este experimento</option></select></label>'+
+ '<label class="abm-custom-intervention" '+(ref==='custom'?'':'hidden')+'>Acción que estás planeando<input name="interventionName" maxlength="160" value="'+safe(ref==='custom'?choice.name||'':'')+'" oninput="abmMarkPreviewStale()" placeholder="Ej. Simplificar el formulario de solicitudes"></label>'+
+ '<p id="abm-planned-detail" class="abm-choice-hint">'+safe(found?found.kind+' · '+found.detail:'Selecciona una acción o explora libremente. No se modifica ni ejecuta ninguna acción real.')+'</p>'+
+ '<input type="hidden" name="interventionConfirmed" value="'+(ref?'yes':'')+'"><p class="abm-choice-hint">Elige abajo cómo esperas que actúe esta acción.</p><details class="abm-caveat"><summary>Cómo representa el modelo tu acción</summary><p>El modelo prueba la palanca seleccionada: capacidad, oportunidad o motivación +0,18; referentes activa al 10 % más conectado. Dos acciones con la misma palanca y configuración producen el mismo escenario; su nombre no estima un efecto propio.</p></details></div>';
+}
+function abmPlannedChoice(select){
+ const form=select.form,choice=abmInterventionCatalog(current()).find(a=>a.ref===select.value),custom=form.querySelector('.abm-custom-intervention');
+ if(custom)custom.hidden=select.value!=='custom';
+ if(form.elements.interventionConfirmed)form.elements.interventionConfirmed.value='';
+ const hint=document.getElementById('abm-planned-detail');if(hint)hint.textContent=choice?choice.kind+' · '+choice.detail:select.value==='custom'?'Escribe la acción. Solo se guardará como parte del experimento.':'Explora libremente con las palancas del modelo.';
+ abmMarkPreviewStale();
+}
+function abmReadPlannedIntervention(x,form){
+ const ref=form.elements.interventionRef?.value||'';if(!ref)return {value:null};
+ const item=abmInterventionCatalog(x).find(a=>a.ref===ref);
+ if(ref!=='custom'&&!item)return {error:'La acción de origen ya no está disponible. Vuelve a seleccionarla.'};
+ const name=ref==='custom'?String(form.elements.interventionName?.value||'').trim():item.name;
+ if(!name)return {error:'Escribe la acción que quieres simular.'};
+ if(form.elements.interventionConfirmed?.value!=='yes')return {error:'Elige una palanca para indicar cómo esperas que actúe esta acción.'};
+ return {value:{ref,name:name.slice(0,160),kind:item?.kind||'Acción propuesta para el experimento',detail:item?.detail||'',scenario:form.elements.scenario.value}};
 }

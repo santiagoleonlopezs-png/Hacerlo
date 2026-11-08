@@ -108,6 +108,7 @@ jobs:
           node tests/sistemico_lienzo_v1.cjs
           npm ci --prefix tests/ui-dependencies --ignore-scripts --no-audit --no-fund
           NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/sistemico_lienzo_dom.cjs
+          NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/modulos_conectados_dom.cjs
           node --check src/modules/analisis/capacidad-adaptativa.js
           node --check src/modules/analisis/capacidad-adaptativa-lectura.js
           node --check src/modules/analisis/capacidad-adaptativa-simulacion-ui.js

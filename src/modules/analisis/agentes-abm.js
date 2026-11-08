@@ -76,7 +76,9 @@ async function runAgentSimulation(e) {
     dims[String(a.id)] = {};
     for(const k of ['capability','opportunity','motivation']) dims[String(a.id)][k]=Number(f.elements[k+'_'+i].value);
   }
-  const settings={behaviorIndex:bi,scenario:f.elements.scenario.value,mode:f.elements.mode.value,
+  const planned=typeof abmReadPlannedIntervention==='function'?abmReadPlannedIntervention(x,f):{value:null};
+  if(planned.error){status.textContent=planned.error;return;}
+  const settings={intervention:planned.value,behaviorIndex:bi,scenario:f.elements.scenario.value,mode:f.elements.mode.value,
     initialPct:Number(f.elements.initialPct.value),periods:Number(f.elements.periods.value),
     runs:Number(f.elements.runs.value),sampleSize:Number(f.elements.sampleSize.value),
     seed:Number(f.elements.seed.value),dimensions:dims,selectedAudienceIds:selected.map(a=>String(a.id)),useCalibrated:!!f.elements.useCalibrated?.checked,
@@ -119,6 +121,7 @@ async function runAgentSimulation(e) {
       'X-Supabase-Apikey':SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify(payload)});
     if(!response.ok){let e={};try{e=await response.json()}catch(_){}throw new Error(typeof e.detail==='string'?e.detail:'Error HTTP '+response.status)}
     const result=await response.json();
+    if(planned.value)result.plannedIntervention={...planned.value};
     x.abmSettings=settings;
     x.modelRuns=x.modelRuns||[];
     x.modelRuns.push({engine:'abm-v1',date:new Date().toISOString(),modelFingerprint:abmScenarioFingerprint(payload),behaviorId:abmV2BehaviorKey(behavior,bi),behavior:behavior.name,
