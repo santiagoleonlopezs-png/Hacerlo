@@ -54,6 +54,8 @@ jobs:
         run: node tests/ux_v2_consistency.cjs
       - name: Audiencias seleccionadas en simulación V2
         run: node tests/abm_v2_audiences.cjs
+      - name: Población de audiencias con personas registradas
+        run: node tests/abm_population_v1.cjs
       - name: Experiencia visual de pensamiento sistémico
         run: node tests/system_v2_visual.cjs
       - name: Agregación de evidencias observadas V2
