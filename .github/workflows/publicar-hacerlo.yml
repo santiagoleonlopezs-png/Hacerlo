@@ -65,6 +65,7 @@ jobs:
           python -m py_compile backend/app.py backend/activation_drafting.py
           PYTHONPATH=backend python -m unittest discover -s backend/tests -p test_activation_drafting.py -v
           node --check src/modules/analisis/grafos.js
+          node --check src/modules/analisis/explorar-acciones.js
           node tests/grafos_alertas_icono_v1.cjs
           node tests/hallazgos_clasificados_v1.cjs
           node --check src/modules/implementacion/plan-ejecutivo.js
@@ -110,6 +111,7 @@ jobs:
           npm ci --prefix tests/ui-dependencies --ignore-scripts --no-audit --no-fund
           NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/sistemico_lienzo_dom.cjs
           NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/modulos_conectados_dom.cjs
+          NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/explorar_acciones_dom.cjs
           node --check src/modules/analisis/capacidad-adaptativa.js
           node --check src/modules/analisis/capacidad-adaptativa-lectura.js
           node --check src/modules/analisis/capacidad-adaptativa-simulacion-ui.js

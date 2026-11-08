@@ -315,7 +315,8 @@ function graphWorkspaceMount(root,x){
  const panels=[...config.querySelector('.hacerlo-graph-config-content').children],details=panels.filter(el=>el.tagName==='DETAILS');
  const drawer=document.createElement('section');drawer.className='hcg-drawer';drawer.setAttribute('aria-label','Herramientas del grafo');
  const close=document.createElement('button');close.className='secondary hcg-close';close.type='button';close.textContent='×';close.setAttribute('aria-label','Cerrar herramientas');close.onclick=()=>graphWorkspaceOpen('');drawer.append(close);
- const heading=document.createElement('h2');heading.textContent=({add:'Añadir a la red',connect:'Conectar elementos',layers:'Capas y señales',records:'Registros de la red',editor:'Ficha del elemento'})[graphWorkspaceUI.panel]||'Herramientas';drawer.append(heading);
+ const heading=document.createElement('h2');heading.textContent=({add:'Añadir a la red',connect:'Conectar elementos',layers:'Capas y señales',records:'Registros de la red',editor:'Ficha del elemento',actions:'Explorar acciones'})[graphWorkspaceUI.panel]||'Herramientas';drawer.append(heading);
+ if(graphWorkspaceUI.panel==='actions'&&typeof hxaPanel==='function'){const body=document.createElement('div');body.innerHTML=hxaPanel('graph');drawer.append(body);}
  const chosen=graphWorkspaceUI.panel==='add'?details.slice(0,2):graphWorkspaceUI.panel==='connect'?details.slice(2,3):graphWorkspaceUI.panel==='records'?details.slice(3):[];
  for(const el of chosen){drawer.append(el);if(graphWorkspaceUI.panel==='connect')el.open=true;}
  const editor=panels.find(el=>el.tagName==='SECTION');if(graphWorkspaceUI.panel==='editor'&&editor)drawer.append(editor);
@@ -326,6 +327,7 @@ function graphWorkspaceMount(root,x){
  const title=map.querySelector('h2');title?.remove();map.querySelectorAll(':scope > p').forEach(el=>el.remove());
  const zoom=document.createElement('div');zoom.className='hcg-zoom';zoom.innerHTML='<button type="button" class="secondary" aria-label="Acercar mapa" onclick="graphWorkspaceZoom(.8)">＋</button><button type="button" class="secondary" aria-label="Alejar mapa" onclick="graphWorkspaceZoom(1.25)">−</button><button type="button" class="secondary" onclick="graphWorkspaceFit()">Ajustar</button>';map.append(zoom);
  if(!(x.nodes||[]).length){const empty=document.createElement('div');empty.className='hcg-empty';empty.innerHTML='<h3>Empieza por quienes hacen parte del cambio</h3><p>Vincula un elemento de HACERLO o añade uno nuevo.</p><button type="button" class="primary" onclick="graphWorkspaceOpen(&quot;add&quot;)">＋ Añadir elemento</button>';map.append(empty);}
+ if(typeof hxaOpen==='function'){const footer=document.createElement('div');footer.className='hxa-footer';footer.innerHTML='<button type="button" class="hxa-link" onclick="hxaOpen(&quot;graph&quot;)">＋ Explorar acciones</button>';map.append(footer);}
  // Pan and zoom affect only the viewport, never the underlying graph.
  let pan=null;
  svg.addEventListener('pointerdown',event=>{if(event.button!==0||event.target!==svg)return;pan={x:event.clientX,y:event.clientY,v:[...(graphWorkspaceUI.view||[0,0,600,420])]};svg.setPointerCapture?.(event.pointerId);});

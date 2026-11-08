@@ -1,0 +1,8 @@
+/* Shared small entry and on-demand action exploration inside existing detail cards. */
+.hxa-footer{padding:12px 18px;border-top:1px solid #2c5369}
+.hxa-link{display:inline-block;width:auto!important;padding:6px 0;background:transparent;border:0;color:#89ded0;font:inherit;font-size:12px!important;text-align:left;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.hxa-link:disabled{opacity:.55;cursor:default;text-decoration:none}
+.hxa-panel{font-size:12px;color:#c7dfe8;overflow-wrap:anywhere}.hxa-panel input,.hxa-panel textarea{box-sizing:border-box;width:100%;min-width:0}.hxa-hint{font-size:12px;line-height:1.6;color:#9dbdcd;margin:8px 0 14px}
+.hxa-buttons{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;margin-top:10px}.hxa-buttons button{width:auto!important;font-size:12px;white-space:normal}.hxa-buttons .secondary{padding:9px 10px}
+.hxa-panel details{border-top:1px solid #2c5369;padding-top:12px;margin:15px 0}.hxa-panel summary{cursor:pointer;font-size:12px;color:#bce5df;line-height:1.6}.hxa-panel p{line-height:1.6}.hxa-panel label small{font-weight:400;color:#92b7c9}.hxa-panel article{padding:14px 0;border-bottom:1px solid #2c5369}.hxa-origin{color:#8cdecf;font-size:12px}.hxa-panel .hxa-suggestion{border:1px solid #31596d;border-radius:10px;padding:12px}.hxa-suggestion summary{font-weight:500}
+.hxa-link:focus-visible,.hxa-panel button:focus-visible{outline:2px solid #8ff5e1;outline-offset:3px}

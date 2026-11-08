@@ -258,6 +258,7 @@ function sdxPanel(x,model,readonly){
  if(sdxUI.panel==='lever')content=sdxLeverPanel(x,model);
  if(sdxUI.panel==='history')content=sdxHistoryPanel(model,readonly);
  if(sdxUI.panel==='archive')content=sdxArchivePanel(x);
+ if(sdxUI.panel==='actions'&&!readonly&&typeof hxaPanel==='function')content='<h2 id="sdx-panel-heading">Explorar acciones</h2>'+hxaPanel('system');
  return content?`<section class="sdx-detail" aria-label="Detalle del sistema"><button type="button" class="sdx-close" aria-label="Cerrar detalle" onclick="sdxClose()">×</button>${content}</section>`:'';
 }
 function sdxRender(root,x){
@@ -273,6 +274,7 @@ function sdxRender(root,x){
  <div class="sdx-legend"><span><b>＋</b> Mismo sentido</span><span><b>−</b> Sentido contrario</span><span><b>//</b> Demora</span><span><b>?</b> Por definir</span></div>
  <section class="sdx-loops" aria-label="Bucles identificados"><span class="sdx-small-label">BUCLES</span>${cycles.cycles.length?cycles.cycles.map((c,i)=>`<button type="button" class="sdx-loop sdx-loop-${c.type==='?'?'unknown':c.type} ${sdxUI.cycle===c.id?'is-active':''}" data-id="${safe(c.id)}" onclick="sdxLoop(this.dataset.id)" ${preview?'disabled':''}><b>${c.type}${i+1}</b> ${safe(model.loopNames?.[c.id]?.name||(c.type==='R'?'Refuerzo':c.type==='B'?'Compensación':'Por completar'))}</button>`).join(''):'<small>Al cerrar un circuito, podrás explorar cómo funciona.</small>'}${cycles.truncated?'<small>Vista limitada a 30 circuitos y 20 variables por recorrido para mantener el editor ágil.</small>':''}</section>
  ${model.levers.length&&!preview?`<details class="sdx-levers"><summary>◇ Puntos de intervención · ${model.levers.length}</summary>${model.levers.map(l=>{const action=sdxResolveRef(x.actions||[],l.action);return `<div><p>${safe(l.expected)}</p><small>${safe(action?(action.name+' · '+(action.status||'Pendiente')):l.action?'La acción vinculada no está disponible':'Acción por vincular')}</small>${action?'<button class="sdx-text-button" type="button" onclick="go(\'Intervenciones\')">Abrir Intervenciones ↗</button>':''}${!readonly?`<div class="sdx-lever-actions"><button class="sdx-text-button" type="button" data-id="${safe(l.id)}" onclick="sdxEditLever(this.dataset.id)">Editar intervención</button><button class="sdx-text-button" type="button" data-id="${safe(l.id)}" onclick="sdxRemove('lever',this.dataset.id)">Quitar vínculo</button></div>`:''}</div>`;}).join('')}</details>`:''}
+ ${typeof hxaOpen==='function'?`<div class="hxa-footer"><button type="button" class="hxa-link" onclick="hxaOpen('system')" ${readonly||preview?'disabled':''}>＋ Explorar acciones</button></div>`:''}
  <p class="sdx-footnote">Las relaciones son explicaciones por contrastar. El tipo de bucle no demuestra causalidad.</p></section>${panel}</div></div>`;
  sdxMount(root);
 }
