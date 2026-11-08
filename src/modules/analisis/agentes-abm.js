@@ -11,7 +11,7 @@ function renderAgentSimulationPage(x) {
   const val = (v, fallback) => v === undefined || v === null ? fallback : v;
   const controls = (audiences.length ? audiences : []).map((a, i) => {
     const d = (settings.dimensions || {})[String(a.id)] || {};
-    return '<tr><td>' + safe(a.name) + '</td><td>' + Number(a.population || 0) +
+    return '<tr><td>' + safe(a.name) + '</td><td>' + abmV2Population(x,a).population +
       '</td>' + ['capability','opportunity','motivation'].map(k =>
       '<td><input style="min-width:85px" name="' + k + '_' + i +
       '" type="number" min="0" max="1" step="0.05" value="' + safe(val(d[k],0.5)) + '" aria-label="' + k + ' de ' + safe(a.name) + '"></td>'
@@ -84,8 +84,10 @@ async function runAgentSimulation(e) {
     seed:Number(f.elements.seed.value),dimensions:dims,selectedAudienceIds:selected.map(a=>String(a.id)),useCalibrated:!!f.elements.useCalibrated?.checked,
     initialSource:f.elements.initialPct.dataset?.source||'manual_hypothesis'};
   const audiences=selected.map(a=>({
-    id:String(a.id),name:String(a.name),population:Number(a.population)||0,...dims[String(a.id)]
+    id:String(a.id),name:String(a.name),...abmV2Population(x,a),...dims[String(a.id)]
   }));
+  const populationIssue=settings.mode==='synthetic'?abmV2PopulationIssue(audiences):'';
+  if(populationIssue){status.textContent=populationIssue;return;}
   const payload={behavior:behavior.name,audiences,scenario:settings.scenario,mode:settings.mode,
     initial_adoption:settings.initialPct/100,periods:settings.periods,runs:settings.runs,
     sample_size:settings.sampleSize,seed:settings.seed,agents:[],edges:[]};
@@ -121,6 +123,7 @@ async function runAgentSimulation(e) {
       'X-Supabase-Apikey':SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify(payload)});
     if(!response.ok){let e={};try{e=await response.json()}catch(_){}throw new Error(typeof e.detail==='string'?e.detail:'Error HTTP '+response.status)}
     const result=verifyABMModelVersion(await response.json());
+    result.population_sources=audiences.map(a=>({id:a.id,population:a.population,source:a.population_source}));
     if(planned.value)result.plannedIntervention={...planned.value};
     x.abmSettings=settings;
     x.modelRuns=x.modelRuns||[];

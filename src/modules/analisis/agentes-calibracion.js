@@ -97,7 +97,7 @@ function getABMResearchInputs() {
   const sample=Number(f.elements.sampleSize.value);
   const payload={
     audiences:audienceSet.map(a=>({id:String(a.id),name:String(a.name),
-      population:Number(a.population)||0,...dimensions[String(a.id)]})),
+      ...abmV2Population(x,a),...dimensions[String(a.id)]})),
     mode:f.elements.mode.value,behavior:behavior.name,
     scenario:f.elements.scenario.value,
     initial_adoption:Number(f.elements.initialPct.value)/100,
@@ -105,6 +105,8 @@ function getABMResearchInputs() {
     runs:12,sample_size:sample,seed:Number(f.elements.seed.value),
     agents:[],edges:[]
   };
+  const populationIssue=payload.mode==='synthetic'?abmV2PopulationIssue(payload.audiences):'';
+  if(populationIssue)throw Error(populationIssue);
   if(payload.mode==='observed'){
     const persons=(x.nodes||[]).map((n,i)=>({...n,idx:i})).filter(n=>n.type==='Persona');
     const missing=persons.filter(n=>!abmV2AudienceId(x,n,n.idx));
@@ -133,7 +135,9 @@ async function postABMResearch(path,payload) {
   });
   if(!response.ok){let error={};try{error=await response.json()}catch(_){}
     throw Error(typeof error.detail==='string'?error.detail:'Error HTTP '+response.status)}
-  return verifyABMModelVersion(await response.json());
+  const result=verifyABMModelVersion(await response.json());
+  result.population_sources=payload.audiences.map(a=>({id:a.id,population:a.population,source:a.population_source}));
+  return result;
 }
 
 async function calibrateAgentModel() {

@@ -4,6 +4,33 @@
 function abmV2BehaviorKey(b,i) {
   return String(b?.id ?? 'legacy-'+i);
 }
+
+/* La población declarada y los estados de adopción son datos distintos.
+   Sin población declarada, simular la cohorte registrada de esa audiencia;
+   no inferir el tamaño del mercado ni exigir estados de adopción evaluados. */
+function abmV2Population(x,audience) {
+  const declared=Number(audience.population);
+  if(Number.isInteger(declared)&&declared>0)
+    return {population:declared,population_source:'declared_population'};
+  const people=(x.audiencePeople||[]).filter(p=>String(p.audienceId)===String(audience.id));
+  const ids=new Set(people.map((p,i)=>p.id!=null&&String(p.id)!==''?'id:'+String(p.id):'row:'+i));
+  return {population:ids.size,population_source:ids.size?'registered_people':'not_defined'};
+}
+
+function abmV2PopulationIssue(audiences) {
+  const missing=audiences.filter(a=>!a.population);
+  return missing.length?'Define la población o registra personas en Gestión de audiencias para: '+missing.map(a=>a.name).join(', ')+'.':'';
+}
+
+function abmV2StartingInfo(x,behavior,audiences) {
+  const evid=behavior?abmV2EvidenceSummary(x,behavior,audiences.map(a=>String(a.id))):null;
+  const info=evid?.eligible
+    ? 'Registros disponibles: '+evid.measured+' de '+evid.eligible+' personas elegibles con un estado evaluado.'
+    : 'Puedes empezar aunque aún no tengas mediciones; todo será exploratorio.';
+  const registered=audiences.filter(a=>abmV2Population(x,a).population_source==='registered_people');
+  return info+(registered.length?' Para '+registered.map(a=>a.name).join(', ')+
+    ' se usará la cohorte de personas registradas; su tamaño no representa necesariamente toda la población.':'');
+}
 function abmV2AudienceId(x,node,index) {
   const chosen=(x.abmAudienceMap||{})[index];
   if(chosen !== undefined && chosen !== null && String(chosen)!=='')return String(chosen);

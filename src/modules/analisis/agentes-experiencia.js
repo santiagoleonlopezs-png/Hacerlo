@@ -196,6 +196,8 @@ function abmRefreshAudienceChoice(x,behavior,index){
     (selected.length?' · '+selected.slice(0,3).map(a=>a.name).join(', ')+(selected.length>3?'…':''):' · selecciona al menos una');
   const button=document.getElementById('abm-start');
   if(button)button.disabled=!selected.length;
+  const info=document.getElementById('abm-starting-info');
+  if(info)info.textContent='ⓘ '+abmV2StartingInfo(x,behavior,selected);
   if(typeof abmMarkPreviewStale==='function')abmMarkPreviewStale();
 }
 
@@ -216,7 +218,6 @@ function renderABMExperiencePage(x){
   const value=(v,d)=>v===undefined||v===null?d:v;
   const initial=value(settings.initialPct,10);
   const personNodes=(x.nodes||[]).map((n,i)=>({...n,idx:i})).filter(n=>n.type==='Persona');
-  const evid=behavior?abmV2EvidenceSummary(x,behavior):null;
   const dimensions=audiences.map((a,i)=>{
     const row=(settings.dimensions||{})[String(a.id)]||{};
     return '<tr><td>'+safe(a.name||'Audiencia')+'</td>'+
@@ -235,9 +236,7 @@ function renderABMExperiencePage(x){
       '<span class="abm-scenario-icon" aria-hidden="true">'+s.symbol+'</span>'+
       '<span class="abm-scenario-content"><span class="abm-scenario-label">'+s.step+'</span><strong>'+s.title+'</strong><small>'+s.intro+'</small></span>'+
       '<span class="abm-scenario-check" aria-hidden="true">'+(s.id===scenario?'✓':'○')+'</span></button>').join('');
-  const info=(evid&&evid.eligible)?
-    'Registros disponibles: '+evid.measured+' de '+evid.eligible+' personas elegibles con un estado evaluado.':
-    'Puedes empezar aunque aún no tengas mediciones; todo será exploratorio.';
+  const info=abmV2StartingInfo(x,behavior,target);
   const research=behaviors.length&&audiences.length?renderABMResearchPanel(x,bi):'';
   return '<div class="abm-ux">'+
     '<header class="abm-hero"><div><span class="abm-eyebrow">HACERLO · LABORATORIO DE DECISIONES · '+safe(x.name||'Iniciativa')+'</span>'+
@@ -260,7 +259,7 @@ function renderABMExperiencePage(x){
        '<div class="abm-initial-header"><div><span>Adopción inicial</span><small>Tu mejor estimación actual</small></div><output id="abm-initial-value" for="abm-initial-track">'+Math.round(Number(initial))+'%</output></div>'+
        '<input id="abm-initial-track" class="abm-range" name="initialPct" type="range" min="0" max="100" step="1" value="'+safe(initial)+'" style="--abm-pct:'+safe(initial)+'%" oninput="abmSyncAdoptionPreview(this.value)" aria-label="Porcentaje de adopción inicial">'+
        '<div class="abm-range-scale"><span>Nadie aún</span><span>Toda la población</span></div>'+
-       '<p class="abm-reality-note">ⓘ '+safe(info)+'</p>'+
+       '<p class="abm-reality-note" id="abm-starting-info">ⓘ '+safe(info)+'</p>'+
        (target.length===0?'<p class="notice">Asigna este comportamiento a una audiencia antes de simular.</p>':'')+
        '<div class="abm-run-row"><button class="abm-run" id="abm-start" type="submit"'+(!target.length?' disabled':'')+'><span>▶</span> Simular esta decisión</button><p id="abm-status" role="status" aria-live="polite">Explora escenarios con supuestos ajustables.</p></div></section>'+
        '<details class="abm-tech-settings"><summary><span>⚙</span><span><strong>Ajustar el modelo</strong><small>Red, tiempo, población y supuestos · opcional</small></span><span class="abm-chevron">⌄</span></summary>'+
