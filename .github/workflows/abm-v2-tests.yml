@@ -56,6 +56,10 @@ jobs:
         run: node tests/abm_v2_audiences.cjs
       - name: Población de audiencias con personas registradas
         run: node tests/abm_population_v1.cjs
+      - name: Medición integrada, fuentes y segmentación
+        run: |
+          npm ci --prefix tests/ui-dependencies --ignore-scripts --no-audit --no-fund
+          NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/medicion_integrada_v1.cjs
       - name: Experiencia visual de pensamiento sistémico
         run: node tests/system_v2_visual.cjs
       - name: Agregación de evidencias observadas V2

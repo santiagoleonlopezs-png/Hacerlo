@@ -110,6 +110,8 @@ jobs:
           node --check src/modules/analisis/sistemico-lienzo.js
           node tests/sistemico_lienzo_v1.cjs
           npm ci --prefix tests/ui-dependencies --ignore-scripts --no-audit --no-fund
+          node --check src/modules/medicion/integrada.js
+          NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/medicion_integrada_v1.cjs
           NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/sistemico_lienzo_dom.cjs
           NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/modulos_conectados_dom.cjs
           NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/explorar_acciones_dom.cjs
