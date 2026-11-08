@@ -105,6 +105,7 @@ function renderABMVisualResult(r){
    No se utiliza como mecanismo de seguridad. */
 function abmScenarioFingerprint(payload){
   const obj={
+    model_version:HACERLO_ABM_MODEL_VERSION,
     behavior:payload.behavior,mode:payload.mode,
     initial_adoption:payload.initial_adoption,periods:payload.periods,
     runs:payload.runs,sample_size:payload.sample_size,seed:payload.seed,

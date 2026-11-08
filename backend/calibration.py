@@ -11,7 +11,7 @@ from statistics import mean, median
 from typing import Any
 
 from simulation import (
-    DEFAULT_PARAMETERS, PARAMETER_BOUNDS, build_population, single_run,
+    DEFAULT_PARAMETERS, MODEL_VERSION, PARAMETER_BOUNDS, build_population, single_run,
     validated_parameters,
 )
 
@@ -20,7 +20,9 @@ def observations_as_series(records):
     """Verifica procedencia, orden temporal y compatibilidad con el modelo absorbente."""
     if not isinstance(records, list) or not 6 <= len(records) <= 25:
         raise ValueError("Se necesitan entre 6 y 25 mediciones, incluido el periodo 0.")
-    ordered = sorted(records, key=lambda row: row.get("period", -1))
+    if any(not isinstance(row, dict) or type(row.get("period")) is not int for row in records):
+        raise ValueError("Los periodos deben ser enteros y consecutivos desde 0.")
+    ordered = sorted(records, key=lambda row: row["period"])
     periods = [r.get("period") for r in ordered]
     if periods != list(range(len(ordered))):
         raise ValueError("Los periodos deben ser enteros y consecutivos desde 0.")
@@ -119,14 +121,21 @@ def calibrate_adoption(data: dict[str, Any]) -> dict[str, Any]:
     # Persistencia ingenua: mantener fija la última tasa conocida del entrenamiento.
     # Este comparador usa exclusivamente el último punto de entrenamiento.
     naive = [obs[train[-1]]] * len(obs)
+    # Tendencia por incremento medio: se construye SOLO con entrenamiento.
+    # Extrapola adopción acumulada con saturación en 100 %, sin ver el holdout.
+    last_training = train[-1]
+    increment = (obs[last_training] - obs[0]) / last_training
+    trend = [min(1.0, max(0.0, obs[last_training] + increment * (t - last_training)))
+             for t in range(len(obs))]
     valid_mae = _mae(predicted, obs, holdout)
     naive_mae = _mae(naive, obs, holdout)
+    trend_mae = _mae(trend, obs, holdout)
     default_mae = _mae(uncalibrated, obs, holdout)
     tolerance = max(0.015, candidates[0]["training_mae"] * 0.20)
     plausible = sum(c["training_mae"] <= candidates[0]["training_mae"] + tolerance for c in candidates)
     return {
         "status": "retrospective_not_prospective_validation",
-        "model_version": "abm-1.1",
+        "model_version": MODEL_VERSION,
         "parameters": best,
         "fixed_parameters": {"adoption_rate": DEFAULT_PARAMETERS["adoption_rate"],
                              "weights": {"capability": 0.35, "opportunity": 0.35, "motivation": 0.30},
@@ -144,12 +153,24 @@ def calibrate_adoption(data: dict[str, Any]) -> dict[str, Any]:
         "training_mae_pp": round(_mae(predicted, obs, train) * 100, 2),
         "holdout_mae_pp": round(valid_mae * 100, 2),
         "naive_holdout_mae_pp": round(naive_mae * 100, 2),
+        "trend_holdout_mae_pp": round(trend_mae * 100, 2),
+        "better_than_trend": valid_mae < trend_mae,
+        "better_than_simple_references": valid_mae < min(naive_mae, trend_mae),
+        "reference_trend_increment_pp": round(increment * 100, 4),
+        "initialization": {
+            "method": "fixed_count_random_identities",
+            "observed_rate": initial,
+            "represented_rate": predicted[0],
+            "resolution_pp": round(100 / len(agents), 4),
+        },
         "default_model_holdout_mae_pp": round(default_mae * 100, 2),
         "better_than_naive": valid_mae < naive_mae,
         "series": [
             {"period": t, "observed": round(obs[t], 5),
              "calibrated": round(predicted[t], 5),
              "default": round(uncalibrated[t], 5),
+             "persistence": round(naive[t], 5) if t in holdout else None,
+             "trend": round(trend[t], 5) if t in holdout else None,
              "set": "holdout" if t in holdout else "training"}
             for t in range(len(obs))
         ],
@@ -158,6 +179,7 @@ def calibrate_adoption(data: dict[str, Any]) -> dict[str, Any]:
             "Un solo agregado temporal no identifica de manera única los mecanismos.",
             "La calibración minimiza error para dos parámetros; los demás permanecen hipotéticos.",
             "Las últimas dos mediciones se reservan como holdout sin reentrenamiento.",
+            "Superar persistencia no basta: también se compara con extrapolar la tendencia de entrenamiento.",
             "La extrapolación a otras audiencias, redes y comportamientos no está validada.",
         ],
     }
@@ -201,6 +223,7 @@ def sensitivity_adoption(data: dict[str, Any]) -> dict[str, Any]:
                             "meets_target": delta >= target})
     return {
         "status": "local_parameter_sensitivity_not_prediction",
+        "model_version": MODEL_VERSION,
         "scenario": data.get("scenario", "training"),
         "reference_parameters": p,
         "target_effect_pp": target,

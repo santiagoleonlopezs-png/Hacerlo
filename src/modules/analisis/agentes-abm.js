@@ -120,7 +120,7 @@ async function runAgentSimulation(e) {
       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,
       'X-Supabase-Apikey':SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify(payload)});
     if(!response.ok){let e={};try{e=await response.json()}catch(_){}throw new Error(typeof e.detail==='string'?e.detail:'Error HTTP '+response.status)}
-    const result=await response.json();
+    const result=verifyABMModelVersion(await response.json());
     if(planned.value)result.plannedIntervention={...planned.value};
     x.abmSettings=settings;
     x.modelRuns=x.modelRuns||[];

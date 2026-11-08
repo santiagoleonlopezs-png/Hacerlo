@@ -59,6 +59,7 @@ class SimulatedInitiativeAPITests(unittest.TestCase):
         self.assertEqual(outcome["agent_count"], 50)
         self.assertEqual(len(outcome["series"]), 6)
         self.assertEqual(outcome["status"], "experimental_not_calibrated")
+        self.assertEqual(outcome['model_version'], 'abm-1.2')
 
         fitted = self.client.post("/api/simulation/calibrate",
                                   json={**SAMPLE, "observations": MEASURES},
@@ -68,6 +69,8 @@ class SimulatedInitiativeAPITests(unittest.TestCase):
         self.assertEqual(calibration["holdout_periods"], [4, 5])
         self.assertEqual(calibration["searched_candidates"], 16)
         self.assertEqual(calibration["provenance"]["denominator"], 100)
+        self.assertEqual(calibration['model_version'], outcome['model_version'])
+        self.assertIn('trend_holdout_mae_pp', calibration)
 
         sensitivity = self.client.post("/api/simulation/sensitivity",
                                        json={**SAMPLE, "parameters": calibration["parameters"],
@@ -76,6 +79,7 @@ class SimulatedInitiativeAPITests(unittest.TestCase):
         self.assertEqual(sensitivity.status_code, 200, sensitivity.text)
         result = sensitivity.json()
         self.assertEqual(result["summary"]["total"], 9)
+        self.assertEqual(result['model_version'], outcome['model_version'])
         self.assertEqual(len(result["configurations"]), 9)
         self.assertLessEqual(result["summary"]["min_effect_pp"], result["summary"]["max_effect_pp"])
 

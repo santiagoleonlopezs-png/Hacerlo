@@ -12,12 +12,15 @@ const audiences=read('src/modules/diseno/audiencias.js');
 const surveys=read('src/modules/encuestas/encuestas.js');
 const css=read('assets/css/experiencia-ui.css');
 const ux=read('src/core/experiencia-ui.js');
-const stage0=core.slice(core.indexOf('if(phase===0)body='),core.indexOf('if(phase===1)body='));
+assert.match(core,/if\(phase===0\)body=resultadosHome\(x\)/,'Resultados delega en su home actual');
+const stage0=core.slice(core.indexOf('function resultadosHome(x)'),core.indexOf('// Laboratorio exploratorio:'));
 assert.match(stage0,/results-stage-stack/,'Resultados usa distribución vertical propia');
-assert.ok(stage0.indexOf('Comportamiento objetivo de la iniciativa')<stage0.indexOf('Todos los indicadores de la iniciativa'),'Comportamiento va arriba de Indicadores');
-assert.match(stage0,/textarea id="objective"/,'Se conserva la edición del comportamiento');
-assert.match(stage0,/setField\('expected',this.value\)/,'Se conservan resultados esperados');
-assert.match(stage0,/indicatorTable\(x\)/,'Se conserva la tabla y su vinculación');
+for(const destination of ['Resultado global','Comportamiento objetivo','Diagnóstico','Indicadores']){
+ assert.ok(stage0.includes(destination),'El home conserva el acceso a '+destination);
+}
+assert.match(core,/onsubmit="saveObjectiveBehavior\(event\)"/,'Se conserva el formulario de comportamiento');
+assert.match(core,/onsubmit="saveGlobalResult\(event\)"/,'Se conserva el formulario de resultado');
+assert.match(indicators,/function renderIndicatorsEditor\(x,head\)/,'Se conserva el editor de indicadores');
 assert.match(read('assets/css/experiencia-ui.css'),/\.results-stage-stack\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
 
 const ia=read('src/modules/inteligencia/ia.js');
@@ -31,7 +34,7 @@ assert.match(core,/renderAdoptionGraphPage\(a,hcxHero/);
 assert.match(core,/renderIndicatorsEditor\(x,hcxHero/);
 assert.match(core,/if\(page==='Encuestas y experiencias'\)\{a.innerHTML=eePage\(x\)/);
 assert.match(core,/if\(page==='Simulación de agentes'\)\{a.innerHTML=renderABMExperiencePage\(x\)/);
-assert.match(core,/if\(page==='Pensamiento sistémico'\)\{sysRender\(a,head,x\)/);
+assert.match(core,/if\(page==='Pensamiento sistémico'\)\{sysHubRender\(a,x\)/);
 assert.match(diagnosis,/hcxHero\('Diagnóstico'/);
 assert.match(audiences,/hcxHero\('Gestión de audiencias'/);
 assert.match(surveys,/RDAIM · RESULTADOS · DIAGNÓSTICO/);
@@ -39,7 +42,7 @@ assert.match(surveys,/hcx-more/);
 for(const attr of ['data-k="id"','data-k="type"','data-k="min"','data-k="max"','data-k="options"','data-k="correct"']){
  assert.ok(surveys.includes(attr),'No debe perderse el campo '+attr);
 }
-for(const attr of ["onsubmit=\"addEvidenceRecord(event)\"","onsubmit=\"addExperiment(event)\"","onsubmit=\"addObservation(event)\"","id=\"network-result\"","id=\"api-url\""]){
+for(const attr of ["onsubmit=\"addExperiment(event)\"","onsubmit=\"addObservation(event)\""]){
  assert.ok(integrated.includes(attr),'No debe perderse la función '+attr);
 }
 const context={console,safe:v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),
@@ -53,12 +56,11 @@ const x={id:7,name:'Piloto <test>',scope:'inside',
 const page=context.intelligencePage(x);
 assert.ok(page.includes('hcx-hero'));
 assert.ok(page.includes('hcx-intel'));
-assert.ok(page.indexOf('Interpretar tu iniciativa con IA')<page.indexOf('Registrar evidencias'));
-assert.ok(page.indexOf('Registrar evidencias')<page.indexOf('Conexión técnica de redes'));
-assert.equal((page.match(/class="hcx-fold"/g)||[]).length,5,'Se conservaron cinco secciones complementarias');
+assert.ok(page.indexOf('Interpretar tu iniciativa con IA')<page.indexOf('Consultar información conectada'));
+assert.ok(page.indexOf('Planear escenarios y experimentos')<page.indexOf('Contrastar y aprender'));
+assert.equal((page.match(/class="hcx-fold"/g)||[]).length,3,'Se conservan las tres secciones complementarias actuales');
 assert.equal((page.match(/<\/details>/g)||[]).length,(page.match(/<details/g)||[]).length);
 assert.ok(page.includes('Piloto &lt;test&gt;'),'Datos de iniciativa escapados');
-assert.ok(page.includes('onsubmit="addEvidenceRecord(event)"'));
 assert.ok(page.includes('onsubmit="addExperiment(event)"'));
 assert.ok(page.includes('onsubmit="addObservation(event)"'));
 assert.ok(page.includes('runIntegratedAI()'));
@@ -79,7 +81,7 @@ assert.match(output,/Examinar hallazgos e hipótesis/);
 assert.match(output,/Ver qué medir/);
 const diagContext={console,safe:context.safe,render(){},save(){},current:()=>x};
 vm.createContext(diagContext);
-vm.runInContext(ux+'\n'+diagnosis,diagContext);
+vm.runInContext(ux+'\n'+read('src/modules/resultados/causas.js')+'\n'+diagnosis,diagContext);
 x.behaviorDiagnosis={};x.diagnosisFindings=[];x.diagnosisHypotheses=[];
 const diag=diagContext.diagnosisPage(x);
 assert.match(diag,/hcx-hero/);

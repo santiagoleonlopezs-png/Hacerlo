@@ -54,11 +54,39 @@ class ModelValidationTests(unittest.TestCase):
         later[-1]["adopted_count"] = 25
         second = calibrate_adoption({**BASE, "observations": later})
         self.assertEqual(first["parameters"], second["parameters"])
+        for key in ('calibrated', 'persistence', 'trend'):
+            self.assertEqual([r[key] for r in first['series']],
+                             [r[key] for r in second['series']])
+        self.assertEqual(first['reference_trend_increment_pp'],
+                         second['reference_trend_increment_pp'])
         self.assertEqual(first["training_periods"], [1, 2, 3])
         self.assertEqual(first["holdout_periods"], [4, 5])
         self.assertNotEqual(first["holdout_mae_pp"], second["holdout_mae_pp"])
         self.assertEqual(first["status"], "retrospective_not_prospective_validation")
         self.assertEqual(first["searched_candidates"], 16)
+
+    def test_linear_growth_has_a_perfect_trend_reference(self):
+        observations = [{**row, 'adopted_count': 5 + 2 * i}
+                        for i, row in enumerate(OBSERVATIONS)]
+        result = calibrate_adoption({**BASE, 'observations': observations})
+        self.assertEqual(result['trend_holdout_mae_pp'], 0)
+        self.assertFalse(result['better_than_trend'])
+        self.assertFalse(result['better_than_simple_references'])
+        self.assertTrue(all(row['trend'] is None for row in result['series'][:4]))
+        self.assertEqual(result['series'][-1]['trend'], .3)
+
+    def test_trend_reference_saturates_at_population_size(self):
+        observations = [{**row, 'adopted_count': count} for row, count in
+                        zip(OBSERVATIONS, (5, 20, 35, 45, 48, 50))]
+        result = calibrate_adoption({**BASE, 'observations': observations})
+        self.assertEqual([row['trend'] for row in result['series'][-2:]], [1, 1])
+
+    def test_malformed_periods_are_rejected_before_sorting(self):
+        for bad in (True, 1.0, '1', None):
+            observations = [dict(row) for row in OBSERVATIONS]
+            observations[1]['period'] = bad
+            with self.assertRaisesRegex(ValueError, 'enteros'):
+                observations_as_series(observations)
 
     def test_calibration_reproducible(self):
         inp = {**BASE, "observations": OBSERVATIONS}
