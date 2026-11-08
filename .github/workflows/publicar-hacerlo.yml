@@ -66,6 +66,7 @@ jobs:
           PYTHONPATH=backend python -m unittest discover -s backend/tests -p test_activation_drafting.py -v
           node --check src/modules/analisis/grafos.js
           node tests/grafos_alertas_icono_v1.cjs
+          node tests/hallazgos_clasificados_v1.cjs
           node --check src/modules/implementacion/plan-ejecutivo.js
           node tests/plan_ejecutivo_v1.cjs
           node --check src/modules/implementacion/plan-narrativa.js

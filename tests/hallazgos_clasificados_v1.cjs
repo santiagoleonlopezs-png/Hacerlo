@@ -1,0 +1,23 @@
+/* Regression: imported survey answers are not interpreted findings by default. */
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const ctx={console,safe:v=>String(v??''),save(){throw Error('Read must not save')},document:{getElementById(){return null}}};vm.createContext(ctx);
+for(const path of ['src/modules/analisis/grafos.js','src/modules/analisis/sistemico-lienzo.js'])vm.runInContext(fs.readFileSync(path,'utf8'),ctx);
+const raw={id:'raw',surveyId:'s',sourceKey:'ee:s:text:r:q',text:'Sí',role:'Sin determinar',categories:[],factors:[]};
+const x={diagnosisFindings:[raw,{...raw,id:'raw2',text:'No'},{...raw,id:'classified',text:'Falta tiempo para coordinar',categories:['Procesos']},{...raw,id:'barrier',text:'El acceso requiere varios pasos',role:'Barrera'},{...raw,id:'factor',text:'Olvidan el paso final',factors:['Capacidad::Memoria']},{...raw,id:'metric',text:'Satisfacción: 4 de 5',evidenceType:'Cuantitativa',role:'Observación',sourceKey:'ee:s:metric:score'},{...raw,id:'reviewed',text:'La coordinación mejora',role:'Observación',processedAt:'2026-11-08'},{id:'manual',text:'Hay instrucciones contradictorias',role:'Sin determinar'}],nodes:[],edges:[],behaviors:[{id:'b1'},{id:'b2'}]};
+const original=JSON.stringify(x);
+const ids=ctx.graphCatalog(x).filter(o=>o.kind==='hallazgo').map(o=>o.id);
+assert.deepEqual(Array.from(ids).sort(),['barrier','classified','factor','manual','reviewed']);
+assert.ok(ctx.graphCatalog(x).find(o=>o.id==='classified').classification.includes('Procesos'));
+assert.equal(ctx.graphResolvedNode(x,{sourceKind:'hallazgo',sourceId:'raw',name:'Sí'}).name,'Sí','Existing raw references still resolve');
+assert.ok(!ctx.graphResolvedNode(x,{sourceKind:'hallazgo',sourceId:'raw',name:'Sí'}).missingSource);
+assert.ok(!ctx.sdxSources(x).some(s=>s.ref==='finding:raw'));
+assert.ok(ctx.sdxSources(x).some(s=>s.ref==='finding:classified'));
+assert.ok(ctx.sdxSources(x,'finding:raw').some(s=>s.ref==='finding:raw'),'An existing variable retains its original reference');
+x.diagnosisFindings.find(f=>f.id==='classified').behaviors=['b2'];
+vm.runInContext("sdxUI.key='behavior:b1'",ctx);assert.ok(!ctx.sdxSources(x).some(s=>s.ref==='finding:classified'));
+vm.runInContext("sdxUI.key='behavior:b2'",ctx);assert.ok(ctx.sdxSources(x).some(s=>s.ref==='finding:classified'));
+x.diagnosisFindings.find(f=>f.id==='classified').behaviors=['1'];assert.ok(ctx.sdxSources(x).some(s=>s.ref==='finding:classified'),'Legacy behavior index accepted');
+x.diagnosisFindings.find(f=>f.id==='classified').behaviors=undefined;delete x.diagnosisFindings.find(f=>f.id==='classified').behaviors;
+assert.equal(JSON.stringify(x),original,'Catalog and source filtering do not alter original records');
+assert.equal(ctx.graphFindingIsProcessed({...raw,categories:['']}),false);
+console.log('Classified findings OK: raw yes/no and automatic metrics excluded; interpreted findings included; existing references preserved; no writes.');
