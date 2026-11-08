@@ -2,10 +2,10 @@
    Agregar nuevos temas mediante sysHubRegisterModule sin cargar el home. */
 let sysHubArea='inicio',sysHubInitiative=null;
 const SYS_HUB_MODULES=[
- {id:'lectura',name:'Comprender el sistema',icon:'⟳',tag:'CONDICIONES Y RELACIONES',
-  description:'Explora lo que favorece o dificulta el comportamiento, identifica mecanismos y contrasta hipótesis.',
-  summary:x=>{const s=sysStore(x);return (s.conditions||[]).length+' condiciones · '+(s.hypotheses||[]).length+' hipótesis';},
-  render:(a,x)=>sysRender(a,'',x)},
+ {id:'lectura',name:'Bucles del sistema',icon:'⟳',tag:'EXPLICAR Y ACTUAR',
+  description:'Dibuja relaciones, descubre ciclos y elige dónde intervenir.',
+  summary:x=>{const models=Object.values(x.systemDynamicsV1?.models||{});return models.reduce((n,m)=>n+(m.variables||[]).length,0)+' variables · '+models.reduce((n,m)=>n+(m.links||[]).length,0)+' relaciones';},
+  render:(a,x)=>typeof sdxRender==='function'?sdxRender(a,x):sysRender(a,'',x)},
  {id:'capacidad',name:'Capacidad Adaptativa',icon:'◈',tag:'MEDICIÓN Y DINÁMICA',
   description:'Vincula preguntas de SENTIR y CNPS para comprender energía, preparación, apertura y experiencia.',
   summary:x=>caCandidates(x).length+' preguntas disponibles · '+(x.capacityAdaptive?.observations?.length||0)+' lecturas guardadas',
@@ -17,6 +17,7 @@ function sysHubRegisterModule(mod){
 }
 function sysHubReset(){sysHubArea='inicio';}
 function sysHubOpen(id){
+ if(typeof hcxPrepareNavigation==='function'&&!hcxPrepareNavigation())return;
  if(id!=='inicio'&&!SYS_HUB_MODULES.some(m=>m.id===id))return;
  if(id==='capacidad'&&sysHubArea!==id){caExpanded=false;caSurveyFilter='';}
  sysHubArea=id;render();
