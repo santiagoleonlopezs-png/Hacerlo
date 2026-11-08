@@ -1,6 +1,6 @@
 """Pruebas de reproducibilidad y restricciones de HACERLO ABM v1."""
 import unittest
-from simulation import simulate_adoption, build_population
+from simulation import simulate_adoption, build_population, single_run
 
 BASE = {
     "audiences": [
@@ -19,6 +19,26 @@ BASE = {
 
 
 class SimulationTests(unittest.TestCase):
+    def test_initial_count_is_fixed_but_identities_can_vary(self):
+        agents, _ = build_population(BASE, seed=42)
+        for seed in (1, 19, 2026):
+            for rate in (0, .12, .5, 1):
+                curve, _ = single_run(agents, {}, 'baseline', rate, 3, seed)
+                expected = int(rate * len(agents) + .5) / len(agents)
+                self.assertEqual(curve[0], expected)
+                self.assertLessEqual(abs(curve[0] - rate), .5 / len(agents))
+                self.assertTrue(all(b >= a for a, b in zip(curve, curve[1:])))
+
+    def test_initial_resolution_and_model_version_are_explicit(self):
+        result = simulate_adoption(BASE)
+        self.assertEqual(result['model_version'], 'abm-1.2')
+        self.assertEqual(result['initialization']['requested_rate'], .12)
+        self.assertEqual(result['initialization']['represented_rate'], .125)
+        self.assertEqual(result['initialization']['resolution_pp'], 1.25)
+        start = result['series'][0]['baseline']
+        self.assertEqual(start['mean'], start['p10'])
+        self.assertEqual(start['mean'], start['p90'])
+
     def test_same_seed_reproduces_every_result(self):
         self.assertEqual(simulate_adoption(BASE), simulate_adoption(BASE))
 

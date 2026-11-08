@@ -109,7 +109,7 @@ const ctx={console,URLSearchParams,location:{hash:'',search:''},FormData:MockFor
         meets_target:true}],limitations:[]
     };
     else throw Error('URL inesperada '+url);
-    return {ok:true,json:async()=>response};
+    return {ok:true,json:async()=>({...response,model_version:'abm-1.2'})};
   }
 };
 vm.createContext(ctx);

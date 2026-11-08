@@ -1,4 +1,11 @@
-/* HACERLO · Investigación ABM v1.1. Se integra con la pantalla existente. */
+/* HACERLO · Investigación ABM v1.2. Se integra con la pantalla existente. */
+const HACERLO_ABM_MODEL_VERSION = 'abm-1.2';
+
+function verifyABMModelVersion(result) {
+  if (result?.model_version !== HACERLO_ABM_MODEL_VERSION)
+    throw Error('El servidor del modelo requiere actualización. Reintenta cuando esté desplegada la versión '+HACERLO_ABM_MODEL_VERSION+'.');
+  return result;
+}
 function renderABMResearchPanel(x, behaviorIndex) {
   const key = String(behaviorIndex);
   const savedCSV = (x.abmObservationCsv || {})[key] || '';
@@ -30,6 +37,7 @@ function renderABMResearchPanel(x, behaviorIndex) {
 /* Contrato de comparabilidad: cambios en red, audiencia o condiciones requieren recalibración. */
 function abmInputFingerprint(payload) {
   return JSON.stringify({
+    model_version:HACERLO_ABM_MODEL_VERSION,
     behavior:payload.behavior,mode:payload.mode,seed:payload.seed,
     sample_size:payload.sample_size,audiences:payload.audiences,
     agents:payload.agents,edges:payload.edges
@@ -125,7 +133,7 @@ async function postABMResearch(path,payload) {
   });
   if(!response.ok){let error={};try{error=await response.json()}catch(_){}
     throw Error(typeof error.detail==='string'?error.detail:'Error HTTP '+response.status)}
-  return response.json();
+  return verifyABMModelVersion(await response.json());
 }
 
 async function calibrateAgentModel() {
@@ -187,6 +195,12 @@ function renderABMCalibrationResult(r) {
   const p=n=>(Number(n)*100).toFixed(1)+'%';
   const n=n=>Number(n).toFixed(2);
   const improvement=r.better_than_naive;
+  const hasTrend=Number.isFinite(r.trend_holdout_mae_pp);
+  const assessment=hasTrend
+    ? (r.better_than_simple_references
+      ? 'Menor error que mantener la última medición y que prolongar la tendencia previa.'
+      : 'El ajuste no supera ambas referencias simples; no hay mejora consistente frente a ellas.')
+    : (improvement?'Menor error que el modelo de persistencia.':'No mejoró el modelo de persistencia.');
   const rows=(r.series||[]).map(v=>
     '<tr><td>'+v.period+'</td><td>'+p(v.observed)+'</td><td>'+p(v.calibrated)+
     '</td><td>'+(v.set==='holdout'?'Validación reservada':'Ajuste')+'</td></tr>').join('');
@@ -195,13 +209,15 @@ function renderABMCalibrationResult(r) {
     '<div class="triple"><div><small>Error en ajuste</small><div class="metric">'+n(r.training_mae_pp)+' pp</div></div>' +
     '<div><small>Error reservado (holdout)</small><div class="metric">'+n(r.holdout_mae_pp)+' pp</div></div>' +
     '<div><small>Referencia ingenua (holdout)</small><div class="metric">'+n(r.naive_holdout_mae_pp)+' pp</div></div></div>' +
-    '<p><strong>'+ (improvement?'Menor error que el modelo de persistencia.':'No mejoró el modelo de persistencia.') +'</strong> ' +
+    (hasTrend?'<p class="muted">Error al prolongar la tendencia previa: '+n(r.trend_holdout_mae_pp)+' pp.</p>':'') +
+    '<p><strong>'+assessment+'</strong> ' +
     'La comparación se limita a los dos periodos separados de esta misma serie.</p>' +
     '<p class="muted">Parámetros ajustados: umbral medio '+n(r.parameters.threshold_mean)+
     ' · peso social '+n(r.parameters.peer_weight)+' · tasa máxima fija '+n(r.parameters.adoption_rate)+
     '. Candidatos parecidos: '+Number(r.near_optimal_candidates)+' de '+Number(r.searched_candidates)+'.</p>' +
     '<details><summary style="cursor:pointer">Ver periodos y trazabilidad</summary><div style="overflow:auto"><table><tr><th>Periodo</th><th>Adopción observada</th><th>ABM ajustado</th><th>Conjunto</th></tr>'+rows+'</table></div>' +
     '<p>Repeticiones de ajuste: '+Number(r.fit_runs)+' · evaluación: '+Number(r.evaluation_runs)+' · agentes: '+Number(r.number_of_agents)+'.</p></details>' +
+    (r.initialization?'<p class="muted">Adopción inicial observada: '+p(r.initialization.observed_rate)+' · representada: '+p(r.initialization.represented_rate)+'. Las identidades iniciales son hipotéticas.</p>':'') +
     '<details><summary style="cursor:pointer">Limitaciones científicas</summary><ul>'+
     (r.limitations||[]).map(v=>'<li>'+safe(v)+'</li>').join('')+'</ul></details></div>';
 }

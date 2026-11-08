@@ -16,6 +16,7 @@ import networkx as nx
 
 MAX_AGENTS = 500
 MAX_EDGES = 5000
+MODEL_VERSION = "abm-1.2"
 
 DEFAULT_PARAMETERS = {"threshold_mean": 0.62, "peer_weight": 0.25, "adoption_rate": 0.28}
 PARAMETER_BOUNDS = {"threshold_mean": (0.35, 0.85), "peer_weight": (0.0, 0.6), "adoption_rate": (0.05, 0.5)}
@@ -139,7 +140,12 @@ def single_run(agents, incoming, scenario, initial_adoption, periods, rng_seed, 
     ids = [a["id"] for a in agents]
     draws = {name: rng.random() for name in ids}
     thresholds = {name: clamp(rng.gauss(params["threshold_mean"], 0.13), 0.25, 0.9) for name in ids}
-    adopted = {name: draws[name] < initial_adoption for name in ids}
+    # Fijar el conteo evita que una tasa inicial conocida fluctúe entre corridas.
+    # Las identidades iniciales siguen siendo hipotéticas: selección aleatoria
+    # sin reemplazo, compartida por ambos escenarios, sin inferir quién adoptó.
+    initial_count = math.floor(clamp(initial_adoption) * len(ids) + 0.5)
+    initial_ids = set(sorted(ids, key=lambda name: draws[name])[:initial_count])
+    adopted = {name: name in initial_ids for name in ids}
     effects = {"capability": 0.18, "opportunity": 0.18, "motivation": 0.18}
     if scenario == "ambassadors":
         # Embajadores: un 10% de agentes de mayor entrada social, como intervención hipotética.
@@ -237,6 +243,13 @@ def simulate_adoption(data: dict[str, Any]) -> dict[str, Any]:
         })
     return {
         "status": "experimental_not_calibrated",
+        "model_version": MODEL_VERSION,
+        "initialization": {
+            "method": "fixed_count_random_identities",
+            "requested_rate": initial_adoption,
+            "represented_rate": baseline[0][0],
+            "resolution_pp": round(100 / len(agents), 4),
+        },
         "behavior": str(data.get("behavior", "Comportamiento objetivo"))[:160],
         "scenario": scenario, "periods": periods, "runs": runs, "seed": seed,
         "mode": data.get("mode", "synthetic"), "agent_count": len(agents), "edge_count": len(edges),
@@ -255,6 +268,7 @@ def simulate_adoption(data: dict[str, Any]) -> dict[str, Any]:
             "Parámetros de transición y umbrales hipotéticos, todavía sin calibración empírica.",
             "Las bandas p10–p90 expresan variabilidad de Monte Carlo condicionada al modelo, no intervalos de confianza de una predicción real.",
             "Adopción absorbente: v1 no estima abandono ni sostenibilidad del comportamiento.",
-            "Las audiencias sin datos individuales se representan mediante supuestos, no personas identificables."
+            "Las audiencias sin datos individuales se representan mediante supuestos, no personas identificables.",
+            "El conteo inicial se aproxima al agente más cercano; las identidades de los adoptantes iniciales son hipotéticas."
         ],
     }

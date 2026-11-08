@@ -39,6 +39,16 @@ html=context.renderAgentSimulationPage(project);
 assert.match(html,/Error reservado/);
 assert.match(html,/Menor error/);
 assert.match(html,/abm-target-effect/);
+const weaker=context.renderABMCalibrationResult({
+  ...project.abmCalibration.result,model_version:'abm-1.2',
+  trend_holdout_mae_pp:0,better_than_simple_references:false
+});
+assert.match(weaker,/no supera ambas referencias/);
+assert.doesNotMatch(weaker,/Menor error/);
+assert.match(weaker,/tendencia previa: 0.00 pp/);
+assert.throws(()=>context.verifyABMModelVersion({model_version:'abm-1.1'}),/requiere actualización/);
+assert.throws(()=>context.verifyABMModelVersion({}),/requiere actualización/);
+assert.equal(context.verifyABMModelVersion({model_version:'abm-1.2'}).model_version,'abm-1.2');
 let visual=context.renderABMExperiencePage(project);
 assert.match(visual,/¿Qué pasaría si/);
 assert.match(visual,/¿Qué harías para impulsar el cambio/);

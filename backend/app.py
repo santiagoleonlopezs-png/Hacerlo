@@ -45,7 +45,8 @@ def health():
         'engine': 'HACERLO',
         'networkx': 'ready-v1.1',
         'ai': 'openrouter-configured' if os.getenv('OPENROUTER_API_KEY') else 'not-configured',
-        'abm': 'experimental-v1.1',
+        'abm': 'experimental-v1.2',
+        'abm_model_version': MODEL_VERSION,
         'mesa': 'pending',
         'pysd': 'pending'
     }
@@ -522,7 +523,7 @@ def ai_activation_message(
 
 # Motor experimental de adopción: requiere sesión HACERLO.
 # Los límites por proceso no sustituyen el control de cuota global en producción.
-from simulation import simulate_adoption
+from simulation import MODEL_VERSION, simulate_adoption
 
 class SimulationRequest(BaseModel):
     audiences: List[Dict[str, Any]] = Field(min_length=1, max_length=50)
