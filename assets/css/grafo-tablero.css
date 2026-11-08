@@ -1,32 +1,32 @@
 /* Canvas-first graph workspace. Every rule stays inside this module. */
-.hcg-workspace{border:1px solid #31576b;border-radius:20px;background:#092233;overflow:hidden}
-.hcg-workspace .hcg-toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:17px 20px;background:#0d2c3d;border-bottom:1px solid #31576b}
+.hcg-workspace{border:0;background:transparent;overflow:visible;container-type:inline-size}
+.hcg-workspace .hcg-toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:17px 20px;background:#0d2c3d;border:1px solid #31576b;border-radius:15px}
 .hcg-workspace .hcg-tools{display:flex;gap:8px;flex-wrap:wrap}.hcg-workspace button{width:auto}.hcg-workspace button:focus-visible,.hcg-workspace svg [tabindex]:focus-visible{outline:3px solid #8ff5e1;outline-offset:4px}
 .hcg-workspace .hcg-hint{margin:0;padding:12px 20px;color:#a8d5e4;font-size:13px}
-.hcg-workspace .hacerlo-graph-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:0;align-items:start}
+.hcg-workspace .hacerlo-graph-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
 .hcg-workspace .hacerlo-graph-layout.has-drawer{grid-template-columns:minmax(0,1fr) 340px}
-.hcg-workspace .hacerlo-graph-layout .graph-map{grid-column:1;grid-row:1;position:relative;top:auto;margin:0;padding:0;border:0;border-radius:0;background:#071f2e;overflow:hidden!important}
+.hcg-workspace .hacerlo-graph-layout .graph-map{grid-column:1;grid-row:1;position:relative;top:auto;margin:0;padding:0;border:1px solid #2e5b70;border-radius:17px;background:#071f2e;overflow:hidden!important}
 .hcg-workspace .hacerlo-graph-layout svg{width:100%;height:clamp(420px,62vh,720px);border:0;border-radius:0;background-color:#071f2e;background-image:radial-gradient(#255064 1px,transparent 1px);background-size:24px 24px;touch-action:none;cursor:grab}
 .hcg-workspace svg circle[role=button]{stroke:#083146;stroke-width:3;filter:drop-shadow(0 0 5px #24baca55)}.hcg-workspace svg circle[role=button]:hover{stroke:#91f5e0}.hcg-workspace svg line[role=button]{cursor:pointer}.hcg-workspace svg line[role=button]:hover,.hcg-workspace svg line[role=button]:focus{stroke:#f4ca77;stroke-width:4}
 .hcg-workspace .graph-legend{padding:14px 20px;border-top:1px solid #31576b;margin:0;background:#0b2637;min-height:48px}
 .hcg-workspace .hcg-zoom{position:absolute;right:16px;top:16px;display:flex;gap:0;border:1px solid #31576b;border-radius:11px;overflow:hidden}.hcg-workspace .hcg-zoom button{border:0;border-radius:0;padding:10px 13px;background:#0d3043}
-.hcg-workspace .hcg-drawer{grid-column:2;grid-row:1;border-left:1px solid #31576b;padding:18px;min-width:0;background:#0d2b3b;max-height:780px;overflow:auto}.hcg-workspace .hcg-drawer[hidden]{display:none}.hcg-workspace .hcg-drawer h2{font-size:20px;margin:6px 35px 22px 0}.hcg-workspace .hcg-drawer h3{font-size:17px}.hcg-workspace .hcg-close{float:right;padding:5px 12px}.hcg-workspace .hcg-drawer>.panel{margin:12px 0!important;padding:12px!important;background:transparent}.hcg-workspace .hcg-drawer label{font-size:14px}.hcg-workspace .hcg-drawer .muted{font-size:13px}.hcg-workspace .hcg-drawer input,.hcg-workspace .hcg-drawer select,.hcg-workspace .hcg-drawer textarea{max-width:100%;box-sizing:border-box}
+.hcg-workspace .hacerlo-graph-layout>.hcg-drawer{grid-column:2;grid-row:1;align-self:start;position:sticky;top:12px;box-sizing:border-box;min-width:0;max-height:none;padding:22px 18px;background:linear-gradient(155deg,#103247,#0b2538);border:1px solid #3c7185;border-radius:15px;box-shadow:0 8px 30px #00111c33;overflow:visible!important}
+.hcg-workspace .hcg-drawer[hidden]{display:none}.hcg-workspace .hcg-drawer h2{font-size:18px;padding-right:30px;margin:0 0 22px;overflow-wrap:anywhere}.hcg-workspace .hcg-drawer h3{font-size:16px}
+.hcg-workspace .hcg-close{position:absolute;right:12px;top:12px;float:none;width:29px;height:29px;padding:0;border:1px solid #3a6579;border-radius:7px;background:transparent;color:#b4d5e0;font-size:20px}
+.hcg-workspace .hcg-drawer>details.panel{margin:15px 0!important;padding:12px 0 0!important;border:0;border-top:1px solid #2c5369;border-radius:0;background:transparent}
+.hcg-workspace .hcg-drawer>section.panel{margin:0!important;padding:0!important;border:0;background:transparent}.hcg-workspace .hcg-drawer>section.panel>button:first-child{display:none}
+.hcg-workspace .hcg-drawer summary{font-size:13px;color:#a9d7dc;white-space:normal;overflow-wrap:anywhere;line-height:1.5}.hcg-workspace .hcg-drawer summary b{font-weight:500}
+.hcg-workspace .hcg-drawer form,.hcg-workspace .hcg-drawer label{min-width:0;max-width:100%;box-sizing:border-box}.hcg-workspace .hcg-drawer label{font-size:12px;display:block;margin:12px 0;color:#c7dfe8}.hcg-workspace .hcg-drawer .muted{font-size:12px;line-height:1.6}
+.hcg-workspace .hcg-drawer input,.hcg-workspace .hcg-drawer select,.hcg-workspace .hcg-drawer textarea{width:100%;min-width:0;max-width:100%;box-sizing:border-box;font-size:12px;margin-top:6px;padding:10px;line-height:1.5}.hcg-workspace .hcg-drawer textarea{min-height:62px;resize:vertical}.hcg-workspace .hcg-drawer button.primary{font-size:12px;margin-top:8px}
 .hcg-workspace .hacerlo-graph-analysis-bottom{margin:0!important;padding:22px;border:0;border-top:1px solid #31576b;border-radius:0;background:#0a2435}.hcg-workspace .hcg-empty{position:absolute;inset:120px 20px auto;text-align:center;pointer-events:none}.hcg-workspace .hcg-empty button{pointer-events:auto}.hcg-workspace .hcg-empty p{color:#a8d5e4}
-@media(max-width:1050px){.hcg-workspace .hacerlo-graph-layout.has-drawer{grid-template-columns:minmax(0,1fr)}.hcg-workspace .hcg-drawer{grid-column:1;grid-row:2;max-height:none;border-left:0;border-top:1px solid #31576b}.hcg-workspace .hcg-toolbar{padding:12px}.hcg-workspace .hcg-hint{padding:12px}.hcg-workspace .hcg-tools button{font-size:13px;padding:10px}}
-/* Keep the tool column continuous with the canvas and fit the available app width. */
-.hcg-workspace{container-type:inline-size}
-.hcg-workspace .hacerlo-graph-layout{align-items:stretch}
-.hcg-workspace .hacerlo-graph-layout>.hcg-drawer{align-self:stretch;box-sizing:border-box;max-height:none;overflow:visible!important;min-width:0}
-.hcg-workspace .hcg-drawer>h2{overflow-wrap:anywhere}
-.hcg-workspace .hcg-drawer details,.hcg-workspace .hcg-drawer form,.hcg-workspace .hcg-drawer label{min-width:0;max-width:100%;box-sizing:border-box}
-.hcg-workspace .hcg-drawer summary{white-space:normal;overflow-wrap:anywhere;line-height:1.45}
-.hcg-workspace .hcg-drawer input,.hcg-workspace .hcg-drawer select,.hcg-workspace .hcg-drawer textarea{width:100%;min-width:0}
 @container(max-width:900px){
  .hcg-workspace .hacerlo-graph-layout.has-drawer{grid-template-columns:minmax(0,1fr)}
- .hcg-workspace .hacerlo-graph-layout.has-drawer>.hcg-drawer{grid-column:1;grid-row:1;border-left:0;border-top:0;border-bottom:1px solid #31576b}
+ .hcg-workspace .hacerlo-graph-layout.has-drawer>.hcg-drawer{grid-column:1;grid-row:1;position:relative;top:auto}
  .hcg-workspace .hacerlo-graph-layout.has-drawer>.graph-map{grid-column:1;grid-row:2}
 }
 @media(max-width:1050px){
- .hcg-workspace .hacerlo-graph-layout.has-drawer>.hcg-drawer{grid-column:1;grid-row:1;border-top:0;border-bottom:1px solid #31576b}
+ .hcg-workspace .hacerlo-graph-layout.has-drawer{grid-template-columns:minmax(0,1fr)}
+ .hcg-workspace .hacerlo-graph-layout.has-drawer>.hcg-drawer{grid-column:1;grid-row:1;position:relative;top:auto}
  .hcg-workspace .hacerlo-graph-layout.has-drawer>.graph-map{grid-column:1;grid-row:2}
+ .hcg-workspace .hcg-toolbar{padding:12px}.hcg-workspace .hcg-hint{padding:12px}.hcg-workspace .hcg-tools button{font-size:13px;padding:10px}
 }
