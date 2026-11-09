@@ -40,7 +40,7 @@ function medDashboard(x,b,bi){
  if(medView.tab==='actions')body='<h3>¿Qué hicimos para este comportamiento?</h3>'+medActionList(actions)+medNav('Gestionar intervenciones','Intervenciones');
  else if(medView.tab==='surveys')body='<h3>¿Qué reportaron las personas?</h3>'+(surveys.length?surveys.map(s=>medSurveyCard(x,s)).join(''):medEmpty('No hay encuestas vinculadas a este comportamiento. Puedes asociar una fuente existente.'));
  else if(medView.tab==='learning')body='<h3>¿Qué aprendimos?</h3>'+medHypothesisList(x,medHypotheses(x,b,bi))+medReview(x,b,bi);
- else body='<h3>¿Qué cambió?</h3>'+(indicators.length?'<div class="med-indicators">'+indicators.map(r=>medIndicatorCard(x,r)).join('')+'</div>':medEmpty('Este comportamiento aún no tiene indicadores asociados.'))+medAdoption(x,b);
+ else body=medVisualSummary(indicators,actions)+'<h3>¿Qué cambió?</h3>'+(indicators.length?'<div class="med-indicators">'+indicators.map(r=>medIndicatorCard(x,r)).join('')+'</div>':medEmpty('Este comportamiento aún no tiene indicadores asociados.'))+medAdoption(x,b);
  return '<section class="med-dashboard" data-med-behavior="'+safe(key)+'"><header class="med-dashboard-heading"><div><span class="med-eyebrow">COMPORTAMIENTO SELECCIONADO</span><h2>'+safe(b.name||'Comportamiento')+'</h2></div><button type="button" class="secondary" onclick="medSetFilter(\'behavior\',\'all\')">Quitar selección</button></header>'+
  '<div class="med-overview"><div><strong>'+indicators.filter(r=>medNumber(r.value)!==null).length+'/'+indicators.length+'</strong><span>indicadores con medición</span></div><div><strong>'+completed+'/'+actions.length+'</strong><span>intervenciones completadas</span></div><div><strong>'+surveys.length+'</strong><span>encuestas vinculadas</span></div></div>'+
  '<nav class="med-tabs" aria-label="Analítica del comportamiento">'+tabs.map(([id,label])=>'<button type="button" aria-pressed="'+(medView.tab===id)+'" onclick="medSetTab('+medArgs(id)+')">'+safe(label)+'</button>').join('')+'</nav><div class="med-tab-content" aria-live="polite">'+body+'</div>'+medLinkEditor(x,b,bi)+'</section>';
@@ -103,20 +103,47 @@ function medSeriesChart(rows,options={}){
  let svg='';
  if(points.length){
   const values=points.map(p=>Number(p.value)).concat(refs.map(([,v])=>v));
-  const lo=Math.min(...values),hi=Math.max(...values),span=hi-lo||1;
+  const rawLo=Math.min(...values),rawHi=Math.max(...values);
+  const pad=rawHi===rawLo?Math.max(1,Math.abs(rawLo)*.1):(rawHi-rawLo)*.15;
+  const lo=rawLo-pad,hi=rawHi+pad,span=hi-lo;
   const first=medTime(points[0].date),last=medTime(points.at(-1).date);
   const px=p=>last===first?285:55+(medTime(p.date)-first)*460/(last-first);
   const py=v=>145-(v-lo)*100/span;
   svg='<svg class="med-chart" viewBox="0 0 570 190" role="img" aria-label="'+safe(options.label||'Evolución de mediciones')+'">'+
+   [lo,(lo+hi)/2,hi].map(v=>'<line class="med-gridline" x1="55" y1="'+py(v)+'" x2="515" y2="'+py(v)+'"/><text x="45" y="'+(py(v)+4)+'" text-anchor="end">'+safe(medValue(v))+'</text>').join('')+
    '<line x1="55" y1="155" x2="515" y2="155" stroke="currentColor" opacity=".3"/>'+
    refs.map(([label,v])=>'<line x1="55" y1="'+py(v)+'" x2="515" y2="'+py(v)+'" stroke="'+(label==='Meta'?'#f5c56c':'#87b2d0')+'" stroke-dasharray="5 5"/><text x="55" y="'+(py(v)-5)+'">'+label+' '+safe(medValue(v))+'</text>').join('')+
-   (definitions.size>1?'':'<polyline points="'+points.map(p=>px(p)+','+py(p.value)).join(' ')+'" fill="none" stroke="#39d6c0" stroke-width="3"/>')+
-   points.map(p=>'<circle cx="'+px(p)+'" cy="'+py(p.value)+'" r="4" fill="#39d6c0"><title>'+safe(medDate(p.date)+' · '+medValue(p.value))+'</title></circle>').join('')+
+   (definitions.size>1||points.length<2||last===first?'':'<polygon class="med-area" points="55,155 '+points.map(p=>px(p)+','+py(p.value)).join(' ')+' 515,155"/>')+
+   (definitions.size>1?'':'<polyline points="'+points.map(p=>px(p)+','+py(p.value)).join(' ')+'" class="med-line" fill="none" stroke-width="3"/>')+
+   points.map(p=>'<circle cx="'+px(p)+'" cy="'+py(p.value)+'" r="5" class="med-point" tabindex="0" role="img" aria-label="'+safe(medDate(p.date)+' · '+medValue(p.value))+'"><title>'+safe(medDate(p.date)+' · '+medValue(p.value))+'</title></circle>').join('')+
    '<text x="55" y="178">'+safe(medDate(points[0].date))+'</text><text x="515" y="178" text-anchor="end">'+safe(medDate(points.at(-1).date))+'</text></svg>';
  }
  if(options.chartOnly)return svg;
  return svg+(definitions.size>1?'<p class="med-caption">Hay definiciones diferentes en este historial. Se muestran los puntos sin unirlos como una tendencia comparable.</p>':'')+(all.length!==dated.length?'<p class="med-caption">Las mediciones sin fecha válida se conservan en la tabla y no se colocan en la línea temporal.</p>':'')+
   '<div class="med-table-wrap"><table><thead><tr><th>Fecha / momento</th><th>Valor</th><th>Muestra</th><th>Fuente / observación</th></tr></thead><tbody>'+all.slice().reverse().map(r=>'<tr><td>'+safe(medDate(r.date))+(r.period?'<small>'+safe(r.period)+'</small>':'')+'</td><td>'+safe(medValue(r.value))+'</td><td>'+safe(r.n===null||r.n===undefined?'No registrada':r.n)+'</td><td>'+safe([r.source,r.definition,r.notes].filter(Boolean).join(' · ')||'Registro del indicador')+'</td></tr>').join('')+'</tbody></table></div>';
+}
+/* Visuales derivados: cuentan registros, nunca promedian escalas diferentes. */
+function medIndicatorState(r){
+ const value=medNumber(r.value),base=medNumber(r.baseline),target=medNumber(r.target);
+ if(value===null)return 'missing';
+ if(base===null||target===null)return 'unconfigured';
+ return (target>base?value>=target:target<base?value<=target:value===target)?'met':'pending';
+}
+function medVisualSummary(indicators,actions){
+ const completed=actions.filter(a=>a.status==='Completada').length,total=actions.length;
+ const pct=total?100*completed/total:null;
+ const groups=[['met','Alcanzan la meta'],['pending','Meta por alcanzar'],['unconfigured','Base o meta pendiente'],['missing','Sin medición actual']].map(([key,label])=>({key,label,count:indicators.filter(r=>medIndicatorState(r)===key).length}));
+ const ring='<svg class="med-ring" viewBox="0 0 120 120" role="img" aria-label="'+completed+' de '+total+' intervenciones completadas"><circle class="med-ring-track" cx="60" cy="60" r="48"/>'+(completed?'<circle class="med-ring-value" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="'+pct+' 100" transform="rotate(-90 60 60)"/>':'')+'<text x="60" y="60" text-anchor="middle">'+(total?Math.round(pct)+'%':'—')+'</text><text class="med-ring-label" x="60" y="77" text-anchor="middle">completadas</text></svg>';
+ return '<section class="med-visual-summary" aria-label="Lectura gráfica del seguimiento"><article class="med-visual-card med-execution-chart"><div class="med-section-heading"><h3>Intervenciones</h3><span class="med-chip">Ejecución</span></div><div class="med-ring-layout">'+ring+'<div><strong>'+completed+' <small>de '+total+'</small></strong><p>intervenciones completadas</p><small>Describe la ejecución de acciones.</small></div></div></article>'+
+ '<article class="med-visual-card med-coverage-chart"><div class="med-section-heading"><h3>Estado de los indicadores</h3><span class="med-chip">'+indicators.length+' indicadores</span></div>'+(indicators.length?'<div class="med-stacked" role="img" aria-label="'+safe(groups.map(g=>g.label+': '+g.count).join('; '))+'">'+groups.filter(g=>g.count).map(g=>'<span class="med-segment med-state-'+g.key+'" style="width:'+100*g.count/indicators.length+'%"></span>').join('')+'</div><ul class="med-legend">'+groups.map(g=>'<li><i class="med-state-'+g.key+'" aria-hidden="true"></i><span>'+g.label+'</span><strong>'+g.count+'</strong></li>').join('')+'</ul>':medEmpty('Agrega indicadores para ver su seguimiento.'))+'</article></section>';
+}
+function medTrendPill(series){
+ const rows=medArray(series.rows).filter(r=>medNumber(r.value)!==null&&medTime(r.date)!==null).slice().sort((a,b)=>medTime(a.date)-medTime(b.date));
+ if(rows.length<2)return '<span class="med-trend med-trend-muted">'+(series.current===null?'Pendiente de medición':'Primera lectura disponible')+'</span>';
+ const definitions=new Set(rows.map(r=>String(r.definition||'').trim()).filter(Boolean));
+ if(definitions.size>1)return '<span class="med-trend med-trend-muted">Revisar comparabilidad</span>';
+ const delta=rows.at(-1).value-rows.at(-2).value;
+ return '<span class="med-trend">'+(delta>0?'↗ +':delta<0?'↘ ':'→ ')+safe(medValue(delta))+' respecto a la lectura anterior</span>';
 }
 function medSourceControl(x,key,resolved){
  let options=[];try{options=typeof eeHomeSourceOptions==='function'?eeHomeSourceOptions(x):[];}catch(_){}
@@ -138,9 +165,9 @@ function medSetCoreSource(select,key){
 }
 function medCoreCard(x,label,key){
  const s=medCoreSeries(x,key);
- return '<article class="med-core-card"><h3>'+safe(label)+'</h3><strong class="med-big">'+safe(medValue(s.current))+'</strong><p>'+safe(s.label)+'</p><small>'+safe(s.date?medDate(s.date):s.note||'Sin fecha registrada')+(s.n!==null?' · n = '+safe(s.n):'')+'</small>'+
+ return '<article class="med-core-card" data-metric="'+safe(key)+'"><div class="med-metric-heading"><span class="med-metric-symbol" aria-hidden="true">'+(key==='ins_personas'?'◉':key==='ins_proceso'?'⌘':'✦')+'</span><span class="med-chip">'+(s.kind==='survey'?'Encuesta':'Registro manual')+'</span></div><h3>'+safe(label)+'</h3><strong class="med-big">'+safe(medValue(s.current))+'</strong>'+medTrendPill(s)+'<p>'+safe(s.label)+'</p><small>'+safe(s.date?medDate(s.date):s.note||'Sin fecha registrada')+(s.n!==null?' · n = '+safe(s.n):'')+'</small>'+
   (s.kind==='survey'?'<p class="med-caption">Resultado declarado en encuesta.</p>':'<p class="med-caption">'+safe(x.metrics?.[key+'_definition']||'Escala por definir')+'</p><button type="button" class="secondary" data-metric-entry="'+key+'" onclick="openMetricEntry('+medArgs(key)+')">Registrar medición</button>')+
-  (s.rows.length>1?medSeriesChart(s.rows,{label:label,chartOnly:true}):'')+
+  (s.rows.length>1?medSeriesChart(s.rows,{label:label,chartOnly:true}):'<div class="med-chart-placeholder"><span aria-hidden="true">⌁</span><small>'+safe(s.current===null?'La evolución aparecerá al registrar mediciones.':'Registra otra medición para ver la evolución.')+'</small></div>')+
   '<details><summary>Historial de esta fuente</summary>'+medSeriesChart(s.rows,{label:label})+'</details>'+medSourceControl(x,key,s)+'</article>';
 }
 function medIndicatorCard(x,r){
@@ -151,7 +178,8 @@ function medIndicatorCard(x,r){
  const comparable=current!==null&&baseline!==null;
  const met=comparable&&target!==null?(target>baseline?current>=target:target<baseline?current<=target:current===target):null;
  const delta=comparable?current-baseline:null;
- return '<article class="med-indicator"><h4>'+safe(r.name||'Indicador sin nombre')+'</h4><p class="med-caption">'+safe(r.type||'Sin categoría')+' · '+safe(unit||'Unidad sin definir')+(medView.audience?' · Valor general, sin segmentación por audiencia':'')+'</p>'+
+ const state=medIndicatorState(r),status={met:'Meta alcanzada',pending:'En seguimiento',unconfigured:'Base o meta pendiente',missing:'Sin medición'};
+ return '<article class="med-indicator" data-state="'+state+'"><span class="med-status med-status-'+state+'">'+status[state]+'</span><h4>'+safe(r.name||'Indicador sin nombre')+'</h4><p class="med-caption">'+safe(r.type||'Sin categoría')+' · '+safe(unit||'Unidad sin definir')+(medView.audience?' · Valor general, sin segmentación por audiencia':'')+'</p>'+
   '<div class="med-values">'+[['Base',r.baseline],['Meta',r.target],['Actual',current]].map(([label,value])=>'<div><small>'+label+'</small><strong>'+safe(medValue(value))+'</strong></div>').join('')+'</div>'+
   (comparable?'<p class="med-caption">Diferencia respecto a la base: '+safe((delta>0?'+':'')+medValue(delta))+' '+safe(/porcentaje|%/i.test(unit)?'pp':unit||'unidades')+'. '+(met===null?'Meta sin definir.':met?'Alcanza la meta registrada en esta medición.':'Meta aún no alcanzada en esta medición.')+'</p>':'')+
   '<p class="med-caption">'+safe(current===null?'Sin valor actual registrado':date?'Último registro: '+medDate(date):'Valor actual sin fecha registrada')+'</p>'+
@@ -176,9 +204,11 @@ function medOpenSurvey(id){const x=current();if(!medArray(x?.surveys).some(s=>St
 function medAdoption(x,b){
  if(typeof abmV2EvidenceSummary!=='function')return medEmpty('El registro de adopción no está disponible.');
  const e=abmV2EvidenceSummary(x,b,medView.audience?[medView.audience]:null);
+ const stageLabels={unknown:'Sin evidencia suficiente',understands:'Comprende',tries:'Prueba',performs:'Realiza',sustains:'Sostiene'};
+ const distribution=e.eligible?'<div class="med-stacked med-adoption-bar" role="img" aria-label="'+safe(Object.entries(stageLabels).map(([key,label])=>label+': '+(e.stages[key]||0)).join('; '))+'">'+Object.entries(stageLabels).filter(([key])=>e.stages[key]).map(([key,label])=>'<span class="med-stage-'+key+'" style="width:'+100*e.stages[key]/e.eligible+'%" title="'+safe(label+': '+e.stages[key])+'"></span>').join('')+'</div><ul class="med-legend med-stage-legend">'+Object.entries(stageLabels).map(([key,label])=>'<li><i class="med-stage-'+key+'" aria-hidden="true"></i><span>'+label+'</span><strong>'+e.stages[key]+'</strong></li>').join('')+'</ul>':'';
  return '<div class="med-adoption"><h4>Comportamiento registrado en personas</h4><p><strong>'+e.measured+' de '+e.eligible+'</strong> personas registradas tienen un estado evaluado.</p>'+
   (e.measured?'<p><strong>'+e.confirmed+'</strong> con ejecución registrada (Realiza o Sostiene). '+e.unknown+' sin evidencia suficiente.</p>':medEmpty('Sin evidencia suficiente para describir la ejecución. No significa cero adopción.'))+
-  '<small>Fuente: Gestión de audiencias · '+safe(e.latestDate?medDate(e.latestDate):'Sin fecha de evaluación')+'. Es el último estado registrado; no una curva de primeras adopciones.</small>'+medNav('Actualizar estados de adopción','Gestión de audiencias')+'</div>';
+  distribution+'<small>Fuente: Gestión de audiencias · '+safe(e.latestDate?medDate(e.latestDate):'Sin fecha de evaluación')+'. Es el último estado registrado; no una curva de primeras adopciones.</small>'+medNav('Actualizar estados de adopción','Gestión de audiencias')+'</div>';
 }
 function medActionList(actions){return actions.length?'<ul class="med-list">'+actions.map(a=>'<li><strong>'+safe(a.name||a.title||'Intervención')+'</strong><span>'+safe(a.status||'Pendiente')+' · '+safe(a.owner||'Sin responsable')+'</span><small>'+safe(a.start||'Inicio sin fecha')+' → '+safe(a.end||'Fin sin fecha')+'</small>'+(a.hypothesis?'<p>Queremos comprobar: '+safe(a.hypothesis)+'</p>':'')+(a.measurement?'<p>Medición prevista: '+safe(a.measurement)+'</p>':'')+'</li>').join('')+'</ul>':medEmpty('No hay intervenciones vinculadas explícitamente a este comportamiento.');}
 function medLinkEditor(x,b,bi){
@@ -311,6 +341,7 @@ function renderMeasurementPage(x,embedded=false){
   '<section class="med-selector"><div><span class="med-eyebrow">EXPLORAR MEDICIÓN</span><h2>'+safe(selected?'Analítica del comportamiento':'Panorama de la iniciativa')+'</h2></div><div class="med-filters"><label for="med-behavior-select">Comportamiento<select id="med-behavior-select" onchange="medSetFilter(\'behavior\',this.value)"><option value="all">Vista general de la iniciativa</option>'+behaviors.map((b,i)=>'<option value="'+i+'"'+(medView.behavior===String(i)?' selected':'')+'>'+safe(b.name)+'</option>').join('')+'</select></label>'+(selected?'<label for="med-audience-select">Audiencia<select id="med-audience-select" onchange="medSetFilter(\'audience\',this.value)"><option value="">Todas las audiencias</option>'+medArray(x.audiences).filter(a=>selected.scope!=='specific'||medArray(selected.audienceIds).map(String).includes(String(a.id))).map(a=>'<option value="'+safe(a.id)+'"'+(medView.audience===String(a.id)?' selected':'')+'>'+safe(a.name)+'</option>').join('')+'</select></label>':'')+'</div></section>'+
   (selected?medDashboard(x,selected,Number(medView.behavior)):
   '<section class="med-headline" aria-label="Indicadores generales de la iniciativa"><div class="med-section-heading"><h2>¿Cómo va la iniciativa?</h2><span>INS y CNPS</span></div><div class="med-instruments">'+[['INS personas','ins_personas'],['INS proceso','ins_proceso'],['CNPS','cnps']].map(([label,key])=>medCoreCard(x,label,key)).join('')+'</div></section>'+
+  medVisualSummary(indicators,actions)+
   '<section class="med-outcome"><div class="med-section-heading"><span class="med-eyebrow">RESULTADO ESPERADO</span>'+medNav('Ver resultado','Resultado global')+'</div><h2>'+safe([r.verb,r.complement].filter(Boolean).join(' ')||x.expected||'Resultado global por definir')+'</h2><details><summary>Meta y seguimiento del resultado</summary><div class="med-values">'+[['Base',r.baseline],['Meta',r.target]].map(([label,value])=>'<div><small>'+label+'</small><strong>'+safe(medValue(value))+'</strong></div>').join('')+'<div><small>Fecha meta</small><strong>'+safe(medDate(r.dueDate))+'</strong></div></div><p class="med-caption">'+safe(r.unit||'Unidad por definir')+' · '+safe(r.measureType||'Método por definir')+'</p>'+medGlobalIndicator(x)+'</details></section>'+
   '<div class="med-overview"><div><strong>'+behaviors.length+'</strong><span>comportamientos definidos</span></div><div><strong>'+indicators.filter(r=>medNumber(r.value)!==null).length+'/'+indicators.length+'</strong><span>indicadores con medición</span></div><div><strong>'+completed+'/'+actions.length+'</strong><span>intervenciones completadas</span></div></div>'+
   '<section class="med-initiative-indicators"><div class="med-section-heading"><h2>Indicadores de la iniciativa</h2>'+medNav('Gestionar indicadores','Indicadores')+'</div><div class="med-indicators">'+indicators.map(r=>medIndicatorCard(x,r)).join('')+'</div>'+(indicators.length?'':medEmpty('Aún no hay indicadores configurados.'))+'</section>')+

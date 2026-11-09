@@ -5,8 +5,8 @@ El resultado global se contrasta con un indicador asociado explícitamente.
 Los comportamientos reúnen sus indicadores (incluida Gestión), estados de
 adopción, intervenciones, encuestas, hipótesis sistémicas y revisión humana.
 
-Las fuentes no asociadas quedan en Evidencia general, junto con INS/CNPS,
-dimensiones históricas y el consolidado del portafolio plegado. Se conservan
+INS/CNPS y los indicadores de la iniciativa se muestran al entrar. Las encuestas
+no asociadas, dimensiones históricas y consolidado quedan en Evidencia general. Se conservan
 los módulos de edición originales. El historial contextual reúne registros
 fechados; no reconstruye eventos que nunca se registraron.
 
@@ -66,3 +66,7 @@ de navegación, encuestas, ABM y edición de acciones existentes.
 ## Tablero interactivo (v1.1)
 
 La entrada muestra los tres indicadores generales originales (INS personas, INS proceso y CNPS) y los indicadores configurados de la iniciativa. Los cálculos y las fuentes no cambian. El selector de comportamiento reemplaza el panorama por una sola vista con pestañas de Resultados, Intervenciones, Encuestas y Aprendizaje. Quitar selección restituye el panorama; cambiar comportamiento limpia audiencia y vuelve a Resultados. Navegar no guarda datos. Las gráficas se muestran cuando existen varias mediciones; el historial detallado y la configuración de fuentes permanecen desplegables. Las fuentes generales no se presentan como medidas de un comportamiento.
+
+## Lectura visual (v1.2)
+
+Los tres indicadores generales tienen identidades de color por fuente, lectura anterior y gráfica fechada con ejes, retícula y puntos accesibles. Los colores de fuente no clasifican el resultado como bueno o malo. Las mediciones ausentes muestran un espacio informativo, sin curvas ficticias. El anillo cuenta acciones completadas sobre acciones registradas (sin acciones: sin porcentaje). Las barras cuentan indicadores por meta alcanzada, pendiente, base/meta pendiente o medición ausente, sin promediar sus valores. La distribución conductual conserva las cinco etapas originales, incluyendo falta de evidencia. Los textos y conteos acompañan siempre el color. El resumen se restringe a los vínculos del comportamiento cuando hay selección.

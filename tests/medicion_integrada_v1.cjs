@@ -46,6 +46,19 @@ async function exercise(){
  assert.equal(JSON.stringify(project),original);assert.equal(errors.length,0);
  assert.equal(d.querySelectorAll('.med-headline .med-core-card').length,3,'INS y CNPS visibles al entrar');
  assert.equal(d.querySelector('.med-dashboard'),null,'La iniciativa no despliega todos los comportamientos');
+ assert.equal(d.querySelectorAll('.med-headline [data-metric]').length,3,'Los indicadores mantienen identidad visual propia');
+ assert.match(d.querySelector('.med-visual-summary .med-ring').getAttribute('aria-label'),/1 de 2/);
+ assert.equal(w.medIndicatorState({value:0,baseline:0,target:10}),'pending','Cero medido sigue siendo un valor');
+ assert.equal(w.medIndicatorState({value:null,baseline:0,target:10}),'missing');
+ assert.equal(w.medIndicatorState({value:2,baseline:10,target:4}),'met','Meta decreciente');
+ assert.equal(w.medIndicatorState({value:10,baseline:10,target:10}),'met','Meta estable');
+ assert.equal(w.medIndicatorState({value:3,baseline:null,target:4}),'unconfigured');
+ assert.match(w.medVisualSummary([],[]),/Agrega indicadores/);
+ assert.doesNotMatch(w.medVisualSummary([],[]),/NaN|Infinity|0%/,'Sin acciones no muestra 0% de cumplimiento');
+ assert.doesNotMatch(w.medCoreCard({...project,metrics:{},metricHistory:{},surveyHomeSources:{},surveys:[]},'CNPS','cnps'),/<polyline/,'Sin datos no se dibuja evolución');
+ assert.match(w.medTrendPill({current:0,rows:[{date:'2026-11-01',value:10},{date:'2026-11-08',value:0}]}),/↘ -10/);
+ assert.match(w.medTrendPill({rows:[{date:'2026-11-01',value:5,definition:'1–5'},{date:'2026-11-08',value:50,definition:'%'}]}),/Revisar comparabilidad/);
+
  assert.equal(d.querySelectorAll('.med-initiative-indicators .med-indicator').length,3);
  const behaviorSelect=d.getElementById('med-behavior-select');behaviorSelect.value='0';behaviorSelect.dispatchEvent(new w.Event('change',{bubbles:true}));
  d.querySelector('.med-tabs button:nth-child(2)').click();
@@ -61,6 +74,9 @@ async function exercise(){
  const card=d.querySelector('[data-med-behavior="b1"]');
  assert.match(card.textContent,/Seguimientos registrados/);
  assert.match(card.textContent,/1 de 2.*estado evaluado/);
+ assert.match(card.querySelector('.med-adoption-bar').getAttribute('aria-label'),/Realiza: 1/);
+ assert.match(card.querySelector('.med-adoption-bar').getAttribute('aria-label'),/Sin evidencia suficiente: 1/);
+ assert.match(card.querySelector('.med-ring').getAttribute('aria-label'),/1 de 1/,'Resumen filtrado al comportamiento seleccionado');
  assert.equal(w.medActions(project,project.behaviors[0],0).length,1);
  assert.match(w.medModelRuns(project),/90.*No es un efecto observado/);
  assert.equal(project.measurementV1,undefined,'No se concluye que una hipótesis esté respaldada por una simulación');
