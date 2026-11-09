@@ -1,7 +1,7 @@
 /* Medición integrada: lecturas derivadas de las fuentes de la iniciativa.
  * No promedia instrumentos, no convierte simulaciones en resultados observados
  * y solo vincula registros por IDs o por asociaciones legacy explícitas. */
-let medView={key:'',behavior:'all',audience:'',open:''};
+let medView={key:'',behavior:'all',audience:'',open:'',tab:'results'};
 let medExternalCache=new WeakMap(),medSessionIdentity='';
 if(typeof sb!=='undefined'&&sb.auth?.onAuthStateChange)sb.auth.onAuthStateChange((_event,session)=>{
  const identity=String(session?.user?.id||'');
@@ -25,7 +25,25 @@ function medToggleFold(el){
 }
 function medSetFilter(field,value){
  if(typeof hcxPrepareNavigation==='function'&&!hcxPrepareNavigation()){render();return;}
- if(['behavior','audience'].includes(field)){medView[field]=String(value);medView.open='';render();}
+ if(['behavior','audience'].includes(field)){medView[field]=String(value);medView.open='';if(field==='behavior'){medView.audience='';medView.tab='results';}render();}
+}
+function medSetTab(value){
+ if(!['results','actions','surveys','learning'].includes(value))return;
+ if(typeof hcxPrepareNavigation==='function'&&!hcxPrepareNavigation())return;
+ medView.tab=value;render();
+}
+function medDashboard(x,b,bi){
+ const key=medKey(b,bi),indicators=medIndicators(x,b,bi),actions=medActions(x,b,bi),surveys=medArray(x.surveys).filter(s=>medSurveyKeys(x,s).includes(key));
+ const completed=actions.filter(a=>a.status==='Completada').length;
+ const tabs=[['results','Resultados'],['actions','Intervenciones · '+actions.length],['surveys','Encuestas · '+surveys.length],['learning','Aprendizaje']];
+ let body='';
+ if(medView.tab==='actions')body='<h3>¿Qué hicimos para este comportamiento?</h3>'+medActionList(actions)+medNav('Gestionar intervenciones','Intervenciones');
+ else if(medView.tab==='surveys')body='<h3>¿Qué reportaron las personas?</h3>'+(surveys.length?surveys.map(s=>medSurveyCard(x,s)).join(''):medEmpty('No hay encuestas vinculadas a este comportamiento. Puedes asociar una fuente existente.'));
+ else if(medView.tab==='learning')body='<h3>¿Qué aprendimos?</h3>'+medHypothesisList(x,medHypotheses(x,b,bi))+medReview(x,b,bi);
+ else body='<h3>¿Qué cambió?</h3>'+(indicators.length?'<div class="med-indicators">'+indicators.map(r=>medIndicatorCard(x,r)).join('')+'</div>':medEmpty('Este comportamiento aún no tiene indicadores asociados.'))+medAdoption(x,b);
+ return '<section class="med-dashboard" data-med-behavior="'+safe(key)+'"><header class="med-dashboard-heading"><div><span class="med-eyebrow">COMPORTAMIENTO SELECCIONADO</span><h2>'+safe(b.name||'Comportamiento')+'</h2></div><button type="button" class="secondary" onclick="medSetFilter(\'behavior\',\'all\')">Quitar selección</button></header>'+
+ '<div class="med-overview"><div><strong>'+indicators.filter(r=>medNumber(r.value)!==null).length+'/'+indicators.length+'</strong><span>indicadores con medición</span></div><div><strong>'+completed+'/'+actions.length+'</strong><span>intervenciones completadas</span></div><div><strong>'+surveys.length+'</strong><span>encuestas vinculadas</span></div></div>'+
+ '<nav class="med-tabs" aria-label="Analítica del comportamiento">'+tabs.map(([id,label])=>'<button type="button" aria-pressed="'+(medView.tab===id)+'" onclick="medSetTab('+medArgs(id)+')">'+safe(label)+'</button>').join('')+'</nav><div class="med-tab-content" aria-live="polite">'+body+'</div>'+medLinkEditor(x,b,bi)+'</section>';
 }
 function medIndicatorKeys(x,r){
  if(Array.isArray(r.behaviorIds))return r.behaviorIds.map(id=>medBehaviorRef(x,id));
@@ -96,6 +114,7 @@ function medSeriesChart(rows,options={}){
    points.map(p=>'<circle cx="'+px(p)+'" cy="'+py(p.value)+'" r="4" fill="#39d6c0"><title>'+safe(medDate(p.date)+' · '+medValue(p.value))+'</title></circle>').join('')+
    '<text x="55" y="178">'+safe(medDate(points[0].date))+'</text><text x="515" y="178" text-anchor="end">'+safe(medDate(points.at(-1).date))+'</text></svg>';
  }
+ if(options.chartOnly)return svg;
  return svg+(definitions.size>1?'<p class="med-caption">Hay definiciones diferentes en este historial. Se muestran los puntos sin unirlos como una tendencia comparable.</p>':'')+(all.length!==dated.length?'<p class="med-caption">Las mediciones sin fecha válida se conservan en la tabla y no se colocan en la línea temporal.</p>':'')+
   '<div class="med-table-wrap"><table><thead><tr><th>Fecha / momento</th><th>Valor</th><th>Muestra</th><th>Fuente / observación</th></tr></thead><tbody>'+all.slice().reverse().map(r=>'<tr><td>'+safe(medDate(r.date))+(r.period?'<small>'+safe(r.period)+'</small>':'')+'</td><td>'+safe(medValue(r.value))+'</td><td>'+safe(r.n===null||r.n===undefined?'No registrada':r.n)+'</td><td>'+safe([r.source,r.definition,r.notes].filter(Boolean).join(' · ')||'Registro del indicador')+'</td></tr>').join('')+'</tbody></table></div>';
 }
@@ -121,6 +140,7 @@ function medCoreCard(x,label,key){
  const s=medCoreSeries(x,key);
  return '<article class="med-core-card"><h3>'+safe(label)+'</h3><strong class="med-big">'+safe(medValue(s.current))+'</strong><p>'+safe(s.label)+'</p><small>'+safe(s.date?medDate(s.date):s.note||'Sin fecha registrada')+(s.n!==null?' · n = '+safe(s.n):'')+'</small>'+
   (s.kind==='survey'?'<p class="med-caption">Resultado declarado en encuesta.</p>':'<p class="med-caption">'+safe(x.metrics?.[key+'_definition']||'Escala por definir')+'</p><button type="button" class="secondary" data-metric-entry="'+key+'" onclick="openMetricEntry('+medArgs(key)+')">Registrar medición</button>')+
+  (s.rows.length>1?medSeriesChart(s.rows,{label:label,chartOnly:true}):'')+
   '<details><summary>Historial de esta fuente</summary>'+medSeriesChart(s.rows,{label:label})+'</details>'+medSourceControl(x,key,s)+'</article>';
 }
 function medIndicatorCard(x,r){
@@ -135,6 +155,7 @@ function medIndicatorCard(x,r){
   '<div class="med-values">'+[['Base',r.baseline],['Meta',r.target],['Actual',current]].map(([label,value])=>'<div><small>'+label+'</small><strong>'+safe(medValue(value))+'</strong></div>').join('')+'</div>'+
   (comparable?'<p class="med-caption">Diferencia respecto a la base: '+safe((delta>0?'+':'')+medValue(delta))+' '+safe(/porcentaje|%/i.test(unit)?'pp':unit||'unidades')+'. '+(met===null?'Meta sin definir.':met?'Alcanza la meta registrada en esta medición.':'Meta aún no alcanzada en esta medición.')+'</p>':'')+
   '<p class="med-caption">'+safe(current===null?'Sin valor actual registrado':date?'Último registro: '+medDate(date):'Valor actual sin fecha registrada')+'</p>'+
+  (history.length>1?medSeriesChart(history,{baseline:r.baseline,target:r.target,label:r.name,chartOnly:true}):'')+
   '<details><summary>Mediciones y trazabilidad</summary><p>'+safe(r.measureType||r.definition||'Método de medición pendiente')+'</p>'+medSeriesChart(history,{baseline:r.baseline,target:r.target,label:r.name})+
   (medArray(r.revisionHistory).some(rev=>medArray(rev.changes).some(c=>['definition','unit','measureType','scale','scaleMin','scaleMax'].includes(c.field)))?'<p class="med-caption">Hay cambios de definición o configuración registrados. Revisa su comparabilidad antes de interpretar la tendencia.</p>':'')+medNav('Actualizar indicador','Indicadores')+'</details></article>';
 }
@@ -208,15 +229,6 @@ function medSaveReview(event,bi){
  x.measurementV1.reviews[key]={status,decision,learning,reviewedAt:new Date().toISOString(),evidence,audienceId:medView.audience||null,history};
  if(typeof hcxRememberForm==='function')hcxRememberForm(f);save();render();
 }
-function medBehaviorCard(x,b,bi){
- const key=medKey(b,bi),indicators=medIndicators(x,b,bi),actions=medActions(x,b,bi),surveys=medArray(x.surveys).filter(s=>medSurveyKeys(x,s).includes(key));
- const measured=indicators.filter(r=>medNumber(r.value)!==null).length;
- return medFold('behavior:'+key,b.name||'Comportamiento',measured+' de '+indicators.length+' indicadores con valor · '+actions.length+' intervenciones vinculadas',
-  '<h3>Resultados del comportamiento</h3>'+(indicators.length?'<div class="med-indicators">'+indicators.map(r=>medIndicatorCard(x,r)).join('')+'</div>':medEmpty('Aún no hay indicadores asociados. Vincula uno existente o configúralo en Indicadores.'))+
-  medAdoption(x,b)+'<details><summary>Intervenciones vinculadas · '+actions.length+'</summary>'+medActionList(actions)+medNav('Gestionar intervenciones','Intervenciones')+'</details>'+
-  '<details><summary>Encuestas vinculadas · '+surveys.length+'</summary>'+surveys.map(s=>medSurveyCard(x,s)).join('')+(surveys.length?'':medEmpty('Las encuestas sin vínculo explícito permanecen en Evidencia general.'))+'</details>'+
-  '<details><summary>Hipótesis relacionadas</summary>'+medHypothesisList(x,medHypotheses(x,b,bi))+'</details>'+medReview(x,b,bi)+medLinkEditor(x,b,bi));
-}
 function medModelRuns(x){return medArray(x.modelRuns).slice(-12).reverse().map(r=>'<li><strong>'+safe(r.behavior||'Comportamiento sin identificar')+'</strong><small>'+safe(medDate(r.date))+' · '+safe(r.result?.model_version||r.engine||'Modelo sin versión')+'</small><p>Diferencia simulada: '+safe(medValue(medNumber(r.result?.final?.difference?.mean)===null?null:r.result.final.difference.mean*100))+' pp. No es un efecto observado.</p></li>').join('')||'<li>Sin simulaciones guardadas.</li>';}
 function medTimeline(x){
  const events=[];const add=(date,source,text)=>{if(medTime(date)!==null)events.push({date,source,text});};
@@ -275,15 +287,16 @@ function medSetGlobalIndicator(select){
 }
 function renderMeasurementPage(x,embedded=false){
  if(!x)return medEmpty('Selecciona una iniciativa para consultar sus resultados.');
- const identity=String(x._cloudId||x.id);if(medView.key!==identity)medView={key:identity,behavior:'all',audience:'',open:''};
+ const identity=String(x._cloudId||x.id);if(medView.key!==identity)medView={key:identity,behavior:'all',audience:'',open:'',tab:'results'};
  const behaviors=medArray(x.behaviors),surveys=medArray(x.surveys),indicators=medArray(x.indicators),actions=medArray(x.actions),s=x.systemV23||{};
  if(medView.audience&&!medArray(x.audiences).some(a=>String(a.id)===medView.audience))medView.audience='';
- const visible=behaviors.map((b,i)=>({b,i})).filter(({b,i})=>(medView.behavior==='all'||String(i)===medView.behavior)&&(!medView.audience||b.scope!=='specific'||medArray(b.audienceIds).map(String).includes(medView.audience)));
+ if(medView.behavior!=='all'&&!behaviors[Number(medView.behavior)])medView.behavior='all';
+ const selected=medView.behavior==='all'?null:behaviors[Number(medView.behavior)];
  const unlinkedIndicators=indicators.filter(r=>!medIndicatorKeys(x,r).some(id=>behaviors.some((b,i)=>medKey(b,i)===id)));
  const unlinkedSurveys=surveys.filter(r=>!medSurveyKeys(x,r).some(id=>behaviors.some((b,i)=>medKey(b,i)===id)));
  const r=x.globalResult||{},completed=actions.filter(a=>a.status==='Completada').length;
  const hypotheses=medArray(s.hypotheses),conditions=medArray(s.conditions),findings=medArray(x.diagnosisFindings);
- const general='<h3>Indicadores generales y sin asociación · '+unlinkedIndicators.length+'</h3><div class="med-indicators">'+unlinkedIndicators.map(r=>medIndicatorCard(x,r)).join('')+'</div>'+
+ const general=
   '<h3>Encuestas sin vínculo explícito · '+unlinkedSurveys.length+'</h3>'+unlinkedSurveys.map(s=>medSurveyCard(x,s)).join('')+
   '<p class="med-caption">Las encuestas vinculadas se muestran dentro de sus comportamientos.</p>'+medNav('Consultar todos los instrumentos','Encuestas y experiencias')+medNav('Gestionar indicadores','Indicadores')+
   '<details><summary>Dimensiones registradas</summary><p class="med-caption">Valores descriptivos de la iniciativa; no equivalen a un porcentaje de adopción observado.</p><ul class="med-list">'+Object.entries(x.dimensions||{}).map(([name,value])=>'<li>'+safe(name)+': '+safe(medValue(value))+'</li>').join('')+'</ul></details>'+
@@ -295,15 +308,20 @@ function renderMeasurementPage(x,embedded=false){
   return ['<article class="med-survey"><h4>'+safe(s.title||'Encuestas conectadas')+'</h4><p>'+safe(e.baseline)+' → '+safe(e.latest)+'</p>'+medArray(e.comparisons).filter(m=>medNumber(m.latestValue)!==null).map(m=>'<p>'+safe(m.label)+': '+safe(medValue(m.baselineValue))+' → '+safe(medValue(m.latestValue))+' '+safe(m.unit)+' · diferencia '+safe(medValue(m.delta))+' · n = '+safe(m.baselineN)+' / '+safe(m.latestN)+'</p>').join('')+(e.hasComparison?'':medEmpty('Todavía no hay momentos o medidas comparables suficientes.'))+'<p class="med-caption">Comparación de la iniciativa; no se atribuye automáticamente a un comportamiento o intervención.</p></article>'];
  }).join('');
  return '<div class="med-page">'+(embedded?'':hcxHero('Medición y aprendizaje',x,'Conecta lo que hicimos, lo que observamos y lo que decidimos.','RDAIM · MEDICIÓN','◷'))+
-  '<section class="med-outcome"><span class="med-eyebrow">RESULTADO DE LA INICIATIVA</span><h2>'+safe([r.verb,r.complement].filter(Boolean).join(' ')||x.expected||'Resultado global por definir')+'</h2><div class="med-values">'+[['Base',r.baseline],['Meta',r.target]].map(([label,value])=>'<div><small>'+label+'</small><strong>'+safe(medValue(value))+'</strong></div>').join('')+'<div><small>Fecha meta</small><strong>'+safe(medDate(r.dueDate))+'</strong></div></div><p class="med-caption">'+safe(r.unit||'Unidad por definir')+' · '+safe(r.measureType||'Método por definir')+'. Cada indicador conserva su definición y escala.</p><details><summary>Contrastar el resultado esperado</summary>'+medGlobalIndicator(x)+'</details>'+medNav('Ver resultado definido','Resultado global')+'</section>'+
-  '<div class="med-overview"><div><strong>'+behaviors.length+'</strong><span>comportamientos definidos</span></div><div><strong>'+indicators.filter(r=>medNumber(r.value)!==null).length+'/'+indicators.length+'</strong><span>indicadores con valor actual</span></div><div><strong>'+completed+'/'+actions.length+'</strong><span>intervenciones completadas</span></div></div>'+
-  '<section class="med-workspace"><h2>¿Qué cambió en los comportamientos?</h2><div class="med-filters"><label>Comportamiento<select onchange="medSetFilter(\'behavior\',this.value)"><option value="all">Todos</option>'+behaviors.map((b,i)=>'<option value="'+i+'"'+(medView.behavior===String(i)?' selected':'')+'>'+safe(b.name)+'</option>').join('')+'</select></label><label>Audiencia<select onchange="medSetFilter(\'audience\',this.value)"><option value="">Todas</option>'+medArray(x.audiences).map(a=>'<option value="'+safe(a.id)+'"'+(medView.audience===String(a.id)?' selected':'')+'>'+safe(a.name)+'</option>').join('')+'</select></label></div><p class="med-caption">La audiencia filtra estados de adopción y respuestas de encuestas. Los indicadores e intervenciones generales conservan su alcance original.</p>'+visible.map(({b,i})=>medBehaviorCard(x,b,i)).join('')+(visible.length?'':medEmpty('No hay comportamientos en este alcance. Define uno en Diseño o ajusta el filtro.'))+'</section>'+
-  medFold('general','Evidencia general e instrumentos',unlinkedIndicators.length+' indicadores y '+unlinkedSurveys.length+' encuestas sin vínculo específico',general+'<h3>Comparaciones entre encuestas conectadas</h3>'+(comparisons||medEmpty('Sin comparaciones conectadas disponibles.'))+'<h3>INS y CNPS</h3><div class="med-instruments">'+[['INS personas','ins_personas'],['INS proceso','ins_proceso'],['CNPS','cnps']].map(([label,key])=>medCoreCard(x,label,key)).join('')+'</div>')+
+  '<section class="med-selector"><div><span class="med-eyebrow">EXPLORAR MEDICIÓN</span><h2>'+safe(selected?'Analítica del comportamiento':'Panorama de la iniciativa')+'</h2></div><div class="med-filters"><label for="med-behavior-select">Comportamiento<select id="med-behavior-select" onchange="medSetFilter(\'behavior\',this.value)"><option value="all">Vista general de la iniciativa</option>'+behaviors.map((b,i)=>'<option value="'+i+'"'+(medView.behavior===String(i)?' selected':'')+'>'+safe(b.name)+'</option>').join('')+'</select></label>'+(selected?'<label for="med-audience-select">Audiencia<select id="med-audience-select" onchange="medSetFilter(\'audience\',this.value)"><option value="">Todas las audiencias</option>'+medArray(x.audiences).filter(a=>selected.scope!=='specific'||medArray(selected.audienceIds).map(String).includes(String(a.id))).map(a=>'<option value="'+safe(a.id)+'"'+(medView.audience===String(a.id)?' selected':'')+'>'+safe(a.name)+'</option>').join('')+'</select></label>':'')+'</div></section>'+
+  (selected?medDashboard(x,selected,Number(medView.behavior)):
+  '<section class="med-headline" aria-label="Indicadores generales de la iniciativa"><div class="med-section-heading"><h2>¿Cómo va la iniciativa?</h2><span>INS y CNPS</span></div><div class="med-instruments">'+[['INS personas','ins_personas'],['INS proceso','ins_proceso'],['CNPS','cnps']].map(([label,key])=>medCoreCard(x,label,key)).join('')+'</div></section>'+
+  '<section class="med-outcome"><div class="med-section-heading"><span class="med-eyebrow">RESULTADO ESPERADO</span>'+medNav('Ver resultado','Resultado global')+'</div><h2>'+safe([r.verb,r.complement].filter(Boolean).join(' ')||x.expected||'Resultado global por definir')+'</h2><details><summary>Meta y seguimiento del resultado</summary><div class="med-values">'+[['Base',r.baseline],['Meta',r.target]].map(([label,value])=>'<div><small>'+label+'</small><strong>'+safe(medValue(value))+'</strong></div>').join('')+'<div><small>Fecha meta</small><strong>'+safe(medDate(r.dueDate))+'</strong></div></div><p class="med-caption">'+safe(r.unit||'Unidad por definir')+' · '+safe(r.measureType||'Método por definir')+'</p>'+medGlobalIndicator(x)+'</details></section>'+
+  '<div class="med-overview"><div><strong>'+behaviors.length+'</strong><span>comportamientos definidos</span></div><div><strong>'+indicators.filter(r=>medNumber(r.value)!==null).length+'/'+indicators.length+'</strong><span>indicadores con medición</span></div><div><strong>'+completed+'/'+actions.length+'</strong><span>intervenciones completadas</span></div></div>'+
+  '<section class="med-initiative-indicators"><div class="med-section-heading"><h2>Indicadores de la iniciativa</h2>'+medNav('Gestionar indicadores','Indicadores')+'</div><div class="med-indicators">'+indicators.map(r=>medIndicatorCard(x,r)).join('')+'</div>'+(indicators.length?'':medEmpty('Aún no hay indicadores configurados.'))+'</section>')+
+  (selected?'':'<div class="med-supporting">'+
+  medFold('general','Evidencia general e instrumentos',unlinkedIndicators.length+' indicadores y '+unlinkedSurveys.length+' encuestas sin vínculo específico',general+'<h3>Comparaciones entre encuestas conectadas</h3>'+(comparisons||medEmpty('Sin comparaciones conectadas disponibles.')))+
   medFold('analysis','Diagnóstico, sistema y escenarios',findings.length+' hallazgos · '+conditions.length+' condiciones · '+medArray(x.modelRuns).length+' simulaciones',
    '<h3>Diagnóstico</h3><p>'+findings.length+' hallazgos registrados. Las barreras y facilitadores explican hipótesis; no son medidas de adopción.</p><ul class="med-list">'+findings.slice(-8).map(f=>'<li>'+safe(f.text||f.title||f.finding||'Hallazgo registrado')+'</li>').join('')+'</ul><details><summary>Causas e hipótesis del diagnóstico</summary><ul class="med-list">'+medArray(x.diagnosisPossibleCauses).map(c=>'<li>'+safe(c.statement||'Posible causa')+'<small>'+safe(c.status||'Por comprobar')+'</small></li>').join('')+medArray(x.diagnosisHypotheses).map(h=>'<li>'+safe(h.text||h.statement||h.title||'Hipótesis registrada')+'</li>').join('')+'</ul></details>'+medNav('Examinar diagnóstico','Diagnóstico')+
    '<h3>Grafo y pensamiento sistémico</h3><p>'+medArray(x.nodes).length+' nodos · '+medArray(x.edges).length+' relaciones · '+conditions.length+' condiciones registradas.</p>'+medNav('Consultar grafo','Grafo de adopción')+medNav('Consultar sistema e histórico','Pensamiento sistémico')+
    '<details><summary>Hipótesis de la iniciativa · '+hypotheses.length+'</summary>'+medHypothesisList(x,hypotheses)+'</details><details><summary>Propuestas del grafo y del sistema</summary><ul class="med-list">'+medArray(x.actionExplorationsV1).map(p=>'<li><strong>'+safe(p.name)+'</strong><small>'+safe(p.origin==='graph'?'Grafo de adopción':'Pensamiento sistémico')+'</small><p>'+safe(p.expected||'')+'</p><small>'+safe(p.measurement||'Medición por definir')+'</small></li>').join('')+'</ul></details><details><summary>Últimos escenarios guardados</summary><ul class="med-list">'+medModelRuns(x)+'</ul>'+medNav('Explorar simulaciones','Simulación de agentes')+'</details>')+
   medFold('execution','Ejecución, activación y Laboratorio',completed+' de '+actions.length+' intervenciones completadas','<p class="med-caption">Completar una acción no demuestra que haya cambiado un comportamiento.</p>'+medActionList(actions)+medNav('Gestionar implementación','Intervenciones')+'<button type="button" class="secondary" onclick="medLoadExternal(true)">Actualizar fuentes conectadas</button><div id="med-external-body" aria-live="polite">'+medExternalBody(x)+'</div>')+
   medFold('learning','Aprendizaje e histórico','Revisiones y eventos con fecha, conservando su procedencia','<h3>Contrastes registrados en Inteligencia integrada</h3><ul class="med-list">'+medArray(x.observations).map(o=>'<li>'+safe(medDate(o.date))+' · '+safe(o.scenario||'Contraste')+'<p>Esperado: '+safe(o.expected||'Sin registrar')+' · Observado: '+safe(o.observed||'Sin registrar')+'</p><p>'+safe(o.learning||'')+'</p></li>').join('')+'</ul>'+medNav('Consultar experimentos y aprendizajes','Inteligencia integrada')+'<h3>Últimos 30 eventos fechados</h3><ul class="med-list">'+medTimeline(x)+'</ul>')+
+  '</div>')+
   '<p class="med-caption med-footer">Cada fuente conserva su escala, fecha y alcance. Las hipótesis se revisan con evidencia; las simulaciones permanecen como escenarios exploratorios.</p></div>';
 }
