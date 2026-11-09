@@ -44,7 +44,21 @@ const render=w.render;
 async function exercise(){
  const original=JSON.stringify(project);render();
  assert.equal(JSON.stringify(project),original);assert.equal(errors.length,0);
- const card=d.querySelector('[data-med-fold="behavior:b1"]');
+ assert.equal(d.querySelectorAll('.med-headline .med-core-card').length,3,'INS y CNPS visibles al entrar');
+ assert.equal(d.querySelector('.med-dashboard'),null,'La iniciativa no despliega todos los comportamientos');
+ assert.equal(d.querySelectorAll('.med-initiative-indicators .med-indicator').length,3);
+ const behaviorSelect=d.getElementById('med-behavior-select');behaviorSelect.value='0';behaviorSelect.dispatchEvent(new w.Event('change',{bubbles:true}));
+ d.querySelector('.med-tabs button:nth-child(2)').click();
+ assert.match(d.querySelector('.med-tab-content').textContent,/Simplificar el seguimiento/);
+ assert.doesNotMatch(d.querySelector('.med-tab-content').textContent,/Otra intervención/,'Las intervenciones de otro comportamiento no aparecen');
+ d.querySelector('.med-tabs button:first-child').click();
+ assert.equal(d.querySelector('.med-tabs button:first-child').getAttribute('aria-pressed'),'true');
+ w.medSetFilter('behavior','1');
+ assert.match(d.querySelector('.med-tab-content').textContent,/Tiempo de resolución/);
+ assert.doesNotMatch(d.querySelector('.med-tab-content').textContent,/Seguimientos registrados/);
+ w.medSetFilter('behavior','0');
+ assert.equal(saves,0,'Explorar el tablero no modifica registros');
+ const card=d.querySelector('[data-med-behavior="b1"]');
  assert.match(card.textContent,/Seguimientos registrados/);
  assert.match(card.textContent,/1 de 2.*estado evaluado/);
  assert.equal(w.medActions(project,project.behaviors[0],0).length,1);
@@ -76,7 +90,7 @@ async function exercise(){
  assert.match(w.medIndicatorCard(project,{baseline:10,target:4,value:3,unit:'minutos'}),/Alcanza la meta/);
  assert.match(w.medLabProfiles([{simulator_id:'cultura-cvf',sample_size:5,captured_at:'2026-11-08',data:{current:[0,25,25,50],preferred:[25,25,25,25]}}]),/<td>0<\/td>/);
  // Vínculos explícitos conservan respuestas y otras asociaciones.
- let form=d.querySelector('[data-med-fold="behavior:b1"] .med-link-editor form');
+ let form=d.querySelector('[data-med-behavior="b1"] .med-link-editor form');
  form.querySelector('input[name="surveys"][value="0"]').checked=true;
  const sourceResponses=JSON.stringify(project.surveys[0].responses);
  w.medSaveLinks({preventDefault(){},target:form},0);
@@ -87,26 +101,30 @@ async function exercise(){
  // Filtrar audiencia afecta encuestas/adopción; los indicadores siguen generales.
  w.medSetFilter('audience','a');
  assert.equal(w.medSurveyEvolution(project.surveys[0],'a').comparisons.find(m=>m.key==='evo:nps').latestValue,100);
- assert.match(d.querySelector('[data-med-fold="behavior:b1"]').textContent,/Valor general, sin segmentación/);
- assert.equal(d.querySelectorAll('[data-med-fold^="behavior:"]').length,1);
+ assert.match(d.querySelector('[data-med-behavior="b1"]').textContent,/Valor general, sin segmentación/);
+ assert.equal(d.querySelectorAll('[data-med-behavior]').length,1);
+ w.medSetTab('learning');
  form=d.querySelector('.med-review form');form.elements.status.value='Avance observado';form.elements.learning.value='Registro contrastado con la fuente';form.elements.decision.value='Ajustar';
  w.medSaveReview({preventDefault(){},target:form},0);
  assert.equal(project.measurementV1.reviews['b1|audience:a'].decision,'Ajustar');
  assert.equal(project.systemV23.hypotheses[0].status,'Pendiente');
  w.medSetFilter('audience','');
- assert.doesNotMatch(d.querySelector('[data-med-fold="behavior:b1"] .med-review').textContent,/Registro contrastado/,'Revisión segmentada no se presenta como global');
- form=d.querySelector('[data-med-fold="behavior:b1"] .med-hypothesis form');
+ assert.doesNotMatch(d.querySelector('[data-med-behavior="b1"] .med-review').textContent,/Registro contrastado/,'Revisión segmentada no se presenta como global');
+ form=d.querySelector('[data-med-behavior="b1"] .med-hypothesis form');
  form.elements.status.value='Respaldada parcialmente';form.elements.learning.value='Contraste cualitativo';form.elements.decision.value='Continuar';
  w.medSaveHypothesis({preventDefault(){},target:form},'h1');
  assert.equal(project.systemV23.hypotheses[0].status,'Respaldada parcialmente');
  assert.equal(project.systemV23.events.length,1);
+ w.medSetFilter('behavior','all');
+ assert.equal(d.querySelectorAll('.med-headline .med-core-card').length,3);
+ assert.equal(d.querySelector('.med-dashboard'),null);
  // Un resultado global requiere asociación explícita, no una media automática.
  const selector=d.querySelector('.med-outcome select');selector.value='0';w.medSetGlobalIndicator(selector);
  assert.equal(project.measurementV1.globalIndicatorId,'i1');
  assert.match(d.querySelector('.med-global-current').textContent,/Valor actual: 0/);
  w.medOpenSurvey('s1');assert.equal(route,'Encuestas y experiencias');
  // Solo se abre un acordeón principal a la vez.
- const first=d.querySelector('[data-med-fold="behavior:b1"]'),general=d.querySelector('[data-med-fold="general"]');
+ const first=d.querySelector('[data-med-fold="analysis"]'),general=d.querySelector('[data-med-fold="general"]');
  first.open=true;w.medToggleFold(first);general.open=true;w.medToggleFold(general);assert.equal(first.open,false);
  // Datos ajenos/maliciosos son texto; el selector también escapa valores.
  project.behaviors[0].name='<img src=x onerror="window.pwned=1">';render();
@@ -129,10 +147,11 @@ async function exercise(){
  assert.doesNotMatch(d.getElementById('med-external-body').textContent,/999/);
  w.cloudReady=false;project=a;render();
  // Formularios de otra iniciativa no pueden guardar.
+ w.medSetFilter('behavior','0');w.medSetTab('learning');
  const stale=d.querySelector('.med-review form');project={id:'different',behaviors:[{id:'b1'}]};const before=saves;
  w.medSaveReview({preventDefault(){},target:stale},0);assert.equal(saves,before);
  const previous=project;
- project={id:'legacy',name:'Legacy',behaviors:[{name:'Conducta antigua'}],indicators:[{name:'Medida',behavior:'Conducta antigua'}],actions:[{name:'Acción',analysisOrigin:{scope:'behavior:0'}}],audiences:[],surveys:[],metrics:{}};render();
+ project={id:'legacy',name:'Legacy',behaviors:[{name:'Conducta antigua'}],indicators:[{name:'Medida',behavior:'Conducta antigua'}],actions:[{name:'Acción',analysisOrigin:{scope:'behavior:0'}}],audiences:[],surveys:[],metrics:{}};render();w.medSetFilter('behavior','0');
  form=d.querySelector('.med-link-editor form');assert.equal(form.querySelector('input[name="actions"]').checked,true);
  w.medSaveLinks({preventDefault(){},target:form},0);
  assert.equal(project.actions[0].behaviorIds[0],project.behaviors[0].id);

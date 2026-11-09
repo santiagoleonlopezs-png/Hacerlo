@@ -62,3 +62,7 @@ fuentes, ceros/missing, fechas, categorías, vínculos, segmentación, revisión
 humana, aislamiento de consultas, cierre de sesión y contenido escapado.
 Forma parte de los flujos de revisión y publicación. Se mantienen las pruebas
 de navegación, encuestas, ABM y edición de acciones existentes.
+
+## Tablero interactivo (v1.1)
+
+La entrada muestra los tres indicadores generales originales (INS personas, INS proceso y CNPS) y los indicadores configurados de la iniciativa. Los cálculos y las fuentes no cambian. El selector de comportamiento reemplaza el panorama por una sola vista con pestañas de Resultados, Intervenciones, Encuestas y Aprendizaje. Quitar selección restituye el panorama; cambiar comportamiento limpia audiencia y vuelve a Resultados. Navegar no guarda datos. Las gráficas se muestran cuando existen varias mediciones; el historial detallado y la configuración de fuentes permanecen desplegables. Las fuentes generales no se presentan como medidas de un comportamiento.
