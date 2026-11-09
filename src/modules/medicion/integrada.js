@@ -113,7 +113,7 @@ function medSeriesChart(rows,options={}){
    [lo,(lo+hi)/2,hi].map(v=>'<line class="med-gridline" x1="55" y1="'+py(v)+'" x2="515" y2="'+py(v)+'"/><text x="45" y="'+(py(v)+4)+'" text-anchor="end">'+safe(medValue(v))+'</text>').join('')+
    '<line x1="55" y1="155" x2="515" y2="155" stroke="currentColor" opacity=".3"/>'+
    refs.map(([label,v])=>'<line x1="55" y1="'+py(v)+'" x2="515" y2="'+py(v)+'" stroke="'+(label==='Meta'?'#f5c56c':'#87b2d0')+'" stroke-dasharray="5 5"/><text x="55" y="'+(py(v)-5)+'">'+label+' '+safe(medValue(v))+'</text>').join('')+
-   (definitions.size>1||points.length<2?'':'<polygon class="med-area" points="55,155 '+points.map(p=>px(p)+','+py(p.value)).join(' ')+' 515,155"/>')+
+   (definitions.size>1||points.length<2||last===first?'':'<polygon class="med-area" points="55,155 '+points.map(p=>px(p)+','+py(p.value)).join(' ')+' 515,155"/>')+
    (definitions.size>1?'':'<polyline points="'+points.map(p=>px(p)+','+py(p.value)).join(' ')+'" class="med-line" fill="none" stroke-width="3"/>')+
    points.map(p=>'<circle cx="'+px(p)+'" cy="'+py(p.value)+'" r="5" class="med-point" tabindex="0" role="img" aria-label="'+safe(medDate(p.date)+' · '+medValue(p.value))+'"><title>'+safe(medDate(p.date)+' · '+medValue(p.value))+'</title></circle>').join('')+
    '<text x="55" y="178">'+safe(medDate(points[0].date))+'</text><text x="515" y="178" text-anchor="end">'+safe(medDate(points.at(-1).date))+'</text></svg>';
