@@ -192,4 +192,68 @@ f.eeChainUnlink(x,during,base.id);
 assert.equal(f.eeChainMembers(x,during).length,4);
 assert.equal(base.measurementGroupId,undefined);
 assert.equal(JSON.stringify(base.responses),origBefore);
+
+/* Regresión reportada: Base y Después vacías, Durante con 27 respuestas.
+   La pertenencia al seguimiento no depende de cuántos momentos tengan datos. */
+const emptyBase=create('Algo nuevo viene Cámara Contrata','case-base','Base',2);
+emptyBase.responses=[];
+const currentDuring=create('Algo nuevo viene Cámara Contrata · Durante','case-during','Durante',9);
+currentDuring.responses=Array.from({length:27},(_,i)=>({
+ id:'during-'+i,date:'2026-11-12',wave:'Durante',audienceId:'during-audience',answers:{q001:9}
+}));
+const emptyAfter=create('Algo nuevo viene Cámara Contrata · Después','case-after','Después',9);
+emptyAfter.responses=[];
+x.surveys=[emptyBase,currentDuring,emptyAfter];x.measurementQuestionLinks=[];
+f.eeChainLink(x,currentDuring,emptyBase.id,'Durante','Base');
+f.eeChainLink(x,currentDuring,emptyAfter.id,'Durante','Después');
+vm.runInContext('eeSelected="case-during";eeFilter={wave:"",audienceId:""}',ctx);
+const renderEvolution=vm.runInContext('eeEvolutionResults',ctx);
+const linkedData=vm.runInContext('eeLinkedEvolutionData',ctx);
+const notice=vm.runInContext('eeChainResultsNotice',ctx);
+const beforeContext=JSON.stringify(x);
+let html=renderEvolution(x,currentDuring);
+assert.match(html,/27 respuestas · Momento: Durante/);
+assert.match(html,/3 mediciones vinculadas · Base → Durante → Después/);
+assert.match(html,/Base: 0 respuestas · Durante: 27 respuestas · Después: 0 respuestas/);
+assert.match(html,/Faltan las respuestas de Base para comparar desde ese momento/);
+assert.match(html,/Cargar respuestas de Base/);
+assert.match(html,/href="#ee-linked-evolution"/);
+assert.match(html,/id="ee-linked-evolution"/);
+assert.match(html,/1 de 3 momentos con respuestas/);
+assert.doesNotMatch(html,/primera medición|Durante → Durante|Desde Durante/);
+assert.equal(linkedData(x,currentDuring).hasComparison,false,'Sin base no se inventa un cambio');
+assert.ok(linkedData(x,currentDuring).comparisons.every(m=>m.delta===null));
+assert.equal(JSON.stringify(x),beforeContext,'Mostrar el contexto no modifica los instrumentos');
+
+let navigationSaves=0;ctx.save=()=>navigationSaves++;
+vm.runInContext('eeChainImportResponses',ctx)(emptyBase.id);
+assert.equal(vm.runInContext('eeSelected',ctx),emptyBase.id);
+assert.equal(vm.runInContext('eeTab',ctx),'importar','La acción carga en Base, sin mezclarla con Durante');
+assert.equal(navigationSaves,0,'Navegar a la importación no modifica los datos');
+vm.runInContext('eeChainImportResponses',ctx)('another-survey');
+assert.equal(vm.runInContext('eeSelected',ctx),emptyBase.id,'La acción se limita al seguimiento actual');
+
+emptyBase.responses=Array.from({length:83},(_,i)=>({
+ id:'base-'+i,date:'2026-11-01',wave:'Base',audienceId:'base-audience',answers:{q001:2}
+}));
+vm.runInContext('eeSelected="case-during";eeFilter={wave:"",audienceId:""}',ctx);
+html=renderEvolution(x,currentDuring);
+assert.match(html,/Base: 83 respuestas · Durante: 27 respuestas/);
+assert.doesNotMatch(html,/primera medición|Faltan las respuestas de Base|Cargar respuestas de Base/);
+assert.equal(linkedData(x,currentDuring).hasComparison,true,'La comparación se habilita al tener dos momentos con datos');
+assert.equal(linkedData(x,currentDuring).comparisons.find(m=>m.key==='linked:global').delta,70);
+assert.match(html,/27 respuestas · Momento: Durante/,'El resultado individual conserva sus propias respuestas');
+const scoped=notice(x,currentDuring,'during-audience');
+assert.match(scoped,/Base: 0 respuestas · Durante: 27 respuestas/);
+assert.match(scoped,/Base en esta audiencia/);
+assert.doesNotMatch(scoped,/Cargar respuestas de Base/,'Una audiencia sin respuestas no implica que falte importar la base global');
+
+const solo=create('Medición independiente','solo','Durante',9);
+x.surveys.push(solo);
+const soloHtml=renderEvolution(x,solo);
+assert.match(soloHtml,/Esta encuesta tiene respuestas de un solo momento/);
+assert.doesNotMatch(soloHtml,/primera medición|Durante → Durante|ee-measurement-context/);
+emptyBase.responses=[];currentDuring.responses=[];
+assert.match(notice(x,currentDuring),/Las mediciones están vinculadas y aún no tienen respuestas/);
+assert.doesNotMatch(notice(x,currentDuring),/primera medición/);
 console.log('Encuestas vinculadas OK: banco compatible, conexión libre, siguiente medición vinculada y datos intactos.');

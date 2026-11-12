@@ -302,16 +302,16 @@ function eeLinkedEvolutionDashboard(x,s,audienceId=''){
  const cards=(data.sharedPercent.length?card(global,'Promedio comparable','%',global.delta):'')+
   (data.sharedPoints.length===1?card(reference,'Referencia comparable','puntos',reference.delta):'');
  const note=!data.measured.length?'Las mediciones vinculadas todavía no tienen respuestas.':
-  data.measured.length===1?'Solo un momento tiene respuestas; podrás comparar cuando llegue la siguiente medición.':
+  data.measured.length===1?'Solo un momento tiene respuestas. Se necesitan respuestas de al menos dos mediciones para comparar.':
   !sections.length?'Las mediciones están conectadas, pero aún no comparten preguntas con resultados compatibles. Puedes relacionarlas en «Conectar y comparar encuestas».':'';
- return '<section class="ee-linked-primary" aria-label="Evolución del seguimiento vinculado">'+
+ return '<section id="ee-linked-evolution" class="ee-linked-primary" aria-label="Evolución del seguimiento vinculado" tabindex="-1">'+
   '<div class="ee-linked-primary-heading"><div><span>SEGUIMIENTO VINCULADO</span><h3>Resultados comparables entre momentos</h3>'+
-   '<p class="muted">'+data.members.length+' mediciones conectadas · '+safe(data.baseline||'Sin base')+' → '+safe(data.latest||'Sin resultados')+'</p></div>'+
-   '<span class="ee-linked-primary-count">'+data.sharedPercent.length+' preguntas porcentuales comparables</span></div>'+
+   '<p class="muted">'+data.members.length+' mediciones conectadas · '+data.members.map(m=>safe(eeChainMoment(m))).join(' → ')+'</p></div>'+
+   '<span class="ee-linked-primary-count">'+(data.measured.length<2?data.measured.length+' de '+data.members.length+' momentos con respuestas':data.sharedPercent.length+' preguntas porcentuales comparables')+'</span></div>'+
   (cards?'<div class="ee-linked-primary-metrics">'+cards+'</div>':'')+
   (note?'<p class="ee-linked-primary-note">'+safe(note)+'</p>':'')+
   sections.join('')+
-  '<p class="ee-linked-primary-footnote">Comparación descriptiva de muestras por momento; no supone que respondieron las mismas personas. Los resultados originales de cada encuesta se conservan abajo.</p>'+
+  '<p class="ee-linked-primary-footnote">Comparación descriptiva de muestras por momento; no supone que respondieron las mismas personas. Los resultados originales de la encuesta seleccionada se muestran arriba.</p>'+
  '</section>';
 }
 function eeLinkedExport(){

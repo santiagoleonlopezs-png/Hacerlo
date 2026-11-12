@@ -83,6 +83,34 @@ function eeChainMembers(x,s){
  });
 }
 function eeChainConnected(x,s){return eeChainMembers(x,s).length>1;}
+/* El contexto del seguimiento incluye sus instrumentos, aunque alguno
+   todavía no tenga respuestas. No es la evolución individual de la encuesta. */
+function eeChainResultsNotice(x,s,audienceId=''){
+ const members=eeChainMembers(x,s);
+ if(members.length<2)return '';
+ const counts=members.map(m=>(m.responses||[]).filter(r=>!audienceId||String(r.audienceId)===String(audienceId)).length);
+ const measured=members.filter((m,i)=>counts[i]>0);
+ const base=members.find(m=>eeChainRank(eeChainMoment(m))===0)||members[0];
+ const baseCount=counts[members.indexOf(base)],scope=audienceId?' en esta audiencia':'';
+ const missingBase=baseCount===0;
+ const message=!measured.length?'Las mediciones están vinculadas y aún no tienen respuestas'+scope+'.':
+  missingBase?'Faltan las respuestas de '+eeChainMoment(base)+scope+' para comparar desde ese momento.':
+  measured.length===1?'Solo '+eeChainMoment(measured[0])+' tiene respuestas'+scope+'. La comparación aparecerá cuando otra medición tenga datos.':'';
+ const importBase=missingBase&&!(base.responses||[]).length?
+  '<button class="secondary" type="button" onclick="eeChainImportResponses('+safe(JSON.stringify(base.id))+')">Cargar respuestas de '+safe(eeChainMoment(base))+'</button>':'';
+ return '<div class="ee-measurement-context" role="status">'+
+  '<p><strong>'+members.length+' mediciones vinculadas · '+members.map(m=>safe(eeChainMoment(m))).join(' → ')+'</strong></p>'+
+  '<p class="muted">'+counts.map((n,i)=>safe(eeChainMoment(members[i]))+': '+n+' respuestas').join(' · ')+(audienceId?' · Audiencia seleccionada':'')+'</p>'+
+  (message?'<p>'+safe(message)+'</p>':'')+
+  '<div class="flex"><a class="secondary" href="#ee-linked-evolution">Ver comparación entre momentos</a>'+importBase+'</div></div>';
+}
+function eeChainImportResponses(id){
+ const x=current(),s=eeSurvey();if(!x||!s)return;
+ const target=eeChainMembers(x,s).find(m=>String(m.id)===String(id));
+ if(!target)return;
+ eeSelected=target.id;eePickerOpen=false;eeTab='importar';
+ eeFilter={wave:'',audienceId:''};eeImport=null;render();
+}
 function eeChainInvalid(x,s){
  const members=eeChainMembers(x,s);
  if(members.length<2)return '';
