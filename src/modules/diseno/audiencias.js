@@ -377,7 +377,7 @@ function audChangeBehavior(id){audBehaviorId=id;audPersonFilters.adoptionState='
 function audPersonRows(x){const fields=new Map(audPersonDataFields(x).map(f=>[f.key,f]));return (x.audiencePeople||[]).filter(p=>Object.entries(audPersonFilters).every(([k,v])=>{
  if(!v)return true;if(k==='search')return (String(p.code||'')+' '+(p.name||'')).toLocaleLowerCase('es').includes(v.toLocaleLowerCase('es'));
  if(k==='quadrant')return (audQuadrant(p)||'unclassified')===v;
- if(k==='adoptionState'){if(audBehaviorId===AUD_GENERAL_ADOPTION)return audGeneralAdoptionState(p)===v;const b=audCurrentBehavior(x);if(b)return audAdoptionState(p,b)===v;const behaviors=audAdoptionBehaviors(x,p);return v==='notApplicable'?!behaviors.length:behaviors.some(b=>audAdoptionState(p,b)===v);}
+ if(k==='adoptionState'){if(audBehaviorId===AUD_GENERAL_ADOPTION)return audGeneralAdoptionState(p)===v;const b=audCurrentBehavior(x);if(b)return audAdoptionState(p,b)===v;const behaviors=audAdoptionBehaviors(x,p),general=audLatestAdoption(p,AUD_GENERAL_ADOPTION);return v==='notApplicable'?!behaviors.length&&!general:general?.stage===v||behaviors.some(b=>audAdoptionState(p,b)===v);}
  if(k.startsWith('person:')||k.startsWith('custom:')){const field=fields.get(k);return !!field&&audDataFieldToken(x,p,field)===v;}
  return (p[k]||'unclassified')===v;
  }));}
@@ -400,7 +400,7 @@ function audPersonAdoptionCell(x,p,b){
 function audDrawerChoices(x,p=null){return p?audAdoptionBehaviors(x,p):audAdoptionBehaviors(x).filter(b=>(x.audiencePeople||[]).some(v=>audPersonSelection.has(v.id)&&audApplicable(b,v)));}
 function audBehaviorPicker(x,drawer=false,p=null){
  const list=drawer?audDrawerChoices(x,p):audViewBehaviors(x),id=drawer?audDrawerBehaviorId:audBehaviorId;
- return `<label>${drawer?'Alcance de la valoración':'Ver valoración'}<select id="${drawer?'aud-adoption-target':'aud-behavior-picker'}" onchange="${drawer?'audDrawerBehaviorChange':'audChangeBehavior'}(this.value)">${!drawer?'<option value="">Todos los comportamientos de la audiencia</option>':''}<option value="${AUD_GENERAL_ADOPTION}" ${id===AUD_GENERAL_ADOPTION?'selected':''}>Transversal · Estado general de la persona</option>${list.length?`<optgroup label="Por comportamiento">${list.map(b=>`<option value="${safe(b.id)}" ${b.id===id?'selected':''}>${safe(audBehaviorName(b))}</option>`).join('')}</optgroup>`:''}</select></label>`;
+ return `<label>${drawer?'Alcance de la valoración':'Ver valoración'}<select id="${drawer?'aud-adoption-target':'aud-behavior-picker'}" onchange="${drawer?'audDrawerBehaviorChange':'audChangeBehavior'}(this.value)">${!drawer?'<option value="">Resumen de adopción</option>':''}<option value="${AUD_GENERAL_ADOPTION}" ${id===AUD_GENERAL_ADOPTION?'selected':''}>Transversal · Estado general de la persona</option>${list.length?`<optgroup label="Por comportamiento">${list.map(b=>`<option value="${safe(b.id)}" ${b.id===id?'selected':''}>${safe(audBehaviorName(b))}</option>`).join('')}</optgroup>`:''}</select></label>`;
 }
 
 function audAssignedBehaviorsHTML(x,p){const summary=audAssignedSummary(x,p);return `<details><summary>Comportamientos de su audiencia · ${summary.total}</summary><p class="muted">Se asignan automáticamente desde Diseño. Puedes valorar cada uno por separado.</p>${summary.behaviors.map(b=>`<article><button type="button" class="secondary" onclick="audChooseAssignedBehavior(${audArgs(b.id)})">${safe(audBehaviorName(b))}</button> ${audStateBadge(p,b)}</article>`).join('')||'<p>Esta audiencia todavía no tiene comportamientos asignados.</p>'}</details>`;}

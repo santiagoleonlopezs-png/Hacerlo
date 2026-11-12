@@ -231,6 +231,10 @@ async function exercise(){
  assert.equal(w.audAdoptionState(person,project.behaviors[0]),'tries');
  project=JSON.parse(snapshots.at(-1));assert.equal(w.audGeneralAdoptionState(project.audiencePeople[0]),'understands','El estado transversal persiste en JSON');
  w.audCloseDrawer();
+ w.audChangeBehavior('');w.audPersonFilter('adoptionState','understands');
+ assert.equal(people().length,4,'El filtro del resumen incluye los estados transversales que se muestran en la tabla');
+ w.audPersonFilter('adoptionState','tries');assert.deepEqual(people(),['001'],'El resumen también permite encontrar estados por comportamiento');
+ w.audClearPeopleFilters();
  const old=project;project={id:'initiative-b',audiences:[],behaviors:[],audiencePeople:[]};w.audInitPeopleUI(project);w.render();
  assert.equal(w.audPersonDataFields(project).some(f=>f.key===key(fieldForOld(old))),false,'Campos aislados por iniciativa');
  assert.equal(run('audPersonSelection.size'),0);
