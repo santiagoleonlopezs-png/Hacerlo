@@ -175,5 +175,5 @@ function renderIntelligenceHome(){
  '<p>Profundiza en los sistemas, revisa las mediciones o continúa con la gestión de iniciativas.</p></div>'+
  '<div class="ci-next-actions"><button type="button" onclick="ciGoProjects()">Ver iniciativas ↗</button>'+
  '<button type="button" onclick="ciOpenStage(2)">Explorar análisis ↗</button>'+
- '<button type="button" onclick="ciOpenStage(4)">Ir a medición ↗</button></div></div>'+ciRunningTodayPanel()+(typeof atPanel==='function'?atPanel('all'):'')+'</div>';
+ '<button type="button" onclick="ciOpenStage(4)">Ir a medición ↗</button></div></div>'+ciRunningTodayPanel()+(typeof atPanel==='function'?atPanel('all'):'')+(typeof medPortfolioPeriodPanel==='function'?medPortfolioPeriodPanel():'')+'</div>';
 }

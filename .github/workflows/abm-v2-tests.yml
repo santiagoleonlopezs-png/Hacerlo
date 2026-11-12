@@ -61,6 +61,7 @@ jobs:
           npm ci --prefix tests/ui-dependencies --ignore-scripts --no-audit --no-fund
           NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/audiencias_campos_v1.cjs
           NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/medicion_integrada_v1.cjs
+          NODE_PATH="$PWD/tests/ui-dependencies/node_modules" node tests/medicion_periodos_v1.cjs
       - name: Experiencia visual de pensamiento sistémico
         run: node tests/system_v2_visual.cjs
       - name: Agregación de evidencias observadas V2

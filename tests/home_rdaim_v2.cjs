@@ -59,7 +59,7 @@ assert.match(metrics,/Los valores mantienen sus escalas originales/);
 assert.match(app,/if\(page==='Inicio'\)\{a.innerHTML=renderIntelligenceHome\(\);return\}/);
 assert.match(app,/if\(page==='Analítica'\)\{a.innerHTML=renderMeasurementPage\(x\)/);
 assert.match(fs.readFileSync('src/modules/medicion/integrada.js','utf8'),/portfolioMetricSummary\(\)/);
-assert.match(index,/centro-inteligencia\.js\?v=2\.19\.0/);
+assert.match(index,/centro-inteligencia\.js\?v=2\.20\.0/);
 assert.match(index,/centro-inteligencia\.css\?v=2\.19\.0/);
 assert.match(index,/<div class="hero"><h1>HACERLO<\/h1>/,'Banner general intacto');
 assert.match(portfolio,/portfolioPriority\(true\)/,'Matriz en Iniciativas');
