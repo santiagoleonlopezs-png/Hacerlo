@@ -34,7 +34,7 @@ w.sb={auth:{onAuthStateChange(fn){authListener=fn;}},from(table){
  return chain;
 }};
 for(const path of ['src/modules/encuestas/motor.js','src/modules/encuestas/encuestas.js','src/modules/encuestas/encadenamiento.js','src/modules/encuestas/comparacion-vinculada.js',
- 'src/modules/analisis/agentes-evidencia-v2.js','src/modules/analisis/sistemico.js','src/modules/implementacion/operaciones.js','src/modules/medicion/integrada.js']){
+ 'src/modules/analisis/agentes-evidencia-v2.js','src/modules/analisis/sistemico.js','src/modules/implementacion/operaciones.js','src/modules/medicion/integrada.js','src/modules/medicion/periodos.js']){
  const script=d.createElement('script');script.textContent=fs.readFileSync(path,'utf8');d.body.append(script);
 }
 w.render=()=>{d.getElementById('app').innerHTML=w.renderMeasurementPage(project)};

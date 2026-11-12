@@ -1,0 +1,71 @@
+/* Fechas inclusivas, fuentes reales, promedios por iniciativa y navegación.
+ * Datos ficticios; nunca consulta servicios ni modifica registros reales. */
+const {JSDOM}=require('jsdom'),fs=require('node:fs'),assert=require('node:assert/strict');
+const dom=new JSDOM('<!doctype html><div id="app"></div>',{runScripts:'dangerously',url:'https://fixture.invalid'});
+const w=dom.window,d=w.document,errors=[];let saves=0,route='';
+w.addEventListener('error',e=>errors.push(e.error));
+w.safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const manual=(id,history,definition='Escala de -100 a 100')=>({id,name:'Iniciativa '+id,metrics:{ins_proceso_definition:definition},metricHistory:{ins_proceso:history},surveys:[],behaviors:[],actions:[],indicators:[],audiences:[]});
+const a=manual('a',[{date:'2026-11-01',value:0},{date:'2026-11-30',value:100},{date:'2026-10-31',value:-100},{date:'',value:80}]);
+const b=manual('b',[{date:'2026-11-15',value:100}]);
+const empty=manual('empty',[]);let project=a;
+w.db={initiatives:[a,b,empty]};w.current=()=>project;w.cloudOrgId='org-a';w.save=()=>saves++;w.go=p=>route=p;
+w.render=()=>{d.getElementById('app').innerHTML=w.medPortfolioPeriodPanel()};
+w.normalizedStatus=s=>s||'Pendiente';w.pfIcon=()=>'<svg></svg>';w.atPanel=()=>'<section id="calendar-fixture">Calendario</section>';
+for(const file of ['src/modules/encuestas/motor.js','src/modules/encuestas/encuestas.js','src/modules/encuestas/encadenamiento.js','src/modules/encuestas/comparacion-vinculada.js','src/modules/medicion/integrada.js','src/modules/medicion/periodos.js','src/core/centro-inteligencia.js','src/modules/implementacion/operaciones.js']){
+ const script=d.createElement('script');script.textContent=fs.readFileSync(file,'utf8');d.body.append(script);
+}
+const view={mode:'month',month:'2026-11'},before=JSON.stringify(w.db);
+let s=w.medPeriodSummary(a,'ins_proceso',view);
+assert.equal(s.value,50);assert.equal(s.count,2);assert.equal(s.undated,1);
+assert.equal(w.medPeriodSummary(a,'ins_proceso',{mode:'all'}).value,0,'Todo el historial fechado incluye meses anteriores');
+assert.equal(w.medPeriodSummary(a,'ins_proceso',{mode:'range',from:'2026-11-30',to:'2026-11-30'}).value,100,'Límites inclusivos');
+assert.equal(w.medPeriodSummary(a,'ins_proceso',{mode:'month',month:'2027-01'}).value,null,'Sin datos no equivale a cero');
+assert.equal(w.medPeriodSummary(a,'ins_proceso',{mode:'range',from:'2026-12-01',to:'2026-11-01'}).value,null);
+assert.match(w.medPeriodSummary(a,'ins_proceso',{mode:'range',from:'',to:''}).error,/Desde y Hasta/);
+assert.equal(w.medDateKey('2026-02-30'),'');assert.equal(w.medDateKey('2026-11-01T03:00:00Z'),'2026-10-31','Zona Colombia');
+assert.equal(w.medPeriodBounds({mode:'month',month:'2028-02'}).to,'2028-02-29');
+const data=w.medPortfolioPeriodData([a,b,empty],view).metrics.ins_proceso;
+assert.equal(data.value,75,'Promedio de iniciativas, sin sobrerrepresentar la de más mediciones');
+assert.equal(data.initiatives,2);assert.equal(data.count,3);assert.equal(data.missing,1);
+assert.equal(w.medPeriodSummary({...empty,metrics:{ins_proceso:0}},'ins_proceso',view).undated,1,'No asignar fecha de hoy a valores heredados');
+const changed=manual('c',[{date:'2026-11-01',value:5,definition:'Escala 1 a 5'},{date:'2026-11-15',value:80,definition:'Porcentaje'}]);
+assert.equal(w.medPeriodSummary(changed,'ins_proceso',view).value,null,'Cambios de escala no se promedian');
+assert.equal(w.medPortfolioPeriodData([a,manual('d',[{date:'2026-11-02',value:5}],'Cantidad')],view).metrics.ins_proceso.value,null);
+// Encuestas conectadas, mismo significado con IDs de preguntas diferentes.
+const survey=(id,qid,date,value)=>({id,title:id,kind:'Libre',measurementGroupId:'g',measurementDate:date,measurementMoment:id==='base'?'Base':'Después',questions:[{id:qid,label:'Recomendaría el cambio',type:'cnps',min:0,max:10}],responses:[{id:'r'+id,wave:'Base',date,answers:{[qid]:value}}]});
+const base=survey('base','q1','2026-11-01',0),after=survey('after','q2','2026-11-20',10);
+const surveyProject={...empty,id:'survey',surveys:[base,after],surveyHomeSources:{cnps:{surveyId:'base',key:'question:q1'}},metricHistory:{cnps:[{date:'2026-11-05',value:77}]}};
+s=w.medPeriodSummary(surveyProject,'cnps',view);
+assert.equal(s.value,0);assert.equal(s.count,2);assert.equal(s.rows[0].n,1,'Una medición por momento, no por respuesta');
+assert.equal(w.medPeriodSummary(surveyProject,'cnps',{mode:'range',from:'2026-11-20',to:'2026-11-20'}).value,100,'Incluye siguiente medición conectada');
+assert.equal(w.medPeriodSummary({...surveyProject,surveys:[{...base,responses:[]}]},'cnps',view).value,null,'Encuesta vacía no usa el historial manual');
+const fallback={...base,measurementDate:'',applicationStart:'',responses:[{...base.responses[0],date:'2026-11-03T14:00:00Z'}]};
+assert.equal(w.medSurveyMeasurementDate(fallback,'Base'),'2026-11-03');
+const multi={...base,measurementDate:'2026-01-01',momentSettings:{Después:{date:'2026-11-22'}},responses:[...base.responses,{id:'r2',wave:'Después',date:'2026-11-21',answers:{q1:10}}]};
+assert.equal(w.medSurveyMeasurementDate(multi,'Después'),'2026-11-22');
+assert.equal(w.medSurveyMeasurementDate(multi,'Base'),'2026-11-01','No reutilizar fecha de un momento en otro');
+const unsafe={...after,questions:[{...after.questions[0],label:'Una pregunta diferente'}]};
+assert.equal(w.medPeriodSummary({...surveyProject,surveys:[base,unsafe]},'cnps',view).count,1,'No agrupa preguntas distintas por compartir un tipo');
+assert.equal(w.medPeriodSummary({...surveyProject,surveyHomeSources:{cnps:{manual:true}},metrics:{cnps_definition:'Escala -100 a 100'}},'cnps',view).value,77,'Selección manual respetada');
+assert.equal(w.medPeriodSummary({...surveyProject,surveyHomeSources:{cnps:{surveyId:'missing',key:'global'}}},'cnps',view).value,null);
+// Formularios reales: selector, mes, rango inválido, navegación y aislamiento.
+w.medSetPeriod('home','month','2026-11');w.render();
+assert.equal(d.querySelector('[data-metric=ins_proceso] .med-big').textContent,'75');
+assert.match(d.querySelector('[data-metric=ins_proceso]').textContent,/2 de 3 iniciativas/);
+const mode=d.getElementById('med-period-home-mode');mode.value='range';mode.dispatchEvent(new w.Event('change'));
+assert.ok(d.querySelector('[role=alert]'));assert.equal(d.querySelector('[data-metric=ins_proceso] .med-big').textContent,'—');
+w.medSetPeriod('home','from','2026-11-01');w.medSetPeriod('home','to','2026-11-30');
+assert.equal(d.querySelector('[data-metric=ins_proceso] .med-big').textContent,'75');
+w.medSetPeriod('initiative','mode','month');w.medSetPeriod('initiative','month','2026-11');
+assert.equal(w.medPeriodView('home').mode,'range','Filtros independientes');
+assert.match(w.medCoreCard(a,'INS proceso','ins_proceso',w.medPeriodSummary(a,'ins_proceso',view)),/50<\/strong>/);
+project=b;assert.equal(w.medPeriodView('initiative',b).mode,'latest','No traslada filtro de otra iniciativa');
+const home=new JSDOM(w.renderIntelligenceHome());
+assert.ok(home.window.document.querySelector('.ci-home').lastElementChild.classList.contains('med-portfolio-period'),'Indicadores al final de Inicio, después del calendario');home.window.close();
+assert.equal(JSON.stringify(w.db),before);assert.equal(saves,0,'Cambiar filtros no modifica datos');
+w.openPortfolioMetric({closest:()=>({getAttribute:()=>a.id})});assert.equal(route,'Analítica');
+w.cloudOrgId='org-b';assert.equal(w.medPeriodView('home').mode,'month','Otro espacio no hereda filtros');
+assert.equal(errors.length,0);assert.doesNotMatch(w.medPortfolioPeriodPanel(),/NaN|Infinity/);
+assert.match(fs.readFileSync('index.html','utf8'),/medicion\/periodos.js/);
+dom.window.close();console.log('Medición por períodos OK: fechas, encuestas vinculadas, promedios, vacíos, escalas y aislamiento.');
