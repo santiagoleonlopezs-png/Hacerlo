@@ -27,7 +27,7 @@ function medPeriodView(scope,x){
  const org=typeof cloudOrgId!=='undefined'?String(cloudOrgId||''):'';
  if(org!==medPeriodOrg){medPeriodViews.clear();medPeriodOrg=org;}
  const id=scope==='home'?'home':'initiative:'+String(x?._cloudId||x?.id||'');
- if(!medPeriodViews.has(id))medPeriodViews.set(id,{mode:scope==='home'?'month':'latest',month:medDateKey(new Date().toISOString()).slice(0,7),from:'',to:''});
+ if(!medPeriodViews.has(id))medPeriodViews.set(id,{mode:scope==='home'?'month':'latest',month:medDateKey(new Date().toISOString()).slice(0,7),from:'',to:'',open:false});
  return medPeriodViews.get(id);
 }
 function medPeriodBounds(view){
@@ -51,7 +51,9 @@ function medSetPeriod(scope,field,value){
  if(field==='mode'&&!['latest','month','range','all'].includes(value))return;
  if(scope==='home'&&field==='mode'&&value==='latest')return;
  if(typeof hcxPrepareNavigation==='function'&&!hcxPrepareNavigation())return;
- medPeriodView(scope,x)[field]=String(value);render();
+ const view=medPeriodView(scope,x),panel=scope==='home'?document.querySelector('.med-portfolio-period'):null;
+ if(panel)view.open=panel.open;
+ view[field]=String(value);render();
 }
 function medPeriodControls(scope,x){
  const view=medPeriodView(scope,x),bounds=medPeriodBounds(view),prefix='med-period-'+scope;
@@ -123,13 +125,14 @@ function medPortfolioPeriodData(initiatives,view){
  return {rows,metrics};
 }
 function medPeriodStatus(summary){return summary.error?'Completa el período':summary.conflict?'Revisar definiciones y escalas':summary.value===null?'Sin mediciones en el período':'Promedio del período';}
+function medTogglePortfolioPeriod(panel){if(panel.isConnected)medPeriodView('home').open=panel.open;}
 function medPortfolioPeriodPanel(){
  const view=medPeriodView('home'),data=medPortfolioPeriodData(db.initiatives,view);
- return '<section class="med-page med-portfolio-period" aria-labelledby="med-portfolio-title"><div class="med-section-heading"><div><span class="med-eyebrow">MEDICIÓN · TODAS LAS INICIATIVAS</span><h2 id="med-portfolio-title">Indicadores del período</h2></div></div>'+medPeriodControls('home')+
+ return '<details class="med-page med-portfolio-period" '+(view.open?'open ':'')+'ontoggle="medTogglePortfolioPeriod(this)"><summary><span class="med-period-icon" aria-hidden="true">◷</span><span class="med-period-copy"><strong id="med-portfolio-title">Indicadores del período</strong><small>Todas las iniciativas · INS personas, INS proceso y CNPS</small></span><span class="med-period-chevron" aria-hidden="true">⌄</span></summary><div class="med-period-body">'+medPeriodControls('home')+
   '<div class="med-instruments">'+medPeriodMetrics.map(([label,key])=>{const s=data.metrics[key];
    return '<article class="med-core-card med-period-card" data-metric="'+key+'"><div class="med-metric-heading"><span class="med-metric-symbol" aria-hidden="true">'+(key==='ins_personas'?'◉':key==='ins_proceso'?'⌘':'✦')+'</span><span class="med-chip">Promedio entre iniciativas</span></div><h3>'+label+'</h3><strong class="med-big">'+safe(medValue(s.value))+'</strong><p>'+safe(medPeriodStatus(s))+'</p><small>'+s.initiatives+' de '+data.rows.length+' iniciativas con datos · '+s.count+' mediciones</small>'+(s.undated?'<small>'+s.undated+' registros sin fecha excluidos</small>':'')+'</article>';
   }).join('')+'</div><p class="med-caption">Cada iniciativa tiene el mismo peso: primero se promedian sus mediciones del período y luego los promedios de las iniciativas con datos. INS personas, INS proceso y CNPS se calculan por separado.</p>'+
   '<details class="med-period-detail"><summary>Ver promedio por iniciativa</summary><div class="med-table-wrap"><table><thead><tr><th scope="col">Iniciativa</th>'+medPeriodMetrics.map(([label])=>'<th scope="col">'+label+'</th>').join('')+'<th scope="col">Detalle</th></tr></thead><tbody>'+
   data.rows.map(({initiative:x,metrics})=>'<tr data-portfolio-metric-id="'+safe(String(x.id))+'"><th scope="row">'+safe(x.name)+'</th>'+medPeriodMetrics.map(([,key])=>{const s=metrics[key];return '<td><strong>'+safe(medValue(s.value))+'</strong><small>'+safe(s.conflict?'Revisar escalas':s.count?s.count+' mediciones':'Sin mediciones')+'</small></td>';}).join('')+'<td><button type="button" class="secondary" onclick="openPortfolioMetric(this)">Ver medición ↗</button></td></tr>').join('')+
-  '</tbody></table></div>'+(data.rows.length?'':medEmpty('Crea una iniciativa para empezar a medir.'))+'</details></section>';
+  '</tbody></table></div>'+(data.rows.length?'':medEmpty('Crea una iniciativa para empezar a medir.'))+'</details></div></details>';
 }

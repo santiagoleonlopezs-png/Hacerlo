@@ -50,8 +50,16 @@ assert.equal(w.medPeriodSummary({...surveyProject,surveys:[base,unsafe]},'cnps',
 assert.equal(w.medPeriodSummary({...surveyProject,surveyHomeSources:{cnps:{manual:true}},metrics:{cnps_definition:'Escala -100 a 100'}},'cnps',view).value,77,'Selección manual respetada');
 assert.equal(w.medPeriodSummary({...surveyProject,surveyHomeSources:{cnps:{surveyId:'missing',key:'global'}}},'cnps',view).value,null);
 // Formularios reales: selector, mes, rango inválido, navegación y aislamiento.
+w.render();
+let panel=d.querySelector('.med-portfolio-period');
+assert.equal(panel.tagName,'DETAILS');assert.equal(panel.open,false,'Inicio muestra los indicadores plegados al entrar');
+panel.open=true;w.medTogglePortfolioPeriod(panel);
 w.medSetPeriod('home','month','2026-11');w.render();
+assert.equal(d.querySelector('.med-portfolio-period').open,true,'Cambiar el período conserva el desplegable abierto');
 assert.equal(d.querySelector('[data-metric=ins_proceso] .med-big').textContent,'75');
+panel=d.querySelector('.med-portfolio-period');panel.open=false;w.medTogglePortfolioPeriod(panel);w.render();
+assert.equal(d.querySelector('.med-portfolio-period').open,false,'Se puede volver a plegar');
+assert.equal(w.medPeriodView('home').month,'2026-11','Plegar conserva el período elegido');
 assert.match(d.querySelector('[data-metric=ins_proceso]').textContent,/2 de 3 iniciativas/);
 const mode=d.getElementById('med-period-home-mode');mode.value='range';mode.dispatchEvent(new w.Event('change'));
 assert.ok(d.querySelector('[role=alert]'));assert.equal(d.querySelector('[data-metric=ins_proceso] .med-big').textContent,'—');
