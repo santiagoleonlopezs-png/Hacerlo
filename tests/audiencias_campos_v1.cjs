@@ -55,6 +55,25 @@ async function exercise(){
  assert.equal(project.audiencePeople[0].customFields[field('Cupo').id],'0','Cero es un dato');
  assert.equal(project.audiencePeople[0].customFields[field('__proto__').id],'valor seguro');
  assert.equal({}.polluted,undefined);
+ const listFilters=d.querySelector('.aud-list-data-filters');
+ assert.ok(listFilters,'Los filtros de la lista aparecen directamente');
+ assert.equal(listFilters.closest('.aud-more-filters'),null,'Los datos de la lista no quedan dentro de Más filtros');
+ const vpFilter=listFilters.querySelector('select[data-aud-filter-key="person:vicepresidency"]');
+ assert.ok(vpFilter,'Vicepresidencia disponible sin agregar manualmente el campo');
+ assert.deepEqual(Array.from(vpFilter.options,o=>o.textContent),['Todos','VP Dos','VP Uno','Sin dato']);
+ assert.equal(vpFilter.parentElement.firstChild.textContent,'vicepresidencia','Se conserva el encabezado original');
+ assert.ok(listFilters.querySelector('select[data-aud-filter-key="person:job"]'),'Cargo disponible al cargar la lista');
+ assert.equal(listFilters.querySelector('select[data-aud-filter-key="person:team"]'),null,'No se muestran campos que no llegaron ni tienen datos');
+ assert.ok(project.audiencePersonImportColumns.some(c=>c.key==='person:job'&&c.sourceHeader==='cargo'));
+ const sourceHeader=project.audiencePersonImportColumns.find(c=>c.key===key(field('<img src=x onerror=alert(1)>')));
+ assert.equal(sourceHeader.sourceHeader,'<img src=x onerror=alert(1)>');
+ assert.equal(listFilters.querySelector('img'),null,'Los encabezados originales se escapan en los filtros');
+ change(vpFilter,token('VP Uno'));assert.deepEqual(people(),['001','003']);
+ const jobFilter=d.querySelector('.aud-list-data-filters select[data-aud-filter-key="person:job"]');
+ change(jobFilter,token('Analista'));assert.deepEqual(people(),['001','003']);
+ w.audPersonFilter(key(field('Estado específico')),token('Pendiente'));assert.deepEqual(people(),['001'],'Los filtros originales y las columnas propias se combinan');
+ w.audClearPeopleFilters();assert.equal(people().length,4);
+ assert.ok(d.querySelector('.aud-list-data-filters select[data-aud-filter-key="person:vicepresidency"]'),'Limpiar conserva los campos y restablece sus valores');
 
  // Los nuevos datos sobreviven el mismo JSON usado por la sincronización.
  project=JSON.parse(snapshots.at(-1));w.render();
@@ -66,7 +85,7 @@ async function exercise(){
  assert.equal(d.querySelector('.aud-compact-table script'),null,'Los valores son texto');
 
  w.audAddDataFilter(key(field('Estado general')));
- let filter=d.querySelector('.aud-data-filter-row select');
+ let filter=d.querySelector('.aud-list-data-filters select[data-aud-filter-key="'+key(field('Estado general'))+'"]');
  change(filter,token('Activo'));
  assert.deepEqual(people(),['001','003']);
  w.audPersonFilter('audienceId','a');
@@ -191,6 +210,10 @@ async function exercise(){
  assert.equal(w.audPersonDataFields(project).some(f=>f.key===key(fieldForOld(old))),false,'Campos aislados por iniciativa');
  assert.equal(run('audPersonSelection.size'),0);
  assert.equal(Object.keys(run('audPersonFilters')).some(k=>k.startsWith('custom:')),false);
+ const legacy={id:'legacy',audiences:[],behaviors:[],audiencePeople:[{id:'legacy-1',code:'1',name:'Persona',job:'Analista',vicepresidency:'Operaciones',team:'Norte'}]};
+ const legacyHTML=w.audDataFiltersHTML(legacy);
+ assert.match(legacyHTML,/Vicepresidencia/);assert.match(legacyHTML,/Operaciones/);assert.match(legacyHTML,/Norte/,'Listas ya guardadas tienen filtros sin reimportar');
+ assert.equal(legacy.audiencePersonImportColumns,undefined,'Mostrar filtros no cambia los datos guardados');
  project.audiencePeople.push({id:'p-new',code:'nuevo'});w.audPersonEdit('p-new');
  assert.equal(d.querySelector('#aud-adoption-fields form').elements.scope.value,'general','La valoración transversal funciona sin comportamientos creados');
  w.audRecordAdoption(project,new Set(['p-new']),observation);

@@ -186,8 +186,9 @@ function audBuildPeopleImport(data,mapping,bulk,x,assignments={}){
  const fields=mapping.map(m=>typeof m==='string'?{key:m}:m||{key:''}),selected=fields.filter(m=>m.key),standard=selected.filter(m=>!m.key.startsWith('custom:')).map(m=>m.key);
  if(new Set(standard).size!==standard.length)throw Error('Cada campo debe usarse una sola vez.');
  if(!standard.includes('codigo'))throw Error('Relaciona la columna Código de persona.');
- const extra=fields.map(m=>m.key.startsWith('custom:')?audValidatePersonField(x,m):null),identities=extra.filter(Boolean).map(audFieldIdentity);
+ const extra=fields.map((m,i)=>m.key.startsWith('custom:')?{...audValidatePersonField(x,m),sourceHeader:String(data.headers[i]||'').trim()}:null),identities=extra.filter(Boolean).map(audFieldIdentity);
  if(new Set(identities).size!==identities.length)throw Error('Hay campos propios repetidos con el mismo nombre y alcance.');
+ const sourceColumns=fields.map((m,i)=>({field:m.key,label:String(data.headers[i]||'').trim()})).filter(c=>c.field&&!c.field.startsWith('custom:'));
  const seen=new Set();return data.rows.map((row,i)=>{
   const d={},customFields=[];fields.forEach((field,j)=>{const value=String(row[data.headers[j]]??'').trim();if(extra[j])customFields.push({...extra[j],value});else if(field.key)d[field.key]=value;});
   const errors=[],key=String(d.codigo||'').toLocaleLowerCase('es');if(!key)errors.push('Código vacío');if(seen.has(key))errors.push('Código repetido en el archivo');seen.add(key);
@@ -196,7 +197,7 @@ function audBuildPeopleImport(data,mapping,bulk,x,assignments={}){
   const destination=bulk.audience&&(bulk.overwrite||!fileAudience)?bulk.audience:(assignments[fileAudience]||fileAudience),audience=(x.audiences||[]).find(a=>a.id===destination||a.name.trim().toLocaleLowerCase('es')===destination.toLocaleLowerCase('es'));
   if(!audience)errors.push('Selecciona una audiencia de destino');else d.parent_audience_id=audience.id;
   for(const f of customFields)if(f.value&&f.scope==='behavior'&&audience&&!audApplicable((x.behaviors||[]).find(b=>b.id===f.behaviorId),{audienceId:audience.id}))errors.push('El comportamiento de «'+f.label+'» no aplica a esta audiencia');
-  return {d,customFields,errors,line:i+2};
+  return {d,customFields,sourceColumns,errors,line:i+2};
  });
 }
 const AUD_PERSON_IMPORT_MAP={codigo:'code',nombre:'name',tipo:'kind',poblacion:'population',cargo:'job',vicepresidencia:'vicepresidency',direccion:'direction',equipo:'team',correo:'email',rol_cambio:'changeRole',parent_audience_id:'audienceId',segmento:'segment',autoridad:'authority',interes_influencia:'position',impacto:'impact',evidencia:'classificationEvidence',impactos_especificos:'specificImpact',historial_cambio:'changeHistory'};
@@ -205,15 +206,21 @@ function audEnsurePersonField(x,definition){
  let found=x.audiencePersonFields.find(f=>audFieldIdentity(f)===audFieldIdentity(field));
  if(!found){found={id:'field-'+crypto.randomUUID(),...field};x.audiencePersonFields.push(found);}return found;
 }
+function audRememberImportedColumn(x,key,label,sourceHeader=label){
+ x.audiencePersonImportColumns ||= [];
+ const column={key,label,sourceHeader},previous=x.audiencePersonImportColumns.find(c=>c.key===key);
+ if(previous)Object.assign(previous,column);else x.audiencePersonImportColumns.push(column);
+}
 function audCommitPeopleImport(){
  const x=current(),st=audExcelSetup;if(!st||st.initiativeId!==x.id||audV22ImportInitiative!==x.id)return alert('Vuelve a cargar el archivo en esta iniciativa.');
  const mode=document.getElementById('aud-v22-mode').value,valid=audV22Rows.filter(r=>!r.errors.length);x.audiencePeople ||= [];
  try{for(const {d,customFields=[]} of valid){if(!x.audiences.some(a=>a.id===d.parent_audience_id))throw Error('La audiencia de destino ya no existe. Vuelve a validar.');for(const f of customFields){audValidatePersonField(x,f);if(f.value&&f.scope==='behavior'&&!audApplicable(x.behaviors.find(b=>b.id===f.behaviorId),{audienceId:d.parent_audience_id}))throw Error('El alcance del comportamiento cambió. Vuelve a validar.');}}}catch(err){return alert(err.message);}
- let added=0,updated=0;for(const {d,customFields=[]} of valid){
+ let added=0,updated=0;for(const {d,customFields=[],sourceColumns=[]} of valid){
   let person=x.audiencePeople.find(p=>String(p.code||'').trim().toLocaleLowerCase('es')===d.codigo.toLocaleLowerCase('es'));if(person&&mode==='skip')continue;
   if(!person){person={id:'person-'+crypto.randomUUID(),code:d.codigo,createdAt:new Date().toISOString()};x.audiencePeople.push(person);added++;}else updated++;
   for(const [key,field] of Object.entries(AUD_PERSON_IMPORT_MAP))if(d[key]!==undefined)person[field]=d[key];
-  for(const f of customFields){const definition=audEnsurePersonField(x,f);person.customFields ||= {};person.customFields[definition.id]=f.value;}
+  for(const c of sourceColumns){const property=AUD_PERSON_IMPORT_MAP[c.field]||(c.field==='audiencia'&&!sourceColumns.some(col=>col.field==='rol_cambio')?'changeRole':'');if(property)audRememberImportedColumn(x,'person:'+property,c.label);}
+  for(const f of customFields){const definition=audEnsurePersonField(x,f);person.customFields ||= {};person.customFields[definition.id]=f.value;audRememberImportedColumn(x,'custom:'+definition.id,definition.label,f.sourceHeader||definition.label);}
   person.updatedAt=new Date().toISOString();
  }
  audV22Rows=[];audExcelSetup=null;save();alert(`Personas importadas: ${added} nuevas, ${updated} actualizadas.`);render();
@@ -224,8 +231,10 @@ let audPersonFilters={audienceId:'',team:'',direction:'',search:''},audPersonSel
 let audDataFieldKey='';
 function audPersonDataFields(x){
  const standard=Object.entries(AUD_PERSON_IMPORT_MAP).filter(([key])=>key!=='parent_audience_id').map(([key,property])=>({key:'person:'+property,label:AUD_IMPORT_LABELS[key],scope:'general',property}));
- return standard.concat((x.audiencePersonFields||[]).map(f=>({...f,key:'custom:'+f.id})));
+ const labels=new Map((x.audiencePersonImportColumns||[]).map(c=>[c.key,c.label]));
+ return standard.concat((x.audiencePersonFields||[]).map(f=>({...f,key:'custom:'+f.id}))).map(f=>({...f,label:labels.get(f.key)||f.label}));
 }
+function audAvailableDataFields(x){const imported=new Set((x.audiencePersonImportColumns||[]).map(c=>c.key));return audPersonDataFields(x).filter(f=>f.id||imported.has(f.key)||(x.audiencePeople||[]).some(p=>audDataFieldApplies(x,p,f)&&audDataFieldValue(p,f)!==''));}
 function audDataFieldLabel(x,f){return f.scope==='behavior'?f.label+' · '+audBehaviorName((x.behaviors||[]).find(b=>b.id===f.behaviorId)):f.label;}
 function audDataFieldApplies(x,p,f){return f.scope!=='behavior'||audApplicable((x.behaviors||[]).find(b=>b.id===f.behaviorId),p);}
 function audDataFieldValue(p,f){return String(f.property?p[f.property]??'':p.customFields?.[f.id]??'');}
@@ -234,8 +243,7 @@ function audDataFilterOptions(x,f){
  const values=[...new Set((x.audiencePeople||[]).filter(p=>audDataFieldApplies(x,p,f)).map(p=>audDataFieldValue(p,f)).filter(v=>v!==''))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
  return values.map(v=>[JSON.stringify(['value',v]),v]).concat([[JSON.stringify(['missing']),'Sin dato']],f.scope==='behavior'?[[JSON.stringify(['notApplicable']),'No aplica']]:[]);
 }
-function audDataFieldOptions(x,selected=''){
- const fields=audPersonDataFields(x);
+function audDataFieldOptions(x,selected='',fields=audAvailableDataFields(x)){
  return [['general','Datos de la persona'],['behavior','Campos vinculados a comportamientos']].map(([scope,label])=>`<optgroup label="${label}">${fields.filter(f=>f.scope===scope).map(f=>`<option value="${safe(f.key)}" ${f.key===selected?'selected':''}>${safe(audDataFieldLabel(x,f))}</option>`).join('')}</optgroup>`).join('');
 }
 function audCurrentDataField(x){const fields=audPersonDataFields(x);if(!fields.some(f=>f.key===audDataFieldKey))audDataFieldKey=fields.find(f=>f.id)?.key||fields[0]?.key||'';return fields.find(f=>f.key===audDataFieldKey);}
@@ -248,8 +256,11 @@ function audDataValueFilter(x){const f=audCurrentDataField(x);return f?audFilter
 function audAddDataFilter(key){if(!audPersonDataFields(current()).some(f=>f.key===key))return;if(!Object.hasOwn(audPersonFilters,key))audPersonFilters[key]='';audUIRender();}
 function audRemoveDataFilter(key){delete audPersonFilters[key];audPeoplePage=0;audPersonSelection.clear();audUIRender();}
 function audDataFiltersHTML(x){
- const fields=audPersonDataFields(x),main=audPeopleView==='data'?audCurrentDataField(x)?.key:'',selected=fields.filter(f=>f.key!==main&&Object.hasOwn(audPersonFilters,f.key));
- return `<div class="aud-data-filters"><p class="muted">Filtra por cualquier campo o estado. Los filtros se combinan entre sí.</p>${selected.map(f=>`<div class="aud-data-filter-row">${audFilterSelect(f.key,audDataFieldLabel(x,f),audDataFilterOptions(x,f))}<button type="button" class="secondary" aria-label="Quitar filtro ${safe(f.label)}" onclick="audRemoveDataFilter(${audArgs(f.key)})">Quitar</button></div>`).join('')}<label>Agregar filtro por campo<select aria-label="Agregar filtro por campo" onchange="if(this.value)audAddDataFilter(this.value)"><option value="">Selecciona una columna o estado</option>${audDataFieldOptions(x)}</select></label></div>`;
+ const fields=audPersonDataFields(x),available=audAvailableDataFields(x),main=audPeopleView==='data'?audCurrentDataField(x)?.key:'',searchFields=['person:code','person:name','person:email'];
+ const automatic=available.filter(f=>f.key!==main&&!searchFields.includes(f.key)),automaticKeys=new Set(automatic.map(f=>f.key));
+ const selected=fields.filter(f=>f.key!==main&&!automaticKeys.has(f.key)&&Object.hasOwn(audPersonFilters,f.key)),remaining=available.filter(f=>f.key!==main&&!automaticKeys.has(f.key)&&!Object.hasOwn(audPersonFilters,f.key));
+ if(!available.length)return '<div class="aud-data-filters"><p class="muted">Al cargar una lista, aquí aparecen sus campos y los valores disponibles para filtrar.</p></div>';
+ return `<section class="aud-data-filters aud-list-data-filters"><h3>Filtrar por datos de la lista</h3><p class="muted">Elige los valores de las columnas de tu lista. Puedes combinar varios filtros.</p><div class="aud-filtergrid">${automatic.map(f=>audFilterSelect(f.key,audDataFieldLabel(x,f),audDataFilterOptions(x,f))).join('')}</div>${selected.map(f=>`<div class="aud-data-filter-row">${audFilterSelect(f.key,audDataFieldLabel(x,f),audDataFilterOptions(x,f))}<button type="button" class="secondary" aria-label="Quitar filtro ${safe(f.label)}" onclick="audRemoveDataFilter(${audArgs(f.key)})">Quitar</button></div>`).join('')}${remaining.length?`<label>Agregar otro filtro de la lista<select aria-label="Agregar otro filtro de la lista" onchange="if(this.value)audAddDataFilter(this.value)"><option value="">Selecciona otra columna</option>${audDataFieldOptions(x,'',remaining)}</select></label>`:''}</section>`;
 }
 function audPersonDataHTML(x,p,bulk){
  const fields=(x.audiencePersonFields||[]).map(f=>({...f,key:'custom:'+f.id})).filter(f=>bulk||audDataFieldApplies(x,p,f));
@@ -348,15 +359,14 @@ function audPersonRows(x){const fields=new Map(audPersonDataFields(x).map(f=>[f.
 function audPersonFilter(k,v){audPersonFilters[k]=v;audPeoplePage=0;audPersonSelection.clear();audUIRender();}
 function audClearPeopleFilters(){audPersonFilters={audienceId:'',direction:'',team:'',search:''};audPeoplePage=0;audPersonSelection.clear();audUIRender();}
 function audFilterSelect(key,label,options,empty='Todos'){
- return `<label>${safe(label)}<select onchange="audPersonFilter(${audArgs(key)},this.value)"><option value="">${empty}</option>${options.map(([v,n])=>`<option value="${safe(v)}" ${audPersonFilters[key]===v?'selected':''}>${safe(n)}</option>`).join('')}</select></label>`;
+ return `<label>${safe(label)}<select data-aud-filter-key="${safe(key)}" onchange="audPersonFilter(${audArgs(key)},this.value)"><option value="">${empty}</option>${options.map(([v,n])=>`<option value="${safe(v)}" ${audPersonFilters[key]===v?'selected':''}>${safe(n)}</option>`).join('')}</select></label>`;
 }
 function audPersonFilterHTML(x){
- const values=k=>[...new Set((x.audiencePeople||[]).map(p=>p[k]).filter(Boolean))].sort().map(v=>[v,v]),fields=audPersonDataFields(x);
+ const fields=audPersonDataFields(x);
  const active=Object.entries(audPersonFilters).filter(([,v])=>v),labels={audienceId:'Audiencia',direction:'Dirección',team:'Equipo',search:'Persona',position:'Posicionamiento',authority:'Incidencia',impact:'Impacto',quadrant:'Cuadrante',adoptionState:'Adopción'};
  const text=(k,v)=>{const f=fields.find(f=>f.key===k);if(f)return audDataFilterOptions(x,f).find(([value])=>value===v)?.[1]||'Sin dato';return k==='audienceId'?(x.audiences||[]).find(a=>a.id===v)?.name||'Sin audiencia':k==='adoptionState'?(AUD_ADOPTION_STAGES[v]?.label||'No aplica'):v==='unclassified'?'Sin clasificar':v;};
- const mainField=audPeopleView==='data'?audCurrentDataField(x)?.key:'';
- const moreOpen=Object.entries(audPersonFilters).some(([k,v])=>((v&&['direction','team','impact','quadrant','position','authority'].includes(k))||fields.some(f=>f.key===k&&k!==mainField)));
- return `<div class="aud-filterbar"><label>Buscar persona<input placeholder="Código o nombre" value="${safe(audPersonFilters.search||'')}" onchange="audPersonFilter('search',this.value)"></label>${audFilterSelect('audienceId','Audiencia',(x.audiences||[]).map(a=>[a.id,a.name]),'Todas')}<details class="aud-more-filters" ${moreOpen?'open':''}><summary class="secondary">Más filtros</summary><div class="aud-filtergrid">${audFilterSelect('direction','Dirección',values('direction'),'Todas')}${audFilterSelect('team','Equipo',values('team'))}${audFilterSelect('impact','Impacto',['Alto','Medio','Bajo'].map(v=>[v,v]))}${audFilterSelect('authority','Capacidad de incidencia',Object.keys(AUD_AUTH).map(v=>[v,v]).concat([['unclassified','Sin clasificar']]))}${audFilterSelect('position','Posicionamiento',Object.keys(AUD_POSITION).map(v=>[v,v]).concat([['unclassified','Sin clasificar']]))}${audFilterSelect('quadrant','Cuadrante',[['Q1','Q1 · Colaborar'],['Q2','Q2 · Consultar'],['Q3','Q3 · Informar'],['Q4','Q4 · Involucrar'],['unclassified','Sin clasificar']])}</div>${audDataFiltersHTML(x)}</details><button class="secondary" onclick="audClearPeopleFilters()">Limpiar filtros</button></div>${active.length?`<div class="aud-active-filters">${active.map(([k,v])=>`<button class="secondary" onclick="audPersonFilter(${audArgs(k)},'')">${safe(labels[k]||(fields.find(f=>f.key===k)?audDataFieldLabel(x,fields.find(f=>f.key===k)):k))}: ${safe(text(k,v))} ×</button>`).join('')}</div>`:''}`;
+ const moreOpen=Object.entries(audPersonFilters).some(([k,v])=>v&&['direction','team','impact','quadrant','position','authority'].includes(k));
+ return `<div class="aud-filterbar"><label>Buscar persona<input placeholder="Código o nombre" value="${safe(audPersonFilters.search||'')}" onchange="audPersonFilter('search',this.value)"></label>${audFilterSelect('audienceId','Audiencia',(x.audiences||[]).map(a=>[a.id,a.name]),'Todas')}<details class="aud-more-filters" ${moreOpen?'open':''}><summary class="secondary">Más filtros</summary><div class="aud-filtergrid">${audFilterSelect('impact','Impacto',['Alto','Medio','Bajo'].map(v=>[v,v]))}${audFilterSelect('authority','Capacidad de incidencia',Object.keys(AUD_AUTH).map(v=>[v,v]).concat([['unclassified','Sin clasificar']]))}${audFilterSelect('position','Posicionamiento',Object.keys(AUD_POSITION).map(v=>[v,v]).concat([['unclassified','Sin clasificar']]))}${audFilterSelect('quadrant','Cuadrante',[['Q1','Q1 · Colaborar'],['Q2','Q2 · Consultar'],['Q3','Q3 · Informar'],['Q4','Q4 · Involucrar'],['unclassified','Sin clasificar']])}</div></details><button class="secondary" onclick="audClearPeopleFilters()">Limpiar filtros</button></div>${audDataFiltersHTML(x)}${active.length?`<div class="aud-active-filters">${active.map(([k,v])=>`<button class="secondary" onclick="audPersonFilter(${audArgs(k)},'')">${safe(labels[k]||(fields.find(f=>f.key===k)?audDataFieldLabel(x,fields.find(f=>f.key===k)):k))}: ${safe(text(k,v))} ×</button>`).join('')}</div>`:''}`;
 }
 function audViewBehaviors(x){return audAdoptionBehaviors(x).filter(b=>!audPersonFilters.audienceId||audApplicable(b,{audienceId:audPersonFilters.audienceId}));}
 function audAssignedSummary(x,p){const behaviors=audAdoptionBehaviors(x,p),assessed=behaviors.filter(b=>{const r=audLatestAdoption(p,b.id);return r&&r.stage!=='unknown';}).length;return {total:behaviors.length,assessed,behaviors};}
