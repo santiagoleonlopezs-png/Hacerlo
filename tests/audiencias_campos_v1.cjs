@@ -9,6 +9,7 @@ w.crypto.randomUUID=randomUUID;w.scrollTo=()=>{};w.alert=m=>alerts.push(m);w.con
 w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
 w.HTMLDialogElement.prototype.close=function(){this.open=false;};
 let project={id:'initiative-a',audiences:[{id:'a',name:'Equipo A'},{id:'b',name:'Equipo B'}],
+ audiencePersonFields:[{id:'legacy-specific',label:'Estado específico',scope:'behavior',behaviorId:'b1'}],
  behaviors:[{id:'b1',name:'Registrar seguimiento',scope:'specific',audienceIds:['a']},{id:'b2',name:'Consultar novedades',scope:'all'}],
  audiencePeople:[{id:'old-person',code:'001',audienceId:'a',name:'Ana',adoptionHistory:[{id:'obs',behaviorId:'b1',stage:'performs',observedOn:'2026-11-01',recordedAt:'2026-11-01T12:00:00Z'}]}]};
 w.current=()=>project;w.save=()=>snapshots.push(JSON.stringify(project));
@@ -36,13 +37,12 @@ async function exercise(){
  assert.equal(d.querySelector('[data-aud-map="5"]').value,'custom:5','Columnas desconocidas se conservan por defecto');
  assert.equal(d.querySelectorAll('#aud-v22-import img').length,0,'Encabezados tratados como texto');
  const extra=d.querySelector('[data-aud-column="6"]');
- change(extra.querySelector('[data-aud-scope]'),'behavior');
- assert.equal(extra.querySelector('[data-aud-behavior-label]').hidden,false);
- change(extra.querySelector('[data-aud-behavior]'),'b1');
+ assert.equal(extra.querySelector('[data-aud-scope]').type,'hidden','El alcance no se ofrece en columnas del Excel');
+ assert.equal(extra.querySelector('[data-aud-behavior]').value,'b1','Se conserva la vinculación de campos existentes');
  submit(d.querySelector('#aud-v22-import form'));
  assert.match(d.getElementById('aud-mapped-preview').textContent,/4 filas válidas/);
  assert.match(d.getElementById('aud-mapped-preview').textContent,/Estado específico.*Pendiente.*Por comportamiento/s);
- assert.equal(project.audiencePersonFields,undefined,'La vista previa no guarda datos');
+ assert.equal(project.audiencePersonFields.length,1,'La vista previa no agrega campos');
  change(d.getElementById('aud-v22-mode'),'update');
  w.commitAudienceCSVV22();
  assert.equal(project.audiencePeople.length,4);
@@ -91,14 +91,16 @@ async function exercise(){
  w.audClearPeopleFilters();w.audChangePeopleView('adoption');w.audPersonEdit('old-person');
  assert.ok(d.querySelector('#aud-person-drawer').open);
 
- // Edición individual y creación del mismo nombre con alcances independientes.
+ // Los campos del Excel conservan su nombre, sin el calificativo Transversal.
+ assert.doesNotMatch(w.audDataFieldOptions(project),/Transversal/);
+ // Edición individual y creación de campos de datos.
  let edit=d.querySelector('form[onsubmit^="audSavePersonData"]');
  edit.elements.namedItem(field('Estado general').id).value='Inactivo';submit(edit);
  assert.equal(project.audiencePeople[0].customFields[field('Estado general').id],'Inactivo');
  let create=d.querySelector('form[onsubmit^="audCreatePersonData"]');
- create.elements.label.value='Estado general';change(create.elements.scope,'behavior');
- create.elements.behaviorId.value='b1';create.elements.value.value='En revisión';submit(create);
- assert.equal(project.audiencePersonFields.filter(f=>f.label==='Estado general').length,2,'Un estado general y uno específico no se sobreescriben');
+ create.elements.label.value='Seguimiento adicional';create.elements.value.value='En revisión';
+ assert.equal(create.elements.scope,undefined,'Crear un campo no ofrece alcance de adopción');submit(create);
+ assert.equal(field('Seguimiento adicional').scope,'general');
  assert.equal(project.audiencePeople[0].customFields[field('Estado general').id],'Inactivo');
  assert.equal(JSON.stringify(project.audiencePeople[0].adoptionHistory),history,'Un estado libre no modifica la adopción documentada');
  w.audCloseDrawer();
@@ -117,11 +119,11 @@ async function exercise(){
  const count=project.audiencePersonFields.length;
  await w.previewAudienceCSVV22(input);
  const specific=d.querySelector('[data-aud-column="6"]');
- change(specific.querySelector('[data-aud-scope]'),'behavior');change(specific.querySelector('[data-aud-behavior]'),'b1');
+ assert.equal(specific.querySelector('[data-aud-scope]').value,'behavior','Reimportar conserva campos anteriores');
  submit(d.querySelector('#aud-v22-import form'));change(d.getElementById('aud-v22-mode'),'update');w.commitAudienceCSVV22();
  assert.equal(project.audiencePersonFields.length,count);
  assert.equal(JSON.stringify(project.audiencePeople[0].adoptionHistory),history);
- const other=project.audiencePersonFields.find(f=>f.label==='Estado general'&&f.scope==='behavior');
+ const other=field('Seguimiento adicional');
  assert.equal(project.audiencePeople[0].customFields[other.id],'En revisión');
 
  // Invalidar la vista previa al cambiar configuración impide confirmar datos viejos.
@@ -135,10 +137,64 @@ async function exercise(){
  assert.throws(()=>w.audValidatePersonField(project,{label:'X',scope:'behavior',behaviorId:'missing'}),/vigente/);
  const definition=w.audEnsurePersonField(project,{label:'Estado general',scope:'general'});
  assert.equal(definition.id,field('Estado general').id);
+
+ // Transversal pertenece a los estados de adopción, con historial independiente.
+ w.audClearPeopleFilters();w.audChangePeopleView('adoption');w.audChangeBehavior('');w.audPersonEdit('old-person');
+ const general=run('AUD_GENERAL_ADOPTION'),person=project.audiencePeople[0];
+ assert.equal(d.getElementById('aud-adoption-target').value,general,'La ficha permite valorar de forma transversal');
+ let adoption=d.querySelector('#aud-adoption-fields form');
+ assert.equal(adoption.elements.scope.value,'general');assert.equal(adoption.elements.behaviorId.value,'');
+ change(adoption.elements.stage,'understands');adoption.elements.source.value='Entrevista';
+ adoption.elements.evidence.value='Explica el propósito del cambio.';submit(adoption);
+ assert.equal(w.audGeneralAdoptionState(person),'understands');
+ assert.equal(w.audAdoptionState(person,project.behaviors[0]),'performs','El estado transversal conserva la valoración específica');
+ assert.equal(w.audAssignedSummary(project,person).assessed,1,'La valoración general no se cuenta como ejecución de cada comportamiento');
+ adoption=d.querySelector('#aud-adoption-fields form');assert.equal(adoption.elements.stage.value,'understands','Muestra el estado general actual al editar');
+ const generalRecord=w.audLatestAdoption(person,general);
+ assert.equal(generalRecord.scope,'general');assert.equal(generalRecord.behaviorId,'');
+ assert.match(w.audAdoptionHistoryHTML(person,general),/Explica el propósito/);
+ assert.doesNotMatch(w.audAdoptionHistoryHTML(person,'b1'),/Explica el propósito/);
+ change(d.getElementById('aud-adoption-target'),'b1');
+ adoption=d.querySelector('#aud-adoption-fields form');assert.equal(adoption.elements.stage.value,'performs');
+ change(adoption.elements.stage,'tries');adoption.elements.source.value='Práctica';
+ adoption.elements.evidence.value='Prueba el registro con orientación.';submit(adoption);
+ assert.equal(w.audAdoptionState(person,project.behaviors[0]),'tries');
+ assert.equal(w.audGeneralAdoptionState(person),'understands','Valorar un comportamiento conserva el estado transversal');
+ change(d.getElementById('aud-adoption-target'),general);
+ const observation={scope:'general',behaviorId:'',stage:'understands',observedOn:w.audLocalDate(),source:'Entrevista',evidence:'Reconoce las prácticas del cambio.',context:'observed'};
+ assert.throws(()=>w.audRecordAdoption(project,new Set([person.id]),{...observation,source:''}),/fuente/);
+ assert.throws(()=>w.audRecordAdoption(project,new Set([person.id]),{...observation,scope:'other'}),/alcance/);
+ assert.throws(()=>w.audRecordAdoption(project,new Set([person.id]),{...observation,behaviorId:'b1'}),/alcance general/);
+ assert.throws(()=>w.audRecordAdoption(project,new Set([person.id]),{...observation,stage:'sustains',autonomy:'independent'}),/criterio.*transversal/);
+ const criterion=d.querySelector('form[onsubmit^="audSaveAdoptionCriteria"]');
+ criterion.elements.criteria.value='Mantiene las prácticas clave durante cuatro semanas.';submit(criterion);
+ assert.match(project.audienceGeneralAdoptionCriteria,/cuatro semanas/);
+ assert.equal(project.behaviors[0].adoptionCriteria,undefined,'Criterio general y específico son independientes');
+ w.audRecordAdoption(project,new Set([person.id]),{...observation,stage:'sustains',autonomy:'independent',opportunities:'4',executions:'4'});
+ assert.equal(w.audGeneralAdoptionState(person),'sustains');
+ assert.equal(w.audAdoptionConsolidated(project).counts.sustains,0,'Los informes por comportamiento no mezclan valoraciones generales');
+ assert.throws(()=>w.audRecordAdoption(project,new Set([person.id]),observation,true),/Confirma/);
+ w.audCloseDrawer();w.audChangeBehavior(general);w.audInitPeopleUI(project);
+ assert.equal(d.getElementById('aud-behavior-picker').value,general,'La opción transversal permanece al renderizar');
+ w.audPersonFilter('adoptionState','sustains');assert.deepEqual(people(),['001']);
+ assert.match(w.audAdoptionDistribution(project),/Adopción transversal/);
+ assert.equal(w.audAdoptionSummary(project,general).counts.sustains,1);
+ w.audClearPeopleFilters();w.audSelectFiltered();w.audOpenBulk();
+ adoption=d.querySelector('#aud-adoption-fields form');assert.equal(adoption.elements.scope.value,'general');
+ change(adoption.elements.stage,'understands');adoption.elements.source.value='Sesión de equipo';
+ adoption.elements.evidence.value='Cada persona explica el propósito del cambio.';adoption.elements.bulkEvidence.checked=true;submit(adoption);
+ assert.equal(project.audiencePeople.every(p=>w.audGeneralAdoptionState(p)==='understands'),true,'El estado transversal masivo incluye todas las audiencias seleccionadas');
+ assert.equal(w.audAdoptionState(person,project.behaviors[0]),'tries');
+ project=JSON.parse(snapshots.at(-1));assert.equal(w.audGeneralAdoptionState(project.audiencePeople[0]),'understands','El estado transversal persiste en JSON');
+ w.audCloseDrawer();
  const old=project;project={id:'initiative-b',audiences:[],behaviors:[],audiencePeople:[]};w.audInitPeopleUI(project);w.render();
  assert.equal(w.audPersonDataFields(project).some(f=>f.key===key(fieldForOld(old))),false,'Campos aislados por iniciativa');
  assert.equal(run('audPersonSelection.size'),0);
  assert.equal(Object.keys(run('audPersonFilters')).some(k=>k.startsWith('custom:')),false);
+ project.audiencePeople.push({id:'p-new',code:'nuevo'});w.audPersonEdit('p-new');
+ assert.equal(d.querySelector('#aud-adoption-fields form').elements.scope.value,'general','La valoración transversal funciona sin comportamientos creados');
+ w.audRecordAdoption(project,new Set(['p-new']),observation);
+ assert.equal(w.audGeneralAdoptionState(project.audiencePeople[0]),'understands');
  assert.equal(errors.length,0,errors.map(e=>e?.message).join('\n'));
  assert.ok(snapshots.length>0);assert.ok(alerts.some(m=>/Personas importadas/.test(m)));
  dom.window.close();console.log('OK · Importación, alcance, filtros, edición individual/masiva, persistencia y aislamiento');
