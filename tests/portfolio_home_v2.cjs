@@ -21,7 +21,7 @@ vm.createContext(c);vm.runInContext(code,c);
 const markup=c.renderInitiativesHome();
 // Este módulo se prueba aislado, sin cargar app.js ni las funciones de Resultados.
 assert.match(markup,/Adopción/,'La descripción original permanece como respaldo cuando no se ha generado hipótesis');
-for(const word of ['Centro de iniciativas','Conectados para crecer','Cámara Contrata','End to end','310 personas','350 personas','660','En ejecución','Proyecto estratégico','Por evaluar','Abrir iniciativa','Editar prioridad','pf-create','pf-search','Sin evaluar'])assert.ok(markup.includes(word),'Falta '+word);
+for(const word of ['Centro de iniciativas','Conectados para crecer','Cámara Contrata','End to end','310 personas','350 personas','660','En ejecución','Proyecto estratégico','Por evaluar','Abrir iniciativa','Editar iniciativa','pf-create','pf-search','Sin evaluar'])assert.ok(markup.includes(word),'Falta '+word);
 for(const field of ['name','description','scope','population','createdAt','impact','effort'])assert.ok(markup.includes('name="'+field+'"'),'Campo existente '+field);
 assert.match(markup,/onsubmit="createInitiative\(event\)"/);
 assert.match(markup,/name="description"[^>]*readonly/,'Objetivo y contexto se alimenta automáticamente');
@@ -96,3 +96,4 @@ c.pfApply();assert.equal(empty.hidden,false);
 c.pfClear();assert.deepEqual(cards.map(i=>i.hidden),[false,false,false]);
 c.pfOpen({closest:()=>({getAttribute:()=>String(3)})});assert.equal(opened,3);
 console.log('Portafolio OK: filtros, datos, acciones, edición, creación y rutas existentes.');
+

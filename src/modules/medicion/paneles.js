@@ -3,13 +3,26 @@ function dimensionBars(x){return dims.map(d=>`<p>${d}: ${x.dimensions[d]===null?
 function normalizedStatus(z){return z==='Completada'?'Completada':z==='En ejecución'?'En ejecución':'Pendiente'}
 function elapsedLabel(i){if(!i.createdAt)return 'Fecha pendiente';let t=new Date(i.createdAt+'T12:00:00'),today=new Date();today.setHours(12,0,0,0);let n=Math.floor((today-t)/86400000);return Number.isFinite(n)?(n<0?'Inicia en '+(-n)+' días':n+' días'):'Fecha pendiente'}
 function priority(i){let impact=Number(i.impact),effort=Number(i.effort);if(!impact||!effort)return {label:'Por evaluar',route:'Asigna impacto y esfuerzo para definir la ruta.',color:'#70899a'};let hi=impact>=3,he=effort>=3;return hi&&!he?{label:'Victoria rápida',route:'Ejecutar primero: activar responsables y obtener resultados tempranos.',color:'#24caa9'}:hi&&he?{label:'Proyecto estratégico',route:'Planificar por hitos, asignar recursos y gestionar dependencias.',color:'#63aaf3'}:!hi&&!he?{label:'Oportunidad táctica',route:'Agrupar, automatizar o programar cuando exista capacidad.',color:'#e5b858'}:{label:'Reconsiderar',route:'Rediseñar el alcance o reducir esfuerzo antes de comprometer recursos.',color:'#f18c88'}}
-function updatePriority(id,field,value){let i=db.initiatives.find(x=>x.id===id);if(!i)return;i[field]=field==='createdAt'?value:(value===''?null:Number(value));save();render()}
+function updatePriority(id,field,value){
+ const i=db.initiatives.find(x=>String(x.id)===String(id));
+ if(!i)return;
+ if(field==='name'){
+  const name=String(value??'').trim();
+  if(!name||name.length>180){
+   alert('Escribe un nombre de entre 1 y 180 caracteres para la iniciativa.');
+   render();return;
+  }
+  i.name=name;
+ }else i[field]=field==='createdAt'?value:(value===''?null:Number(value));
+ save();render();
+}
 function priorityEditor(i){
  const p=priority(i),impact=Number(i.impact),effort=Number(i.effort);
  const measured=typeof priorityResults==='function'?priorityResults(i):null;
  const fmt=n=>Number.isFinite(n)&&n>0?n.toLocaleString('es-CO',{maximumFractionDigits:2})+'/5':'Sin evaluar';
  return '<div class="priority-evidence-editor">'+
   '<div class="flex" style="justify-content:space-between"><strong style="color:'+p.color+'">'+safe(p.label)+'</strong><small class="muted">'+elapsedLabel(i)+'</small></div>'+
+  '<label>Nombre de la iniciativa<input type="text" name="initiativeName" required maxlength="180" value="'+safe(i.name||'')+'" onchange="updatePriority('+i.id+',\'name\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur()}"></label>'+
   '<label>Fecha de ingreso<input type="date" value="'+safe(i.createdAt||'')+'" onchange="updatePriority('+i.id+',\'createdAt\',this.value)"></label>'+
   '<div class="priority-evidence-values"><div><small>Impacto</small><strong>'+fmt(impact)+'</strong></div><div><small>Esfuerzo</small><strong>'+fmt(effort)+'</strong></div></div>'+
   '<p class="muted">'+(measured?.n?'Basado en '+measured.n+' valoraciones · Encuestas v'+measured.version+'.':i.impact&&i.effort?'Valores históricos. Se actualizarán al responder el instrumento.':'Sin evidencia del instrumento todavía.')+'</p>'+
@@ -22,4 +35,5 @@ function kanban(x){return `<div class="kanban">${['Pendiente','En ejecución','C
 function dropTask(e,status){e.preventDefault();let i=Number(e.dataTransfer.getData('text/plain'));if(Number.isInteger(i)&&current().actions[i])setAction(i,status)}
 function gantt(x){let a=x.actions.filter(z=>z.start&&z.end&&z.end>=z.start);if(!a.length)return '<div class="empty">Agrega acciones con fechas de inicio y fin para visualizar la línea de tiempo.</div>';let dates=a.flatMap(z=>[new Date(z.start+'T12:00:00').getTime(),new Date(z.end+'T12:00:00').getTime()]),min=Math.min(...dates),max=Math.max(...dates),day=86400000,range=Math.max(day,max-min+day);return `<div class="muted">${new Date(min).toLocaleDateString('es-CO')} — ${new Date(max).toLocaleDateString('es-CO')}</div>${a.map(z=>{let st=new Date(z.start+'T12:00:00').getTime(),en=new Date(z.end+'T12:00:00').getTime();return `<div style="margin:20px 0"><div class="flex" style="justify-content:space-between"><strong>${safe(z.name)}</strong><small class="muted">${safe(z.start)} → ${safe(z.end)}</small></div><div style="background:#16364c;height:24px;border-radius:5px;margin-top:7px"><div style="margin-left:${100*(st-min)/range}%;width:${Math.max(1,100*(en-st+day)/range)}%;height:24px;background:#16a6b6;border-radius:5px"></div></div></div>`}).join('')}`}
 function trendCharts(x){const rows=(x.indicators||[]).filter(r=>(r.history||[]).length);return rows.length?rows.map(r=>'<section class="panel"><h3>'+safe(r.name)+'</h3>'+medSeriesChart(medHistory(r.history),{baseline:r.baseline,target:r.target,label:r.name})+'</section>').join(''):'<div class="empty">Aún no hay mediciones registradas.</div>';}
+
 

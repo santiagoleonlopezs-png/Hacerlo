@@ -116,7 +116,7 @@ function pfCard(i,idx){
    '<div class="pf-card-foot"><div class="pf-actions"><span>'+pfIcon(actions.length?'check':'clock')+
     (actions.length?done+' de '+actions.length+' acciones completadas':'Sin acciones registradas')+'</span>'+
     (actions.length?'<div class="pf-actions-track" role="progressbar" aria-label="Acciones completadas" aria-valuenow="'+done+'" aria-valuemin="0" aria-valuemax="'+actions.length+'"><i style="width:'+ratio+'%"></i></div>':'')+
-   '</div><details class="pf-edit"><summary>Editar prioridad <b aria-hidden="true">···</b></summary><div class="pf-edit-inner">'+priorityEditor(i)+'<div class="pf-danger-zone"><button type="button" class="pf-delete-button" onclick="pfDelete(this)">Eliminar iniciativa</button><small>Elimina la iniciativa y sus registros asociados. Se solicitará confirmación.</small></div></div></details></div>'+(typeof priorityCardForm==='function'?priorityCardForm(i):'')+'</article>';
+   '</div><details class="pf-edit"><summary>Editar iniciativa <b aria-hidden="true">···</b></summary><div class="pf-edit-inner">'+priorityEditor(i)+'<div class="pf-danger-zone"><button type="button" class="pf-delete-button" onclick="pfDelete(this)">Eliminar iniciativa</button><small>Elimina la iniciativa y sus registros asociados. Se solicitará confirmación.</small></div></div></details></div>'+(typeof priorityCardForm==='function'?priorityCardForm(i):'')+'</article>';
 }
 
 function pfSwitchView(next){
@@ -197,3 +197,4 @@ function renderInitiativesHome(){
     '<p class="pf-form-helper">La valoración es opcional al crear la iniciativa. Los promedios se calculan desde Diagnóstico → Encuestas.</p>'+
     '<button class="pf-submit" type="submit">Crear iniciativa '+pfIcon('arrow')+'</button></form></section></div>')+'</section>';
 }
+
