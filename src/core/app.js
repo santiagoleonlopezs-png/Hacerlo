@@ -558,7 +558,7 @@ function resultadosHome(x){
  const behaviorDetail=b?`${b.frequency||'Frecuencia por definir'}${b.observeFrom?' · Desde '+fmtDate(b.observeFrom):''}`:'Sin definir';
  const diagnosisDetail=hasDiagnosis?`${findings} ${findings===1?'hallazgo registrado':'hallazgos registrados'}`:'Por explorar';
  const card=(number,title,subtitle,detail,ready,destination,action,tone)=>{
-  const state=ready?(number==='03'?'Con evidencia':'Definido'):'Pendiente';
+  const state=ready?'Completado':'Pendiente';
   return `<article class="results-home-card results-home-card--${tone}" aria-label="${safe(title)}: ${safe(state)}">
    <div class="results-home-card-top"><span class="results-home-card-index" aria-hidden="true">${number}</span><span class="results-home-state ${ready?'is-ready':''}">${ready?'✓ ':''}${state}</span></div>
    <div class="results-home-card-body"><h3>${safe(title)}</h3><p>${safe(subtitle)}</p></div>

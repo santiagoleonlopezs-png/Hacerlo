@@ -158,8 +158,8 @@ main:has(#app .results-home-hero)>.hero{display:none}
 .results-home-card--diagnosis{--card-accent:#95b8fb}
 .results-home-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .results-home-card-index{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(125,225,221,.17);border-radius:11px;background:#1a5265;color:#94efe3;font-size:13px;font-weight:850}
-.results-home-state{font-size:11px;color:#9eb8ca;white-space:nowrap}
-.results-home-state.is-ready{color:#85e0cf}
+.results-home-state{padding:2px 8px;border:1px solid #97505c;border-radius:999px;background:#46212b;color:#ffc0c5;font-size:11px;font-weight:600;line-height:1.4;white-space:nowrap}
+.results-home-state.is-ready{border-color:#407b55;background:#163b28;color:#a9f0ba}
 .results-home-card-body{flex:1;margin:19px 0 13px}
 .results-home-card h3{font-size:19px;line-height:1.25;letter-spacing:-.25px;color:#f2faff;margin:0 0 9px}
 .results-home-card-body p{font-size:13px;line-height:1.5;color:#a7c4d3;margin:0;max-width:320px}
