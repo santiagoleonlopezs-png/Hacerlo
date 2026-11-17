@@ -65,12 +65,62 @@ const diagSignals = [
   /\b(no (?:quiero|queremos|me interesa|le veo (?:valor|sentido))|me (?:motiva|interesa|da miedo|preocupa)|por (?:costumbre|habito)|prefiero|desconfianza|no confio|vale la pena)\b/g,
   /\b((?:no (?:tengo|tenemos|hay)|falta de|sin) (?:el |los |suficiente )?(?:tiempo|acceso|permisos?|recursos|apoyo|equipos?|internet)|no (?:me dejan|me permiten|funciona el sistema)|el sistema (?:falla|se cae)|sobrecarga de trabajo|mi (?:jefe|equipo) me apoya)\b/g
 ];
+const diagThemes = [
+  ['capacidad','Aprendizaje y habilidades',/\b(?:capacitaci\w*|formacion|entrenamiento|aprend(?:er|izaje|iendo|imos|i)|habilidades?|destrezas?|conocimientos?|no sabemos como)\b/],
+  ['capacidad','Comprensión y claridad',/\b(?:comprend\w*|entend(?:er|imos|i)|entiendo|claridad (?:sobre|del|para)|(?:no|poco) (?:esta |quedo |tengo )?clar[oa]|no se (?:como|usar|hacer|registrar)|me explicaron|instrucciones (?:claras|confusas))\b/],
+  ['capacidad','Memoria y atención',/\b(?:se me olvida|no recuerdo|me cuesta recordar|concentracion|me distraigo)\b/],
+  ['motivacion','Interés y sentido',/\b(?:motiv\w*|desmotiv\w*|me interesa|interes (?:en|por)|entusias\w*|comprometid\w*|compromiso|me anima|no le veo (?:valor|sentido)|vale la pena|quiero participar|no quiero|ganas de)\b/],
+  ['motivacion','Emociones y creencias',/\b(?:miedo|temor|incertidumbre|preocup\w*|frustr\w*|ilusion\w*|desconf\w*|no confio|expectativas?|me emociona|me siento segur\w*|creo en)\b/],
+  ['motivacion','Hábitos y preferencias',/\b(?:costumbre|habitos?|prefiero|preferimos|resistencia al cambio|siempre lo hemos hecho)\b/],
+  ['entorno','Tiempo y carga de trabajo',/\b(?:tiempo (?:insuficiente|disponible|limitado)|(?:sin|poco|mas|falta de|no (?:hay|tengo|tenemos)) tiempo|sobrecarga|carga (?:de trabajo|laboral)|horarios?|agenda (?:llena|apretada))\b/],
+  ['entorno','Recursos, acceso y herramientas',/\b(?:recursos|herramientas?|permisos?|equipos tecnologicos|(?:sin|tengo|hay|tenemos|falta de) (?:el )?acceso|infraestructura|internet|conectividad|el sistema (?:falla|se cae)|no funciona el sistema)\b/],
+  ['entorno','Comunicación y circulación de información',/\b(?:comunicacion|canales de informacion|(?:compartir|recibir|enviar|transmitir) (?:la |mas )?informacion|enterarnos|nos inform\w*|mensajes contradictorios)\b/],
+  ['entorno','Apoyo, liderazgo y colaboración',/\b(?:acompanamiento|apoyo|liderazgo|trabajo en equipo|colaboracion|cooperacion|coordinacion entre|trabajar juntos|(?:el|mi|nuestro) (?:jefe|lider) (?:apoya|permite|escucha)|espacios (?:de|para))\b/]
+];
+function diagPlain(text) {
+  return String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+}
+function diagThemeMatches(plain) {
+  return diagThemes.filter(([, , pattern])=>pattern.test(plain));
+}
+function diagPatternSummary(narratives) {
+  const groups = new Map(), phrases = new Map();
+  const stop = new Set('a al como con de del el en es esta este la las lo los mas muy no o para pero por que se si sin su un una y'.split(' '));
+  function add(map,key,finding) {
+    if (!map.has(key)) map.set(key,[]);
+    map.get(key).push(finding);
+  }
+  for (const finding of narratives) {
+    const plain = diagPlain(finding.text);
+    const matches = diagThemeMatches(plain);
+    for (const [axis,label] of matches) add(groups,diagAxisLabels[diagAxes.indexOf(axis)]+' · '+label,finding);
+    if (matches.length || diagPosition(finding)) continue;
+    const tokens = plain.match(/[a-z0-9]+/g)||[];
+    const seen = new Set();
+    if(tokens.length && tokens.length<=4) seen.add(tokens.join(' '));
+    for(let i=0;i+1<tokens.length;i++) {
+      if(!stop.has(tokens[i]) && !stop.has(tokens[i+1])) seen.add(tokens.slice(i,i+2).join(' '));
+    }
+    for(const phrase of seen) add(phrases,phrase,finding);
+  }
+  function rows(map,min,limit) {
+    return [...map].filter(([,items])=>items.length>=min).sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0],'es')).slice(0,limit).map(([key,items])=>{
+      const examples=[...new Set(items.map(f=>f.text))].slice(0,3);
+      return `<details><summary>${diagEsc(key)} · ${items.length}</summary><ul>${examples.map(t=>'<li>'+diagEsc(t)+'</li>').join('')}</ul></details>`;
+    }).join('');
+  }
+  const themes=rows(groups,1,diagThemes.length), recurring=rows(phrases,2,10);
+  if (!themes && !recurring) return '';
+  return `<details><summary>Patrones en las opiniones</summary>${themes?'<p>Opiniones por tema. Una opinión puede mencionar varios temas.</p>'+themes:''}${recurring?'<h4>Expresiones repetidas sin ubicación</h4>'+recurring:''}</details>`;
+}
+
 function diagIsNarrative(f) {
   return !diagIsSurveyFinding(f) ? f.evidenceType !== 'Cuantitativa' : String(f.sourceKey).startsWith('ee:'+f.surveyId+':text:');
 }
 function diagSuggestPosition(text) {
-  const plain = String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const scores = diagSignals.map(pattern => new Set(plain.match(pattern) || []).size);
+  const plain = diagPlain(text);
+  const themes = diagThemeMatches(plain);
+  const scores = diagAxes.map((axis,i)=>Math.max(themes.filter(([key])=>key===axis).length,new Set(plain.match(diagSignals[i]) || []).size));
   const total = scores.reduce((sum,n) => sum+n,0);
   if (!total) return null;
   const weights = scores.map(score => Math.floor(100*score/total));
@@ -131,7 +181,7 @@ function diagHeatMap(findings) {
   return `<details class="panel"><summary><strong>Mapa de calor de micronarrativas</strong> · ${located} ubicadas</summary>
     <p>${located ? (top.length===1?'Mayor concentración en ':'Empate entre ')+top.join(' y ')+' · '+largest+' de '+located+' ubicadas.' : 'Aún no hay narrativas ubicadas.'}</p>
     <div class="diag-triad"><svg viewBox="0 0 360 320" role="img" aria-label="Distribución de micronarrativas en la tríada"><polygon points="180,25 32,290 328,290" fill="#0c4053" stroke="#4ac9d1"/>${dots}<text x="180" y="17" text-anchor="middle">Capacidad</text><text x="32" y="309" text-anchor="start">Motivación</text><text x="328" y="309" text-anchor="end">Entorno</text></svg></div>
-    <p>${labels.map((label,i)=>label+' '+zones[i]).join(' · ')}</p><small>Los puntos más grandes y rojos agrupan más narrativas cercanas. ${pending} ubicadas por revisar · ${narratives.length-located} sin ubicación.</small></details>`;
+    <p>${labels.map((label,i)=>label+' '+zones[i]).join(' · ')}</p><small>Los puntos más grandes y rojos agrupan más narrativas cercanas. ${pending} ubicadas por revisar · ${narratives.length-located} sin ubicación.</small>${diagPatternSummary(narratives)}</details>`;
 }
 
 function diagTriadSelect(ev){const svg=ev.currentTarget,point=svg.createSVGPoint();point.x=ev.clientX;point.y=ev.clientY;const local=point.matrixTransform(svg.getScreenCTM().inverse()),px=local.x,py=local.y;
