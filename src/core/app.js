@@ -280,7 +280,32 @@ function createInitiative(e){
  }
  db.initiatives.push(o);db.selected=o.id;save();go('RDAIM');
 }
-function render(){let x=current(),a=$('app');if(x){x.behaviors=x.behaviors||[];x.audiences=x.audiences||[];x.indicators=x.indicators||[];x.actions=x.actions||[];x.metrics=x.metrics||{};x.metricHistory=x.metricHistory||{};x.measurements=x.measurements||[];x.notes=x.notes||{};x.systemVariables=x.systemVariables||[];x.systemLinks=x.systemLinks||[];x.evidenceRecords=x.evidenceRecords||[];x.modelRuns=x.modelRuns||[];x.scope=x.scope||'inside';}if(page==='Inteligencia integrada'){a.innerHTML=intelligencePage(x);return}if(page==='Inicio'){a.innerHTML=renderIntelligenceHome();return}if(page==='Iniciativas'){a.innerHTML=renderInitiativesHome();return}if(page==='Laboratorio'){a.innerHTML=renderLearningLabPage();return}if(page==='Centro de activación'){a.innerHTML=x?renderCentroActivacion(x):'<section class="panel"><h2>Centro de activación</h2><p>Selecciona una iniciativa para comenzar.</p></section>';return}if(page==='Movilización y refuerzo'){a.innerHTML=current()?renderMovilizacionEstudio(current()):'<section class="panel"><h2>Movilización y refuerzo</h2><p>Selecciona una iniciativa para continuar.</p></section>';return}
+let intelligenceHomeLoading = false;
+function showIntelligenceHome(container) {
+ if(typeof renderIntelligenceHome==='function'){
+  container.innerHTML=renderIntelligenceHome();
+  return;
+ }
+ container.innerHTML='<section class="panel" role="status"><h2>Centro de Inteligencia</h2><p>Cargando el inicio…</p></section>';
+ if(intelligenceHomeLoading)return;
+ intelligenceHomeLoading=true;
+ const script=document.createElement('script');
+ const original=document.querySelector('script[src*="src/core/centro-inteligencia.js"]');
+ const url=new URL(original?.src || 'src/core/centro-inteligencia.js',document.baseURI);
+ url.searchParams.set('retry',String(Date.now()));
+ script.src=url.href;
+ function finish(){
+  intelligenceHomeLoading=false;
+  script.remove();
+  if(page!=='Inicio')return;
+  if(typeof renderIntelligenceHome==='function'){render();return}
+  container.innerHTML='<section class="panel" role="status"><h2>Centro de Inteligencia</h2><p>No se pudo cargar el inicio.</p><button type="button" class="secondary" onclick="render()">Reintentar carga</button> <button type="button" class="secondary" onclick="go(\'Iniciativas\')">Ver iniciativas</button></section>';
+ }
+ script.onload=finish;
+ script.onerror=finish;
+ document.head.appendChild(script);
+}
+function render(){let x=current(),a=$('app');if(x){x.behaviors=x.behaviors||[];x.audiences=x.audiences||[];x.indicators=x.indicators||[];x.actions=x.actions||[];x.metrics=x.metrics||{};x.metricHistory=x.metricHistory||{};x.measurements=x.measurements||[];x.notes=x.notes||{};x.systemVariables=x.systemVariables||[];x.systemLinks=x.systemLinks||[];x.evidenceRecords=x.evidenceRecords||[];x.modelRuns=x.modelRuns||[];x.scope=x.scope||'inside';}if(page==='Inteligencia integrada'){a.innerHTML=intelligencePage(x);return}if(page==='Inicio'){showIntelligenceHome(a);return}if(page==='Iniciativas'){a.innerHTML=renderInitiativesHome();return}if(page==='Laboratorio'){a.innerHTML=renderLearningLabPage();return}if(page==='Centro de activación'){a.innerHTML=x?renderCentroActivacion(x):'<section class="panel"><h2>Centro de activación</h2><p>Selecciona una iniciativa para comenzar.</p></section>';return}if(page==='Movilización y refuerzo'){a.innerHTML=current()?renderMovilizacionEstudio(current()):'<section class="panel"><h2>Movilización y refuerzo</h2><p>Selecciona una iniciativa para continuar.</p></section>';return}
 if(!x){a.innerHTML='<div class="panel">Selecciona o crea una iniciativa desde Iniciativas. <button type="button" class="secondary" onclick="go(\'Iniciativas\')">Ver iniciativas</button></div>';return}
 let showStageSteps=page==='RDAIM';let head=`<section class="panel"><div class="flex" style="justify-content:space-between"><div><h2>${safe(x.name)}</h2><p class="muted">${safe(initiativeContextSummary(x))} · ${x.population} personas</p></div><select style="width:auto" onchange="choose(Number(this.value))">${db.initiatives.map(i=>`<option value="${i.id}" ${i.id===x.id?'selected':''}>${safe(i.name)}</option>`).join('')}</select></div>${showStageSteps?`<div class="steps">${phases.map((p,i)=>`<button class="step ${(page==='RDAIM'?phase:(HACERLO_PAGE_PHASE[page]??phase))===i?'selected':''}" style="--c:${p[2]}" onclick="if(openNavStep(${i})!==false)go('RDAIM')"><b>${p[0]}</b>${p[1]}</button>`).join('')}</div>`:''}</section>`;
 if(page==='Diseño de comportamientos')head=hcxHero('Diseño de comportamientos',x,'Define las acciones observables que producirán el resultado esperado.','RDAIM · DISEÑO','◈');
