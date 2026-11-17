@@ -978,3 +978,14 @@ button.behavior-explore-entry:focus-visible{outline:2px solid #80eadc;outline-of
 @media(prefers-reduced-motion:reduce){
  .behavior-explore-entry-row>.behavior-explore-entry{transition:none}
 }
+
+details.diag-disclosure{padding:0;min-width:0}
+.diag-disclosure>summary{display:flex;align-items:center;gap:.65rem;min-height:48px;padding:.85rem 1rem;box-sizing:border-box;list-style:none;cursor:pointer;font-size:1rem;font-weight:600;line-height:1.35}
+.diag-disclosure>summary::-webkit-details-marker{display:none}
+.diag-disclosure>summary::after{content:"";width:.48rem;height:.48rem;flex:none;margin-left:auto;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg)}
+.diag-disclosure[open]>summary::after{transform:rotate(225deg)}
+.diag-disclosure>summary:focus-visible{outline:2px solid #76e4db;outline-offset:-3px;border-radius:inherit}
+.diag-disclosure>summary small{font-size:.8rem;font-weight:500;padding:.1rem .5rem;border:1px solid currentColor;border-radius:999px}
+.diag-disclosure[open]>summary{border-bottom:1px solid #345362;margin-bottom:.85rem}
+.diag-disclosure[open]>:not(summary){margin-inline:1rem}
+.diag-disclosure[open]>:last-child{margin-bottom:1rem}
