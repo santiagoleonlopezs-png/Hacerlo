@@ -56,10 +56,11 @@ assert.match(metrics,/INS personas/);assert.match(metrics,/INS proceso/);assert.
 assert.match(metrics,/Base 2026/);
 assert.equal((metrics.match(/data-portfolio-metric-id=/g)||[]).length,2,'Una fila por iniciativa');
 assert.match(metrics,/Los valores mantienen sus escalas originales/);
-assert.match(app,/if\(page==='Inicio'\)\{a.innerHTML=renderIntelligenceHome\(\);return\}/);
+assert.match(app,/if\(page==='Inicio'\)\{showIntelligenceHome\(a\);return\}/);
 assert.match(app,/if\(page==='Analítica'\)\{a.innerHTML=renderMeasurementPage\(x\)/);
 assert.match(fs.readFileSync('src/modules/medicion/integrada.js','utf8'),/portfolioMetricSummary\(\)/);
-assert.match(index,/centro-inteligencia\.js\?v=2\.20\.0/);
+assert.match(app,/container\.innerHTML=renderIntelligenceHome\(\)/);
+assert.match(index,/src="src\/core\/centro-inteligencia\.js\?v=[^"]+"/);
 assert.match(index,/centro-inteligencia\.css\?v=2\.19\.0/);
 assert.match(index,/<div class="hero"><h1>HACERLO<\/h1>/,'Banner general intacto');
 assert.match(portfolio,/portfolioPriority\(true\)/,'Matriz en Iniciativas');
