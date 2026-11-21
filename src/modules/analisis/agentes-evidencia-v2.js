@@ -12,7 +12,7 @@ function abmV2Population(x,audience) {
   const declared=Number(audience.population);
   if(Number.isInteger(declared)&&declared>0)
     return {population:declared,population_source:'declared_population'};
-  const people=(x.audiencePeople||[]).filter(p=>String(p.audienceId)===String(audience.id));
+  const people=(x.audiencePeople||[]).filter(p=>audPersonAudienceIds(p).includes(String(audience.id)));
   const ids=new Set(people.map((p,i)=>p.id!=null&&String(p.id)!==''?'id:'+String(p.id):'row:'+i));
   return {population:ids.size,population_source:ids.size?'registered_people':'not_defined'};
 }
@@ -74,7 +74,7 @@ function abmV2EvidenceSummary(x,behavior,selectedIds=null) {
     (behavior?.scope!=='specific'||
     (behavior?.audienceIds||[]).map(String).includes(String(a.id))
     )).map(a=>String(a.id)));
-  const eligible=behavior?all.filter(p=>eligibleAudienceIds.has(String(p.audienceId))):[];
+  const eligible=behavior?all.filter(p=>audPersonAudienceIds(p).some(id=>eligibleAudienceIds.has(id))):[];
   const statuses=['unknown','understands','tries','performs','sustains'];
   const byStatus=Object.fromEntries(statuses.map(s=>[s,0]));
   const byAudience={};
@@ -89,13 +89,15 @@ function abmV2EvidenceSummary(x,behavior,selectedIds=null) {
       String(a.recordedAt||'').localeCompare(String(b.recordedAt||'')));
     const row=history.at(-1);
     const state=row?.stage||'unknown';
-    if(!byAudience[String(p.audienceId)])
-      byAudience[String(p.audienceId)]={eligible:0,measured:0,confirmed:0};
-    const a=byAudience[String(p.audienceId)];
-    a.eligible++;
     byStatus[state]++;
-    if(row && state!=='unknown'){measured++;a.measured++;if(row.observedOn>latestDate)latestDate=row.observedOn}
-    if(state==='performs'||state==='sustains')a.confirmed++;
+    const observed = row && state !== 'unknown';
+    if(observed){measured++;if(row.observedOn>latestDate)latestDate=row.observedOn}
+    for(const id of audPersonAudienceIds(p).filter(id=>eligibleAudienceIds.has(id))){
+      const a=byAudience[id] ||= {eligible:0,measured:0,confirmed:0};
+      a.eligible++;
+      if(observed)a.measured++;
+      if(state==='performs'||state==='sustains')a.confirmed++;
+    }
   }
   const eligibleCount=eligible.length;
   const confirmed=byStatus.performs+byStatus.sustains;

@@ -42,7 +42,7 @@ function cacSignalModel(x,row){
  const focus=behaviors[0];
  if(focus){
   for(const p of x.audiencePeople||[]){
-   if(!p||focus.scope==='specific'&&!(focus.audienceIds||[]).some(id=>String(id)===String(p.audienceId)))continue;
+   if(!p||focus.scope==='specific'&&!(focus.audienceIds||[]).some(id=>audPersonAudienceIds(p).includes(String(id))))continue;
    const records=(p.adoptionHistory||[]).filter(r=>String(r.behaviorId)===String(focus.id)&&validStages.has(r.stage));
    if(!records.length)continue;
    records.sort((a,b)=>String(b.observedOn||'').localeCompare(String(a.observedOn||''))||

@@ -220,7 +220,7 @@ async function cacAiSuggest(){
   // El modelo recibe el grupo de la persona elegida, pero nunca su nombre o correo.
   const contextAudienceIds=new Set(draft.audienceIds);
   for(const p of x.audiencePeople||[]){
-   if(draft.contactIds.includes(String(p.id))&&p.audienceId)contextAudienceIds.add(String(p.audienceId));
+   if(draft.contactIds.includes(String(p.id)))for(const id of audPersonAudienceIds(p))contextAudienceIds.add(id);
   }
   const controller=new AbortController();
   timer=setTimeout(()=>controller.abort(),143000);
@@ -282,7 +282,7 @@ function cacAiDismiss(){
 function cacAudienceCount(x,id){
  const set=new Set(),add=v=>{const s=String(v||'').trim().toLowerCase();if(s.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))set.add(s);};
  const a=(x.audiences||[]).find(v=>String(v.id)===String(id));if(a)add(a.email||a.correo);
- (x.audiencePeople||[]).filter(p=>String(p.audienceId)===String(id)).forEach(p=>add(p.email||p.correo));
+ (x.audiencePeople||[]).filter(p=>audPersonAudienceIds(p).includes(String(id))).forEach(p=>add(p.email||p.correo));
  return set.size;
 }
 function cacAudienceOptions(x,step){
@@ -299,8 +299,8 @@ function cacContactOptions(x,step){
  if(!people.length)return '<p class="cac-muted">No hay personas con correo registrado en esta iniciativa.</p>';
  const chosen=new Set((step.contactIds||[]).map(String)),open=people.some(p=>chosen.has(String(p.id)));
  const cards=people.map(p=>{
-  const aud=(x.audiences||[]).find(a=>String(a.id)===String(p.audienceId));
-  const description=String(p.email||p.correo||'').trim()+(aud?' · '+aud.name:'');
+  const audiences=audPersonAudienceLabel(x,p);
+  const description=String(p.email||p.correo||'').trim()+(' · '+audiences);
   return '<label class="cac-contact-item" data-cac-contact="'+cacSafe((p.name||'')+' '+description).toLocaleLowerCase('es')+'">'+
    '<input type="checkbox" name="contact_ids" value="'+cacSafe(p.id)+'"'+(chosen.has(String(p.id))?' checked':'')+
    (step.status!=='draft'?' disabled':'')+'><span><b>'+cacSafe(p.name||'Sin nombre')+'</b><small>'+cacSafe(description)+'</small></span></label>';
@@ -461,9 +461,13 @@ async function cacActivateStep(){
   cacActionFeedback('Conexión verificada. Comprobando destinatarios en el servidor…','info');
   const saved=await confirmCloudSave();
   if(!saved?.ok)throw Error(saved?.message||'No fue posible guardar el borrador en Supabase.');
+  const secondaryContacts=(x.audiencePeople||[]).filter(person=>
+   (person.additionalAudienceIds||[]).some(id=>draft.audienceIds.includes(String(id))) &&
+   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(person.email||person.correo||'').trim()));
+  const contactIds=[...new Set([...draft.contactIds,...secondaryContacts.map(p=>String(p.id))])];
   const payload={
    initiative_id:x._cloudId,action_index:row.index,kind:draft.kind,audience_ids:draft.audienceIds,
-   contact_ids:draft.contactIds,manual_email:draft.manualEmail,manual_name:draft.manualName,
+   contact_ids:contactIds,manual_email:draft.manualEmail,manual_name:draft.manualName,
    subject:draft.title,message:draft.body,cta:draft.cta,sequence_step:draft.stage,sequence_id:step.id,
    scheduled_for:draft.scheduledFor||''
   };

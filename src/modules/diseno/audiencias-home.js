@@ -58,7 +58,7 @@
       return (b.audienceIds||[]).some(function(id){return audiences.some(function(a){return String(a.id)===String(id);});});
     }).length;
     var assigned={};
-    people.forEach(function(p){if(p.audienceId!=null){var k=String(p.audienceId);assigned[k]=(assigned[k]||0)+1;}});
+    people.forEach(function(p){for(const k of audPersonAudienceIds(p)){assigned[k]=(assigned[k]||0)+1;}});
     var qsource=people.length?people:audiences;
     var qcounts={Q1:0,Q2:0,Q3:0,Q4:0,none:0};
     qsource.forEach(function(item){var key=audQuadrant(item);if(key)qcounts[key]++;else qcounts.none++;});
@@ -107,7 +107,7 @@
     var navigation='<div class="ah-nav" id="ah-workmode" role="group" aria-label="Vista de gestión">'+
       '<div class="ah-nav-tabs"><button type="button" aria-pressed="'+(audienceTab==='registro')+'" class="'+(audienceTab==='registro'?'is-active':'')+'" onclick="audHomeTab(\'registro\')">Personas</button>'+
       '<button type="button" aria-pressed="'+(audienceTab!=='registro')+'" class="'+(audienceTab!=='registro'?'is-active':'')+'" onclick="audHomeTab(\'mapa\')">Distribución y estrategias</button></div>'+
-      '<div class="ah-nav-actions"><button class="ah-action-secondary" type="button" onclick="audHomeImport()">↑ Importar Excel</button>'+
+      '<div class="ah-nav-actions"><button class="ah-action-primary" type="button" onclick="audOpenPersonForm()">＋ Agregar persona</button><button class="ah-action-secondary" type="button" onclick="audHomeImport()">↑ Importar Excel</button>'+
       '<button class="ah-action-primary" type="button" onclick="audQuickNew()">＋ Nueva audiencia</button></div></div>';
 
     var content=audienceTab==='registro'

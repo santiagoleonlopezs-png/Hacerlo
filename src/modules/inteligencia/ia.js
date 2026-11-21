@@ -37,7 +37,7 @@ function aiPeopleContext(x){
  const people=aiArray(x.audiencePeople),behaviors=aiArray(x.behaviors);
  const position=aiCounts(people,'position'),authority=aiCounts(people,'authority');
  const groups=aiArray(x.audiences).map(a=>{
-  const rows=people.filter(p=>p.audienceId===a.id);
+  const rows=people.filter(p=>audPersonAudienceIds(p).includes(String(a.id)));
   const qCounts={Q1:0,Q2:0,Q3:0,Q4:0,unclassified:0};
   rows.forEach(p=>{const q=typeof audQuadrant==='function'?(audQuadrant(p)||'unclassified'):'unclassified';qCounts[q]=(qCounts[q]||0)+1;});
   return {
@@ -55,7 +55,7 @@ function aiPeopleContext(x){
   };
  });
  const adoption=behaviors.map(b=>{
-  const eligible=people.filter(p=>b.scope!=='specific'||aiArray(b.audienceIds).includes(p.audienceId));
+  const eligible=people.filter(p=>b.scope!=='specific'||audPersonAudienceIds(p).some(id=>aiArray(b.audienceIds).includes(id)));
   const counts={unknown:0,understands:0,tries:0,performs:0,sustains:0};
   let observations=0,noOpportunity=0,barriers=0;
   for(const p of eligible){

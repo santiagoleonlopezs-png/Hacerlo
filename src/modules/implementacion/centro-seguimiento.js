@@ -68,7 +68,7 @@ function cacAudienceAdoptionSignal(x,action,audienceId){
  if(behavior.scope==='specific'&&!(behavior.audienceIds||[]).some(id=>String(id)===String(audienceId)))return null;
  const counts={understands:0,tries:0,performs:0,sustains:0};
  for(const person of x.audiencePeople||[]){
-  if(String(person?.audienceId)!==String(audienceId))continue;
+  if(!audPersonAudienceIds(person).includes(String(audienceId)))continue;
   const latest=(person.adoptionHistory||[])
     .filter(r=>String(r.behaviorId)===String(behavior.id)&&Object.hasOwn(counts,r.stage))
     .sort((a,b)=>String(b.observedOn||'').localeCompare(String(a.observedOn||''))||
