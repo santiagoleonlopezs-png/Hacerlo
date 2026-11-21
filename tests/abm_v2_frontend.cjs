@@ -10,7 +10,7 @@ const guided=fs.readFileSync('src/modules/analisis/agentes-experiencia.js','utf8
 const context={safe:(v)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;'),
   console};
 vm.createContext(context);
-vm.runInContext(evidence+'\n'+sim+'\n'+research+'\n'+guided,context);
+vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+evidence+'\n'+sim+'\n'+research+'\n'+guided,context);
 const project={
   behaviors:[{name:'Registrar interacciones',scope:'specific',audienceIds:['aud-1']}],
   audiences:[

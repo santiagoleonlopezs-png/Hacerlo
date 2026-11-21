@@ -9,7 +9,7 @@ let sent=0,saved=0;
 const ctx={console,Date,current:()=>x,save:()=>saved++,render:()=>{},actionMechanisms:()=>['comunicacion'],
 safe:s=>String(s??''),FormData:class{constructor(){return Object.entries(elements).map(([k,v])=>[k,v.value])}},
 document:{getElementById:id=>nodes[id]||null},sb:{functions:{invoke:()=>sent++}}};
-vm.createContext(ctx);vm.runInContext(src,ctx);
+vm.createContext(ctx);vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+src,ctx);
 vm.runInContext("cacEditorOpen=true;cacStepId='s1';cacAiSuggestion={stepId:'s1',proposal:{subject:'IA propone',message:'Mensaje listo para ser ajustado por el usuario.',cta:'Acción concreta',reason:'Reducir barreras'},sources:{audiencias:0,hallazgos:1,comportamientos:0,factores:0}}",ctx);
 assert.match(ctx.cacAiSuggestionHtml(x.actions[0].activationSequence[0]),/Aplicar y ajustar/);
 assert.equal(elements.subject.value,'Anterior');

@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const code=fs.readFileSync('src/modules/analisis/agentes-evidencia-v2.js','utf8');
 const context={console,safe:v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')};
-vm.createContext(context);vm.runInContext(code,context);
+vm.createContext(context);vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+code,context);
 const behavior={id:'b1',name:'Registrar interacciones',scope:'specific',audienceIds:['a']};
 const when=(stage,date,behaviorId='b1')=>({behaviorId,stage,observedOn:date,recordedAt:date+'T12:00:00Z'});
 const x={audiences:[{id:'a',name:'Asesores'},{id:'b',name:'No aplicable'}],

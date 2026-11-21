@@ -25,7 +25,7 @@ const ctx={
  document:{getElementById:()=>null},
  sb:{functions:{invoke:()=>network++}}
 };
-vm.createContext(ctx);vm.runInContext(code,ctx);
+vm.createContext(ctx);vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+code,ctx);
 const row={action,index:0};
 assert.equal(ctx.cacSignalNumber(''),null);
 assert.equal(ctx.cacSignalNumber('0'),0);

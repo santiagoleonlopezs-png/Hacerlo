@@ -28,7 +28,7 @@ const ctx={
  document:{getElementById:()=>null},
  sb:{functions:{invoke:()=>network++}}
 };
-vm.createContext(ctx);vm.runInContext(source,ctx);
+vm.createContext(ctx);vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+source,ctx);
 const summary=ctx.cacProviderStats([
  {accepted_count:2,delivered_count:1,opened_count:1,clicked_count:1,bounced_count:1},
  {accepted_count:3,delivered_count:2,opened_count:1,clicked_count:0,complained_count:1}

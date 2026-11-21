@@ -48,7 +48,7 @@ for(const attr of ["onsubmit=\"addExperiment(event)\"","onsubmit=\"addObservatio
 const context={console,safe:v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),
  normalizedStatus:z=>z==='Completada'?'Completada':'Pendiente',audQuadrant:()=>null};
 vm.createContext(context);
-vm.runInContext(ux+'\n'+ia+'\n'+integrated,context);
+vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+ux+'\n'+ia+'\n'+integrated,context);
 const x={id:7,name:'Piloto <test>',scope:'inside',
  audiences:[{id:'a',name:'Asesores',population:20}],behaviors:[{id:'b',name:'Registro CRM',scope:'all'}],
  nodes:[],edges:[],actions:[],indicators:[],systemVariables:[],systemLinks:[],

@@ -113,7 +113,7 @@ const ctx={console,URLSearchParams,location:{hash:'',search:''},FormData:MockFor
   }
 };
 vm.createContext(ctx);
-vm.runInContext(app+'\n'+evidence+'\n'+sim+'\n'+lab+'\n'+guided,ctx);
+vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+app+'\n'+evidence+'\n'+sim+'\n'+lab+'\n'+guided,ctx);
 async function main(){
   // Login y carga de pertenencia organizacional antes de empezar el piloto.
   vm.runInContext("cloudOrgId='org-test';cloudReady=true",ctx);

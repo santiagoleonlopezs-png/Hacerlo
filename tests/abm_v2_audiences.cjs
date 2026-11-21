@@ -22,7 +22,7 @@ const ctx={
   querySelectorAll:()=>inputBoxes}
 };
 vm.createContext(ctx);
-vm.runInContext(evidence+'\n'+simulator+'\n'+calibration+'\n'+guided,ctx);
+vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+evidence+'\n'+simulator+'\n'+calibration+'\n'+guided,ctx);
 const b=initiative.behaviors[0];
 assert.deepEqual(ctx.abmApplicableAudiences(initiative,b).map(v=>v.id),['a','b']);
 assert.deepEqual(ctx.abmSelectedAudiences(initiative,b,0).map(v=>v.id),['a','b']);

@@ -13,7 +13,7 @@ let project={id:'initiative-a',audiences:[{id:'a',name:'Equipo A'},{id:'b',name:
  behaviors:[{id:'b1',name:'Registrar seguimiento',scope:'specific',audienceIds:['a']},{id:'b2',name:'Consultar novedades',scope:'all'}],
  audiencePeople:[{id:'old-person',code:'001',audienceId:'a',name:'Ana',adoptionHistory:[{id:'obs',behaviorId:'b1',stage:'performs',observedOn:'2026-11-01',recordedAt:'2026-11-01T12:00:00Z'}]}]};
 w.current=()=>project;w.save=()=>snapshots.push(JSON.stringify(project));
-for(const path of ['src/modules/encuestas/motor.js','src/modules/diseno/audiencias.js']){
+for(const path of ['src/core/personas-audiencias.js','src/modules/encuestas/motor.js','src/modules/diseno/audiencias.js']){
  const script=d.createElement('script');script.textContent=fs.readFileSync(path,'utf8');d.body.append(script);
 }
 w.render=()=>{d.getElementById('app').innerHTML=w.audienceRegistration(project);};

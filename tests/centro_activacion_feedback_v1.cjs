@@ -36,7 +36,7 @@ const ctx={
   throw Error('Modo de prueba no esperado '+body.mode);
  }}}
 };
-vm.createContext(ctx);vm.runInContext(src,ctx);
+vm.createContext(ctx);vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+src,ctx);
 ctx.cacLoadHistory=async()=>{};
 (async()=>{
  // Sin destinatarios: feedback en el mismo lugar, no alerta oculta.

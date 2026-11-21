@@ -307,14 +307,6 @@ function audCreatePersonData(e,bulk){
  try{const definition=audValidatePersonField(x,{label:data.label,scope:'general'}),value=String(data.value||'').trim();if(!value)throw Error('Indica un valor o estado.');const people=(x.audiencePeople||[]).filter(p=>ids.has(p.id)&&audDataFieldApplies(x,p,definition));if(!people.length)throw Error('El comportamiento no aplica a las personas seleccionadas.');const field=audEnsurePersonField(x,definition);for(const p of people){p.customFields ||= {};p.customFields[field.id]=value;p.updatedAt=new Date().toISOString();}save();audUIRender();const note=document.getElementById('aud-drawer-message');if(note)note.textContent=`${field.label} guardado en ${people.length} persona(s).`;}catch(err){alert(err.message);}
 }
 
-function audPersonAudienceIds(person) {
- const ids = [person?.audienceId, ...(person?.additionalAudienceIds || [])];
- return [...new Set(ids.filter(Boolean).map(String))];
-}
-function audPersonAudienceLabel(x, person) {
- const ids = audPersonAudienceIds(person);
- return (x.audiences || []).filter(a => ids.includes(String(a.id))).map(a => a.name).join(', ') || 'Sin audiencia';
-}
 function audOpenPersonForm(id) {
  const x = current();
  if (!(x.audiences || []).length) {

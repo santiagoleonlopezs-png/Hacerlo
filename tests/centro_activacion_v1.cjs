@@ -19,7 +19,7 @@ const ctx={console,Date,Number,crypto:{randomUUID:()=>String(calls.save+1).padSt
  cloudReady:false,hcxHero:()=>'<header>HACERLO</header>',
  document:{getElementById:()=>null},
  sb:{functions:{invoke:()=>{calls.network++;throw Error('No deberia enviar')}}}};
-vm.createContext(ctx);vm.runInContext(code,ctx);
+vm.createContext(ctx);vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+code,ctx);
 assert.match(ctx.renderCentroActivacion(x),/¿Qué quieres activar hoy\?|Nueva comunicación/);
 assert.match(ctx.renderCentroActivacion(x),/Nueva comunicación/);
 assert.match(ctx.renderCentroActivacion(x),/class="cac-launch"/);

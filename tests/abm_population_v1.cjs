@@ -17,7 +17,7 @@ const ctx={console,safe:v=>String(v??''),current:()=>x,save(){},cloudSaveVersion
   sb:{auth:{getSession:async()=>({data:{session:{access_token:'test'}}})}},
   document:{getElementById:id=>id==='abm-form'?form:node(id),querySelectorAll:()=>[]},
   fetch:async(url,opts)=>{calls.push(JSON.parse(opts.body));return {ok:true,json:async()=>({model_version:'abm-1.2'})}}};
-vm.createContext(ctx);vm.runInContext(source,ctx);
+vm.createContext(ctx);vm.runInContext(fs.readFileSync('src/core/personas-audiencias.js','utf8')+'\n'+source,ctx);
 ctx.abmReadPlannedIntervention=()=>({value:null});
 ctx.renderABMVisualResult=()=>'';ctx.renderABMScenarioComparison=()=>'';
 async function main(){
