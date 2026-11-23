@@ -1,6 +1,40 @@
 """Validate complete AI reports and retry unusable replies within the gateway deadline."""
+import asyncio
+import io
 import json
 import time
+from urllib.error import HTTPError, URLError
+
+
+# Only free endpoints with schema support and optional reasoning. The general free
+# router can choose mandatory-thinking models that never reach their final answer.
+INTERPRETATION_MODELS = (
+    'inclusionai/ling-3.2-flash:free',
+    'nvidia/nemotron-3.5-super-vl:free',
+)
+
+
+def post_interpretation_json(url, body, headers, timeout=35, transport=None):
+    """Enforce an elapsed-time limit, including providers sending keep-alive bytes."""
+    # Imported here so pure decoding tests also run without HTTP dependencies.
+    import httpx
+
+    async def send():
+        async with httpx.AsyncClient(timeout=timeout, transport=transport) as client:
+            return await asyncio.wait_for(
+                client.post(url, json=body, headers=headers), timeout=timeout,
+            )
+
+    try:
+        response = asyncio.run(send())
+    except (TimeoutError, httpx.TimeoutException) as exc:
+        raise TimeoutError('Interpretation request exceeded its time budget') from exc
+    except httpx.RequestError as exc:
+        raise URLError('No se pudo conectar con el proveedor de IA.') from exc
+    if response.is_error:
+        raise HTTPError(url, response.status_code, response.reason_phrase,
+                        dict(response.headers), io.BytesIO(response.content))
+    return response.json()
 
 
 class InterpretationError(ValueError):
@@ -83,14 +117,15 @@ def decode_interpretation(data):
 
 
 def request_interpretation(body, headers, post_json, deadline, clock=time.monotonic):
-    for attempt in range(2):
+    for attempt, model in enumerate(INTERPRETATION_MODELS):
         remaining = deadline - clock()
         if remaining <= 0:
             raise TimeoutError('Interpretation deadline exceeded')
         request_body = {
             **body,
-            'max_tokens': 10000 if attempt == 0 else 12000,
-            'reasoning': {'effort': 'low' if attempt == 0 else 'minimal', 'exclude': True},
+            'model': model,
+            'max_tokens': 6144,
+            'reasoning': {'enabled': False, 'exclude': True},
             'plugins': [{'id': 'response-healing'}],
         }
         if attempt:
@@ -106,10 +141,10 @@ def request_interpretation(body, headers, post_json, deadline, clock=time.monoto
         try:
             data = post_json(
                 'https://openrouter.ai/api/v1/chat/completions', request_body, headers,
-                timeout=min(40, remaining),
+                timeout=min(35, remaining),
             )
             result = decode_interpretation(data)
-        except (InterpretationError, json.JSONDecodeError) as exc:
+        except (InterpretationError, json.JSONDecodeError, TimeoutError, URLError) as exc:
             # Keep diagnostic metadata, never the initiative's content or model reasoning.
             envelope = data if isinstance(data, dict) else {}
             choices = envelope.get('choices')
@@ -118,19 +153,27 @@ def request_interpretation(body, headers, post_json, deadline, clock=time.monoto
             usage = usage if isinstance(usage, dict) else {}
             details = usage.get('completion_tokens_details') or {}
             details = details if isinstance(details, dict) else {}
+            reason = (str(exc) if isinstance(exc, InterpretationError) else
+                      'timeout' if isinstance(exc, TimeoutError) else
+                      'http_' + str(exc.code) if isinstance(exc, HTTPError) else
+                      'connection_error' if isinstance(exc, URLError) else 'invalid_response')
             diagnostic = {
-                'attempt': attempt + 1, 'reason': str(exc) if isinstance(exc, InterpretationError) else 'invalid_response',
-                'model': envelope.get('model', body['model']), 'finish_reason': choice.get('finish_reason'),
+                'attempt': attempt + 1, 'reason': reason,
+                'model': envelope.get('model', model), 'finish_reason': choice.get('finish_reason'),
                 'completion_tokens': usage.get('completion_tokens'), 'reasoning_tokens': details.get('reasoning_tokens'),
             }
             retryable = not isinstance(exc, InterpretationError) or exc.retryable
+            if isinstance(exc, HTTPError):
+                retryable = exc.code in (404, 408, 500, 502, 503, 504)
             retry = attempt == 0 and retryable and deadline - clock() >= 5
             print('HACERLO OPENROUTER ' + ('RETRY: ' if retry else 'PARSE: ') + json.dumps(diagnostic), flush=True)
             if not retry:
+                if isinstance(exc, (URLError, TimeoutError)):
+                    raise
                 raise InterpretationError(diagnostic['reason'], retryable=retryable) from None
             continue
 
-        result['model'] = data.get('model') or body['model']
+        result['model'] = data.get('model') or model
         result['provider'] = 'OpenRouter'
         print('HACERLO OPENROUTER OK: ' + json.dumps({
             'model': result['model'], 'attempt': attempt + 1, 'status': 'complete',

@@ -5,7 +5,8 @@ from collections import defaultdict, deque
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from activation_drafting import activation_context, activation_sources, decode_activation_reply
-from interpretation import InterpretationError, request_interpretation
+from interpretation import (InterpretationError, INTERPRETATION_MODELS,
+                            post_interpretation_json, request_interpretation)
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -14,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.5.2-v2')
+app = FastAPI(title='HACERLO Computational Engine', version='1.5.3-v2')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['https://santiagoleonlopezs-png.github.io', 'https://app.hacerlofc.com',
@@ -36,7 +37,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.5.2-v2'}
+    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.5.3-v2'}
 
 @app.get('/api/health')
 def health():
@@ -144,9 +145,16 @@ def ai_interpret(
         'Antes de responder, relee cada apartado. Cambia las expresiones de consultoría por palabras que alguien del equipo usaría en una conversación.'
     )
 
-    system += ' Completa todas las secciones en menos de 1200 palabras, conservando los datos relevantes.'
+    system += (
+        ' Completa todas las secciones en menos de 1200 palabras, conservando los datos relevantes. '
+        'Quien lee no necesita formación técnica. Usa palabras comunes en todos los apartados, '
+        'como si explicaras la situación con calma a alguien del equipo. '
+        'Por ejemplo, en lugar de decir que hay una brecha de capacidad, explica qué tarea les cuesta hacer y qué apoyo necesitan. '
+        'Los ejemplos solo orientan el lenguaje: no agregues situaciones que no estén en los datos. '
+        'Conserva exactamente los campos y la estructura JSON solicitados.'
+    )
 
-    model = 'openrouter/free'
+    model = INTERPRETATION_MODELS[0]
 
     hacerlo_schema = {
         'name': 'hacerlo_network_interpretation',
@@ -220,7 +228,7 @@ def ai_interpret(
                 'HTTP-Referer': 'https://santiagoleonlopezs-png.github.io/Hacerlo/',
                 'X-Title': 'HACERLO'
             },
-            post_json,
+            post_interpretation_json,
             deadline=interpret_deadline,
         )
 
