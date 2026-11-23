@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from urllib.error import HTTPError
 
 from interpretation import (InterpretationError, INTERPRETATION_MODELS,
-                            decode_interpretation, request_interpretation)
+                            decode_interpretation, provider_error_details, request_interpretation)
 
 
 REPORT = {
@@ -132,6 +132,36 @@ class InterpretationTests(unittest.TestCase):
         first, second = [call.args[1] for call in sender.call_args_list]
         self.assertNotEqual(first['model'], second['model'])
         self.assertEqual(first['reasoning'], {'enabled': False, 'exclude': True})
+
+    def test_provider_429_uses_backup_and_keeps_the_same_context(self):
+        error = HTTPError('https://fixture.invalid', 429, 'Capacity', {}, io.BytesIO(json.dumps({
+            'error': {'code': 429, 'message': 'Provider returned error',
+                      'metadata': {'provider_name': 'Proveedor ficticio', 'raw': 'DETALLE_PRIVADO'}}
+        }).encode()))
+        sender = Mock(side_effect=[error, reply()])
+        body = {'model': INTERPRETATION_MODELS[0], 'messages': [{'role': 'user', 'content': 'contexto ficticio'}]}
+        logs = io.StringIO()
+        with redirect_stdout(logs):
+            result = request_interpretation(body, {}, sender, deadline=64, clock=lambda: 0)
+        self.assertEqual(result['system_reading'], REPORT['system_reading'])
+        self.assertEqual(sender.call_count, 2)
+        self.assertNotEqual(sender.call_args_list[0].args[1]['model'], sender.call_args_list[1].args[1]['model'])
+        self.assertEqual(sender.call_args_list[1].args[1]['messages'][0], body['messages'][0])
+        self.assertIn('"limit_scope": "provider"', logs.getvalue())
+        self.assertNotIn('DETALLE_PRIVADO', logs.getvalue())
+
+    def test_global_quota_429_is_not_retried(self):
+        for headers, message in (({'X-RateLimit-Remaining': '0'}, 'Provider returned error'),
+                                 ({}, 'Rate limit exceeded: free-models-per-day.')):
+            error = HTTPError('https://fixture.invalid', 429, 'Quota', headers,
+                              io.BytesIO(json.dumps({'error': {'message': message}}).encode()))
+            sender = Mock(side_effect=error)
+            with self.subTest(message=message), self.assertRaises(HTTPError):
+                request_interpretation({'model': INTERPRETATION_MODELS[0], 'messages': []}, {}, sender,
+                                       deadline=64, clock=lambda: 0)
+            self.assertEqual(sender.call_count, 1)
+            self.assertEqual(provider_error_details(error)['scope'], 'openrouter')
+            self.assertEqual(provider_error_details(error)['message'], message)
 
     def test_retry_uses_only_time_remaining_before_gateway_deadline(self):
         sender = Mock(side_effect=[reply('', finish='length'), reply()])

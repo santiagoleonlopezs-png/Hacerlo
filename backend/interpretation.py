@@ -9,9 +9,43 @@ from urllib.error import HTTPError, URLError
 # Only free endpoints with schema support and optional reasoning. The general free
 # router can choose mandatory-thinking models that never reach their final answer.
 INTERPRETATION_MODELS = (
-    'inclusionai/ling-3.2-flash:free',
     'nvidia/nemotron-3.5-super-vl:free',
+    'inclusionai/ling-3.2-flash:free',
 )
+
+
+def provider_error_details(error):
+    """Separate upstream capacity limits from account-wide quotas without exposing raw errors."""
+    cached = getattr(error, '_hacerlo_details', None)
+    if cached is not None:
+        return cached
+    try:
+        payload = json.loads(error.read())
+    except (ValueError, TypeError):
+        payload = {}
+    raw_error = payload.get('error') if isinstance(payload, dict) else {}
+    raw_error = raw_error if isinstance(raw_error, dict) else {}
+    metadata = raw_error.get('metadata')
+    metadata = metadata if isinstance(metadata, dict) else {}
+    message = str(raw_error.get('message') or '')[:700]
+    headers = {str(key).lower(): str(value) for key, value in (error.headers or {}).items()}
+    platform_limit = any(key.startswith('x-ratelimit-') for key in headers)
+    upstream_limit = (message.lower().startswith('provider returned error') or
+                      bool(metadata.get('provider_name') or metadata.get('provider_code')))
+    daily_limit = any(term in message.lower() for term in (
+        'free-models-per-day', 'daily limit', 'daily quota', 'daily requests', 'requests per day',
+    ))
+    scope = ('openrouter' if platform_limit or daily_limit else
+             'provider' if upstream_limit else 'unknown')
+    details = {
+        'message': message, 'code': str(raw_error.get('code') or error.code),
+        'scope': scope, 'daily_limit': daily_limit,
+        'provider_name': str(metadata.get('provider_name') or '')[:80],
+        'error_type': str(metadata.get('error_type') or '')[:80],
+        'retry_after': headers.get('retry-after', ''),
+    }
+    error._hacerlo_details = details
+    return details
 
 
 def post_interpretation_json(url, body, headers, timeout=35, transport=None):
@@ -164,7 +198,11 @@ def request_interpretation(body, headers, post_json, deadline, clock=time.monoto
             }
             retryable = not isinstance(exc, InterpretationError) or exc.retryable
             if isinstance(exc, HTTPError):
-                retryable = exc.code in (404, 408, 500, 502, 503, 504)
+                error_details = provider_error_details(exc)
+                diagnostic['limit_scope'] = error_details['scope']
+                diagnostic['provider_name'] = error_details['provider_name']
+                retryable = (exc.code in (404, 408, 500, 502, 503, 504) or
+                             (exc.code == 429 and error_details['scope'] == 'provider'))
             retry = attempt == 0 and retryable and deadline - clock() >= 5
             print('HACERLO OPENROUTER ' + ('RETRY: ' if retry else 'PARSE: ') + json.dumps(diagnostic), flush=True)
             if not retry:
