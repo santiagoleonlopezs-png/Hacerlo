@@ -107,6 +107,7 @@ main:has(#app .ee-hero)>.hero{display:none}
 
 .hcx-intel .hcx-main-panel>.flex{align-items:center;gap:11px}
 .hcx-intel .hcx-main-panel #integrated-ai-status{font-size:11px;line-height:1.5;margin-top:8px}
+.hcx-intel .hcx-main-panel #integrated-ai-status.hcx-ai-status-success{color:#90ead3}
 .hcx-fold .hcx-fold-content .panel{margin-left:0;margin-right:0}
 /* Un encabezado ocupa el lugar del banner global, nunca se apila encima. */
 #app>.hcx-hero + .grid,
