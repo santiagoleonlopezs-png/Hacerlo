@@ -1,11 +1,11 @@
 import os
 import json
-import re
 import time
 from collections import defaultdict, deque
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from activation_drafting import activation_context, activation_sources, decode_activation_reply
+from interpretation import InterpretationError, request_interpretation
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.5.1-v2')
+app = FastAPI(title='HACERLO Computational Engine', version='1.5.2-v2')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['https://santiagoleonlopezs-png.github.io', 'https://app.hacerlofc.com',
@@ -36,7 +36,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.5.1-v2'}
+    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.5.2-v2'}
 
 @app.get('/api/health')
 def health():
@@ -80,6 +80,7 @@ def ai_interpret(
     authorization: Optional[str] = Header(None),
     x_supabase_apikey: Optional[str] = Header(None)
 ):
+    interpret_deadline = time.monotonic() + 64
     # Verify session against this HACERLO Supabase project's Auth endpoint.
     if not authorization or not authorization.startswith('Bearer ') or not x_supabase_apikey:
         raise HTTPException(401, 'Se requiere una sesión de HACERLO válida.')
@@ -137,6 +138,8 @@ def ai_interpret(
         'Escribe con tono empático, riguroso, estratégico y sin jerga matemática innecesaria. '
         'Responde exclusivamente un objeto JSON válido con los campos solicitados.'
     )
+
+    system += ' Completa todas las secciones en menos de 1200 palabras, conservando los datos relevantes.'
 
     model = 'openrouter/free'
 
@@ -196,7 +199,6 @@ def ai_interpret(
         'model': model,
         'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': encoded}],
         'temperature': 0.2,
-        'max_tokens': 5000,
         'response_format': {
             'type': 'json_schema',
             'json_schema': hacerlo_schema
@@ -205,8 +207,7 @@ def ai_interpret(
     }
 
     try:
-        data = post_json(
-            'https://openrouter.ai/api/v1/chat/completions',
+        return request_interpretation(
             body,
             {
                 'Authorization': 'Bearer ' + key,
@@ -214,109 +215,9 @@ def ai_interpret(
                 'HTTP-Referer': 'https://santiagoleonlopezs-png.github.io/Hacerlo/',
                 'X-Title': 'HACERLO'
             },
-            timeout=65
+            post_json,
+            deadline=interpret_deadline,
         )
-        choices = data.get('choices') or []
-        if not choices:
-            print('HACERLO OPENROUTER PARSE: no_choices keys=' + ','.join(sorted(data.keys())), flush=True)
-            raise ValueError('OpenRouter no devolvió choices')
-
-        message = choices[0].get('message') or {}
-        content = message.get('content')
-
-        if isinstance(content, list):
-            parts = []
-            for part in content:
-                if isinstance(part, dict):
-                    txt = part.get('text') or part.get('content')
-                    if txt:
-                        parts.append(str(txt))
-                elif part is not None:
-                    parts.append(str(part))
-            content = '\n'.join(parts)
-        elif content is None:
-            content = ''
-        else:
-            content = str(content)
-
-        cleaned = content.strip()
-
-        # 1. Quitar bloques markdown de delimitación
-        if '```' in cleaned:
-            match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
-            if match:
-                cleaned = match.group(1).strip()
-            else:
-                cleaned = cleaned.replace('```json', '').replace('```', '').strip()
-
-        # 2. Intentar decodificar JSON directamente
-        result = None
-        try:
-            result = json.loads(cleaned)
-        except Exception:
-            # Si falla, buscar la sección delimitada por llaves
-            first = cleaned.find('{')
-            last = cleaned.rfind('}')
-            if first != -1 and last > first:
-                candidate = cleaned[first:last+1]
-                try:
-                    result = json.loads(candidate)
-                except Exception:
-                    # Intento de autoreparación de JSON truncado (llaves sin cerrar)
-                    stack = []
-                    for ch in candidate:
-                        if ch in '{[':
-                            stack.append('}' if ch == '{' else ']')
-                        elif ch in '}]':
-                            if stack and stack[-1] == ch:
-                                stack.pop()
-                    repaired = candidate + ''.join(reversed(stack))
-                    try:
-                        result = json.loads(repaired)
-                    except Exception:
-                        pass
-
-        # 3. Respaldo de contingencia si el modelo devolvió solo texto narrativo
-        if not isinstance(result, dict):
-            preview = ' '.join(cleaned.replace('\r', ' ').replace('\n', ' ').split())[:500]
-            print(
-                'HACERLO OPENROUTER PARSE: invalid_json '
-                f'model={data.get("model", body["model"])} '
-                f'finish_reason={choices[0].get("finish_reason")} '
-                f'preview={preview!r}',
-                flush=True
-            )
-            if len(cleaned) > 50:
-                result = {
-                    'system_reading': cleaned,
-                    'audience_reading': '',
-                    'structural_findings': ['Interpretación generada en formato narrativo por el modelo de IA.'],
-                    'hypotheses': [],
-                    'interventions': [],
-                    'what_to_measure': [],
-                    'traceability': 'Generado mediante modelo OpenRouter (formato adaptado).'
-                }
-            else:
-                raise ValueError('La respuesta del modelo no contiene una estructura interpretable')
-
-        # Normalizar claves para garantizar renderizado en el Frontend
-        result.setdefault('system_reading', '')
-        result.setdefault('audience_reading', '')
-        result.setdefault('structural_findings', [])
-        result.setdefault('hypotheses', [])
-        result.setdefault('interventions', [])
-        result.setdefault('what_to_measure', [])
-        result.setdefault('traceability', '')
-        result['model'] = data.get('model', body['model'])
-        result['provider'] = 'OpenRouter'
-
-        print(
-            'HACERLO OPENROUTER OK: '
-            f'model={result["model"]} finish_reason={choices[0].get("finish_reason")} '
-            f'content_length={len(content)}',
-            flush=True
-        )
-        return result
 
     except HTTPError as exc:
         try:
@@ -344,9 +245,16 @@ def ai_interpret(
     except (URLError, TimeoutError):
         raise HTTPException(504, 'OpenRouter no respondió a tiempo.')
 
-    except (ValueError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-        print('HACERLO OPENROUTER PARSE ERROR: ' + type(exc).__name__ + ' · ' + str(exc)[:500], flush=True)
-        raise HTTPException(502, 'OpenRouter respondió, pero HACERLO no pudo estructurar la interpretación. Revisa Render Logs: HACERLO OPENROUTER PARSE.')
+    except InterpretationError as exc:
+        if str(exc) in ('output_limit', 'empty_content'):
+            detail = 'El servicio de IA devolvió una respuesta vacía o incompleta. Intenta actualizar de nuevo en unos minutos.'
+        else:
+            detail = 'El servicio de IA no logró completar el informe. Intenta actualizar de nuevo en unos minutos.'
+        raise HTTPException(502, detail)
+
+    except (ValueError, KeyError, IndexError, TypeError) as exc:
+        print('HACERLO OPENROUTER PARSE ERROR: ' + type(exc).__name__, flush=True)
+        raise HTTPException(502, 'El servicio de IA no logró completar el informe. Intenta actualizar de nuevo en unos minutos.')
 
 # Centro de Activación: la IA propone mensajes, nunca crea envíos ni altera datos.
 class ActivationMessageRequest(BaseModel):

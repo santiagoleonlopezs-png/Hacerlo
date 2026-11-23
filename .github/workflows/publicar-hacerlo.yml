@@ -63,8 +63,9 @@ jobs:
           node --check src/modules/implementacion/centro-seguimiento.js
           node tests/centro_seguimiento_v2.cjs
           node tests/centro_activacion_ia_v1.cjs
-          python -m py_compile backend/app.py backend/activation_drafting.py
+          python -m py_compile backend/app.py backend/activation_drafting.py backend/interpretation.py
           PYTHONPATH=backend python -m unittest discover -s backend/tests -p test_activation_drafting.py -v
+          PYTHONPATH=backend python -m unittest discover -s backend/tests -p test_interpretation.py -v
           node --check src/modules/analisis/grafos.js
           node --check src/modules/analisis/explorar-acciones.js
           node tests/grafos_alertas_icono_v1.cjs
