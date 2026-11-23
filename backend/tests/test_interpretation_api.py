@@ -32,7 +32,7 @@ class InterpretationAPITests(unittest.TestCase):
     def test_exact_empty_length_failure_recovers_and_keeps_context(self):
         failed = reply('', finish='length')
         failed['model'] = 'dots-studio/dots-3-note-preview:free'
-        with patch.object(api, 'post_json', side_effect=[failed, reply()]) as send:
+        with patch.object(api, 'post_interpretation_json', side_effect=[failed, reply()]) as send:
             response = self.client.post('/api/ai/interpret', json=PAYLOAD, headers=HEADERS)
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()['system_reading'], REPORT['system_reading'])
@@ -41,7 +41,7 @@ class InterpretationAPITests(unittest.TestCase):
         self.assertEqual(len(api._requests['usuario-ficticio']), 1)
 
     def test_two_bad_replies_return_clear_failure_without_a_fake_report(self):
-        with patch.object(api, 'post_json', return_value=reply('', finish='length')) as send:
+        with patch.object(api, 'post_interpretation_json', return_value=reply('', finish='length')) as send:
             response = self.client.post('/api/ai/interpret', json=PAYLOAD, headers=HEADERS)
         self.assertEqual(response.status_code, 502)
         self.assertEqual(send.call_count, 2)
@@ -50,7 +50,7 @@ class InterpretationAPITests(unittest.TestCase):
         self.assertNotIn('Render Logs', response.json()['detail'])
 
     def test_authentication_context_and_rate_limit_still_apply(self):
-        with patch.object(api, 'post_json') as send:
+        with patch.object(api, 'post_interpretation_json') as send:
             denied = self.client.post('/api/ai/interpret', json=PAYLOAD)
             self.assertEqual(denied.status_code, 401)
             oversized = self.client.post('/api/ai/interpret', json={
@@ -67,10 +67,10 @@ class InterpretationAPITests(unittest.TestCase):
                        io.BytesIO(b'{"error":{"message":"Limite temporal"}}')), 429),
             (TimeoutError(), 504),
         ):
-            with self.subTest(status=status), patch.object(api, 'post_json', side_effect=error) as send:
+            with self.subTest(status=status), patch.object(api, 'post_interpretation_json', side_effect=error) as send:
                 response = self.client.post('/api/ai/interpret', json=PAYLOAD, headers=HEADERS)
             self.assertEqual(response.status_code, status)
-            self.assertEqual(send.call_count, 1)
+            self.assertEqual(send.call_count, 2 if status == 504 else 1)
 
 
 if __name__ == '__main__':

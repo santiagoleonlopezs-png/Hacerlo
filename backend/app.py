@@ -5,7 +5,8 @@ from collections import defaultdict, deque
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from activation_drafting import activation_context, activation_sources, decode_activation_reply
-from interpretation import InterpretationError, request_interpretation
+from interpretation import (InterpretationError, INTERPRETATION_MODELS,
+                            post_interpretation_json, request_interpretation)
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -14,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.5.2-v2')
+app = FastAPI(title='HACERLO Computational Engine', version='1.5.3-v2')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['https://santiagoleonlopezs-png.github.io', 'https://app.hacerlofc.com',
@@ -36,7 +37,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.5.2-v2'}
+    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.5.3-v2'}
 
 @app.get('/api/health')
 def health():
@@ -117,31 +118,43 @@ def ai_interpret(
         raise HTTPException(413, 'El contexto es demasiado extenso. Reduce el tamaño de la red o los indicadores.')
 
     system = (
-        'Eres el Director de Estrategia, Gestión del Cambio y Cultura de HACERLO. '
-        'Tu audiencia principal son Gerentes de Gestión Humana, Líderes de Transformación, Directores de Operaciones y Consultores Estratégicos. '
-        'Tu misión es ofrecer una lectura integral, ejecutiva y pragmática sobre la adopción cultural y conductual de la iniciativa, traduciendo diagnósticos, audiencias, pensamiento sistémico, métricas y relaciones en decisiones de negocio y bienestar humano. '
-        'REGLA ESTRATÉGICA DE EQUILIBRIO (5 PILARES): '
-        'No satures el reporte con análisis matemático de grafos. La red social/organizacional es solo un canal habilitador del cambio, no el cambio en sí mismo. '
-        'Distribuye tu análisis integrando: '
-        '1) LECTURA DE AUDIENCIAS Y ADOPCIÓN: Analiza explícitamente los segmentos de audiencia (design.audiences y design.people), sus cuadrantes estratégicos (Q1 Colaborar, Q2 Consultar, Q3 Informar, Q4 Involucrar), niveles de autoridad, posicionamiento (Promotores, Pasivos, Probables Resistentes), barreras por audiencia y el estado real en la escalera de adopción (Comprende, Prueba, Realiza, Sostiene vs Sin evidencia o Sin oportunidad). '
-        '2) PENSAMIENTO SISTÉMICO Y DIAGNÓSTICO CONDUCTUAL: Conecta los factores de Capacidad, Motivación y Entorno (diagnosis.factors y findings) con las condiciones del sistema que favorecen o dificultan el cambio y los mecanismos sistémicos (bucles de Refuerzo, Compensación, Demoras o Incentivos contradictorios en analysis.system). '
-        '3) ENLACES CRÍTICOS Y BARRERAS RELACIONALES: Al analizar la red, no te limites a los nodos más centrales (como Administrador o Koyag). Es mandatorio identificar y visibilizar los enlaces frágiles, proyectados o marcados con alerta/fricción (líneas punteadas o con advertencia). Específicamente, examina con prioridad la relación entre Invitado y Miembro de Equipo: el acompañamiento, acogida e integración de roles periféricos hacia el equipo base es una palanca crítica de adopción que debe ser fortalecida explícitamente. '
-        '4) PRECISIÓN EN DATOS Y PERSONAS: No asumas que la cantidad de registros o hallazgos del diagnóstico equivale al número de personas o empleados. Si el contexto reporta 320 hallazgos o comentarios, refiérete estrictamente a "entradas cualitativas", "observaciones" o "comentarios analizados", nunca a 300 o 320 personas, a menos que el número de personas o muestra esté explícitamente declarado en audiencias. '
-        'ESTRUCTURA DE RESPUESTA EN JSON: '
-        '- system_reading: Síntesis ejecutiva de alto impacto (2 a 3 párrafos fluidos) conectando comportamientos meta, condiciones sistémicas del diagnóstico y tejido relacional. '
-        '- audience_reading: Lectura estratégica detallada de las audiencias (1 a 2 párrafos): quiénes son los grupos clave, cómo se distribuyen en autoridad/interés (cuadrantes Q1-Q4), qué barreras enfrentan (ej. Invitados, Miembros de Equipo, Líderes) y cómo avanza su adopción conductual. '
-        '- structural_findings: Máximo 5 hallazgos clave redactados en lenguaje de gestión humana y cambio: 1 sobre diagnóstico conductual (Capacidad/Motivación/Entorno), 1 sobre brechas o disposición de audiencias, 1 sobre condiciones/mecanismos sistémicos, 1 sobre encuestas/indicadores y 1 sobre enlaces críticos de la red (incluyendo canales frágiles como Invitado - Miembro de Equipo). '
-        '- hypotheses: 3 a 5 hipótesis sistémicas (title, rationale, evidence_limit) que expliquen por qué las personas actúan como lo hacen, siempre presentadas como premisas a validar en terreno y no como verdades absolutas. '
-        '- interventions: 3 recomendaciones de acción directivas y humanas (name, why, measure), diferenciadas por audiencia, desbloqueo de barreras sistémicas y fortalecimiento de conexiones débiles. '
-        '- what_to_measure: 4 a 5 indicadores clave de adopción por audiencia, desbloqueo sistémico y tracción relacional. '
-        '- traceability: Breve párrafo declarando las fuentes corporativas consultadas (diagnóstico, audiencias, sistema, encuestas y red) y sus límites metodológicos. '
-        'Escribe con tono empático, riguroso, estratégico y sin jerga matemática innecesaria. '
-        'Responde exclusivamente un objeto JSON válido con los campos solicitados.'
+        'Ayudas a las personas que participan en una iniciativa de HACERLO a entender sus resultados. '
+        'Escribe en español cotidiano, con el respeto y la claridad de un colega que explica algo por primera vez. '
+        'Empieza con lo que hicieron, dijeron o encontraron las personas. Usa verbos concretos, frases cortas y una idea por frase. '
+        'Nombra el grupo y la tarea tal como aparecen en los datos. Conserva cifras, fechas, unidades y el grupo al que corresponden. '
+        'Si un nombre técnico es indispensable para encontrar algo en la plataforma, explica enseguida qué significa en ese caso. '
+        'Por ejemplo, si varias áreas dependen de una persona para resolver dudas, dilo así en vez de hablar de centralidad. '
+        'Este ejemplo ilustra el estilo. Solo describe situaciones respaldadas por los datos de esta iniciativa. '
+        'Revisa los resultados, las audiencias, el diagnóstico, las encuestas, los indicadores y las relaciones disponibles. '
+        'Considera qué sabe hacer la gente, qué la anima y qué condiciones le facilitan o dificultan la tarea. '
+        'Distingue las acciones observadas de lo que la gente dice, lo que proyecta una simulación y lo que aún falta comprobar. '
+        'Cuenta comentarios como comentarios. Solo habla de un número de personas cuando esté registrado. '
+        'Si falta información, di en palabras sencillas qué falta. Evita atribuir intenciones o presentar una posible causa como un hecho. '
+        'Cuando los datos lo permitan, explica quién decide, quién necesita apoyo y qué conexiones requieren atención, '
+        'incluida la relación entre invitados y miembros del equipo si aparece en los registros. '
+        'Entrega un objeto JSON con la estructura solicitada. Aplica el mismo lenguaje sencillo a todos los campos: '
+        'system_reading: en dos o tres párrafos breves, cuenta qué está pasando y por qué importa en el trabajo diario. '
+        'audience_reading: en uno o dos párrafos, explica qué hace cada grupo, dónde encuentra dificultades y qué se sabe de sus avances. '
+        'structural_findings: hasta cinco cosas concretas que muestran las fuentes disponibles. '
+        'hypotheses: de tres a cinco posibles explicaciones. En title plantea una pregunta sencilla, en rationale di qué dato la sugiere '
+        'y en evidence_limit explica qué habría que observar para comprobarla. '
+        'interventions: tres acciones que se puedan probar. En name empieza con un verbo, en why explica a quién le serviría y por qué, '
+        'y en measure di qué cambio concreto conviene mirar después. '
+        'what_to_measure: cuatro o cinco señales fáciles de observar o contar. Distingue las medidas propuestas de los resultados que ya existen. '
+        'traceability: di de dónde salió la información y qué preguntas siguen abiertas. '
+        'Antes de responder, relee cada apartado. Cambia las expresiones de consultoría por palabras que alguien del equipo usaría en una conversación.'
     )
 
-    system += ' Completa todas las secciones en menos de 1200 palabras, conservando los datos relevantes.'
+    system += (
+        ' Completa todas las secciones en menos de 1200 palabras, conservando los datos relevantes. '
+        'Quien lee no necesita formación técnica. Usa palabras comunes en todos los apartados, '
+        'como si explicaras la situación con calma a alguien del equipo. '
+        'Por ejemplo, en lugar de decir que hay una brecha de capacidad, explica qué tarea les cuesta hacer y qué apoyo necesitan. '
+        'Los ejemplos solo orientan el lenguaje: no agregues situaciones que no estén en los datos. '
+        'Conserva exactamente los campos y la estructura JSON solicitados.'
+    )
 
-    model = 'openrouter/free'
+    model = INTERPRETATION_MODELS[0]
 
     hacerlo_schema = {
         'name': 'hacerlo_network_interpretation',
@@ -215,7 +228,7 @@ def ai_interpret(
                 'HTTP-Referer': 'https://santiagoleonlopezs-png.github.io/Hacerlo/',
                 'X-Title': 'HACERLO'
             },
-            post_json,
+            post_interpretation_json,
             deadline=interpret_deadline,
         )
 
