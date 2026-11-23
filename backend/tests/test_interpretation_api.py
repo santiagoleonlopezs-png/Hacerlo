@@ -72,6 +72,30 @@ class InterpretationAPITests(unittest.TestCase):
             self.assertEqual(response.status_code, status)
             self.assertEqual(send.call_count, 2 if status == 504 else 1)
 
+    def test_provider_429_recovers_without_sending_an_error_to_the_browser(self):
+        error = HTTPError('https://fixture.invalid', 429, 'Capacity', {},
+                          io.BytesIO(b'{"error":{"code":429,"message":"Provider returned error"}}'))
+        with patch.object(api, 'post_interpretation_json', side_effect=[error, reply()]) as send:
+            response = self.client.post('/api/ai/interpret', json=PAYLOAD, headers=HEADERS)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['system_reading'], REPORT['system_reading'])
+        self.assertEqual(send.call_count, 2)
+
+    def test_provider_capacity_and_daily_quota_messages_are_plain_spanish(self):
+        for message, expected_calls, expected_text in (
+            ('Provider returned error', 2, 'ocupados'),
+            ('Rate limit exceeded: free-models-per-day.', 1, 'límite diario'),
+        ):
+            errors = [HTTPError('https://fixture.invalid', 429, 'Quota', {},
+                                io.BytesIO(json.dumps({'error': {'message': message}}).encode()))
+                      for _ in range(2)]
+            with self.subTest(message=message), patch.object(api, 'post_interpretation_json', side_effect=errors) as send:
+                response = self.client.post('/api/ai/interpret', json=PAYLOAD, headers=HEADERS)
+            self.assertEqual(response.status_code, 429)
+            self.assertEqual(send.call_count, expected_calls)
+            self.assertIn(expected_text, response.json()['detail'])
+            self.assertNotIn('Provider returned error', response.json()['detail'])
+
 
 if __name__ == '__main__':
     unittest.main()

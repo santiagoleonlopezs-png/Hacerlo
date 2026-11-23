@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 from activation_drafting import activation_context, activation_sources, decode_activation_reply
 from interpretation import (InterpretationError, INTERPRETATION_MODELS,
-                            post_interpretation_json, request_interpretation)
+                            post_interpretation_json, provider_error_details, request_interpretation)
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from engine import analyze_network
 
-app = FastAPI(title='HACERLO Computational Engine', version='1.5.3-v2')
+app = FastAPI(title='HACERLO Computational Engine', version='1.5.4-v2')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['https://santiagoleonlopezs-png.github.io', 'https://app.hacerlofc.com',
@@ -37,7 +37,7 @@ class AIRequest(BaseModel):
 
 @app.get('/')
 def root():
-    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.5.3-v2'}
+    return {'service': 'HACERLO Computational Engine', 'status': 'online', 'version': '1.5.4-v2'}
 
 @app.get('/api/health')
 def health():
@@ -233,15 +233,9 @@ def ai_interpret(
         )
 
     except HTTPError as exc:
-        try:
-            raw = exc.read().decode('utf-8', errors='replace')
-            parsed = json.loads(raw)
-            err = parsed.get('error', {}) if isinstance(parsed, dict) else {}
-            provider_message = str(err.get('message') or parsed.get('message') or raw)
-            provider_code = str(err.get('code') or '')
-        except Exception:
-            provider_message = ''
-            provider_code = ''
+        error_details = provider_error_details(exc)
+        provider_message = error_details['message']
+        provider_code = error_details['code']
         provider_message = provider_message[:700]
         diagnostic = f'OpenRouter HTTP {exc.code}'
         if provider_code:
@@ -250,7 +244,13 @@ def ai_interpret(
             diagnostic += f' · {provider_message}'
         print('HACERLO OPENROUTER DIAGNOSTIC:', diagnostic, flush=True)
         if exc.code == 429:
-            raise HTTPException(429, f'OpenRouter alcanzó su límite temporal. {provider_message}'.strip())
+            if error_details['daily_limit']:
+                detail = 'Se alcanzó el límite diario del servicio de IA. Podrás actualizar cuando se renueve el cupo.'
+            elif error_details['scope'] == 'provider':
+                detail = 'Los proveedores de IA consultados están ocupados en este momento. Intenta actualizar de nuevo en unos minutos.'
+            else:
+                detail = 'Se alcanzó el límite temporal del servicio de IA. Espera antes de volver a actualizar.'
+            raise HTTPException(429, detail)
         if exc.code in (401, 403):
             raise HTTPException(502, f'OpenRouter rechazó el acceso (HTTP {exc.code}). {provider_message}'.strip())
         raise HTTPException(502, diagnostic)
