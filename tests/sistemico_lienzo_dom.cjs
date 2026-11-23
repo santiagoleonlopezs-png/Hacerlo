@@ -12,15 +12,34 @@ w.render();assert.equal(saves,0);assert.equal(d.querySelectorAll('button.primary
 const click=text=>{const button=[...d.querySelectorAll('button')].find(b=>b.textContent.trim()===text);assert.ok(button,'Botón '+text);button.click();};
 const field=(name,value)=>{const input=d.querySelector('.sdx-detail [name="'+name+'"]');assert.ok(input,'Campo '+name);input.value=value;};
 const submit=()=>{const form=d.querySelector('.sdx-detail form');form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));};
+const pointer=(type,px=100,py=100)=>{const e=new w.MouseEvent(type,{bubbles:true,button:0,clientX:px,clientY:py});Object.defineProperty(e,'pointerId',{value:1});return e;};
+const pickNode=id=>d.querySelector('[data-sdx-node="'+id+'"] rect').dispatchEvent(pointer('pointerdown'));
+const keyNode=id=>d.querySelector('[data-sdx-node="'+id+'"]').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
 click('＋ Variable');field('name','Carga de trabajo');submit();assert.equal(w.sdxModel(x).variables.length,1);
 click('＋ Variable');field('name','Tiempo disponible');field('indicator',JSON.stringify({id:'i',name:'Reprocesos'}));submit();assert.equal(w.sdxModel(x).variables.length,2);
 assert.ok(d.querySelector('.sdx-trend-value').textContent.includes('0'),'Cero válido visible');assert.ok(d.querySelector('.sdx-spark'));
 x.indicators[0].history.push({date:'2026-03-01',value:11});w.render();assert.ok(d.querySelector('.sdx-trend-value').textContent.includes('11'),'Tendencia automática al refrescar');
 const [a,b]=w.sdxModel(x).variables;
-click('↗ Conectar');w.sdxNodeClick(a.id);w.sdxNodeClick(b.id);field('sign','-');field('explanation','Más carga deja menos tiempo.');submit();
-click('↗ Conectar');w.sdxNodeClick(b.id);w.sdxNodeClick(a.id);field('sign','+');submit();assert.equal(w.sdxCycles(w.sdxModel(x)).cycles[0].type,'B');
+const beforeConnect=saves;
+click('↗ Conectar');assert.equal(d.querySelector('#sdx-panel-heading').textContent,'Conectar variables','Conectar abre el formulario sin depender de acertar en el lienzo');
+pickNode(b.id);assert.equal(d.querySelector('[name="from"]').value,b.id);assert.equal(d.querySelector('[name="to"]').value,a.id,'El destino inicial es diferente del origen');
+d.querySelector('.sdx-shell').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.ok(!d.querySelector('.sdx-detail'));assert.equal(saves,beforeConnect,'Cancelar la conexión no guarda datos');
+click('↗ Conectar');pickNode(a.id);pickNode(a.id);pickNode(b.id);
+assert.equal(d.querySelector('#sdx-panel-heading').textContent,'Conectar variables');assert.match(d.querySelector('.sdx-status').textContent,/Guardar relación/);
+field('sign','-');field('explanation','Más carga deja menos tiempo.');
+const pendingLinkForm=d.querySelector('.sdx-detail form');
+allow=false;d.querySelector('.sdx-shell').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(d.querySelector('.sdx-detail form'),pendingLinkForm,'Escape respeta los cambios pendientes de la relación');allow=true;
+const beforeRepeatAsks=asks;
+pickNode(b.id);assert.equal(d.querySelector('.sdx-detail form'),pendingLinkForm,'Repetir el destino conserva el formulario de la relación');assert.equal(asks,beforeRepeatAsks,'Repetir el destino no pide descartar el formulario');assert.equal(pendingLinkForm.elements.explanation.value,'Más carga deja menos tiempo.');
+submit();assert.equal(w.sdxModel(x).links.length,1);assert.equal(saves,beforeConnect+1);assert.equal(d.querySelectorAll('[data-sdx-edge]').length,1);assert.ok(!d.querySelector('.sdx-toolbar .is-active'),'Guardar finaliza el modo de conexión');
+w.render();assert.equal(d.querySelectorAll('[data-sdx-edge]').length,1,'La flecha permanece después de renderizar');
+click('↗ Conectar');keyNode(b.id);keyNode(a.id);field('sign','+');submit();assert.equal(w.sdxCycles(w.sdxModel(x)).cycles[0].type,'B');
 assert.ok(d.querySelector('.sdx-loop-B'));d.querySelector('.sdx-loop-B').click();assert.match(d.querySelector('#sdx-panel-heading').textContent,/Compensación/);
 field('expected','R');submit();assert.ok(d.querySelector('.sdx-warning'),'Revisión del tipo esperado frente al calculado');
+// The form also creates a relation without selecting nodes in the drawing.
+click('↗ Conectar');assert.equal(d.querySelector('[name="id"]').value,'','Una relación nueva no reutiliza la última relación editada');
+const beforeFormSave=saves;field('from',b.id);field('to',b.id);submit();assert.equal(saves,beforeFormSave);assert.equal(w.sdxModel(x).links.length,2,'No se guardan autorrelaciones');
+field('to',a.id);field('sign','-');submit();assert.equal(w.sdxModel(x).links.length,3);assert.equal(w.sdxModel(x).links.at(-1).from,b.id);assert.equal(w.sdxModel(x).links.at(-1).to,a.id);w.sdxUndo();assert.equal(w.sdxModel(x).links.length,2);
 w.sdxNodeClick(a.id);field('name','Texto sin guardar');allow=false;const count=saves;click('◈ Arquetipos');assert.equal(saves,count);assert.equal(d.querySelector('[name="name"]').value,'Texto sin guardar');assert.ok(asks>0);
 allow=true;click('◈ Arquetipos');assert.ok(d.querySelector('.sdx-stage.is-preview .sdx-template-svg'));click('Usar esta plantilla');assert.equal(w.sdxModel(x).variables.length,7);assert.equal(JSON.stringify(x.systemV23),legacy);
 w.sdxOpen('boundary');field('question','¿Por qué se repiten los reprocesos?');field('inside','Coordinación y decisiones');field('outside','Mercado externo');field('influence','Reglas del equipo');field('horizon','Tres meses');submit();assert.match(d.querySelector('.sdx-question').textContent,/reprocesos/);
@@ -37,7 +56,6 @@ w.sdxOpen('variable');field('name','<img src=x onerror="alert(1)">');submit();as
 // Drag updates the drawing immediately and persists only on release.
 const svg=d.getElementById('sdx-canvas'),node=svg.querySelector('[data-sdx-node]'),nodeId=node.getAttribute('data-sdx-node'),beforeNode={...w.sdxModel(x).variables.find(v=>v.id===nodeId)},beforePath=svg.querySelector('[data-sdx-edge] path').getAttribute('d');
 svg.getScreenCTM=()=>({inverse:()=>({})});svg.createSVGPoint=()=>({x:0,y:0,matrixTransform(){return this}});let captured=false;svg.setPointerCapture=()=>captured=true;svg.hasPointerCapture=()=>captured;svg.releasePointerCapture=()=>captured=false;
-const pointer=(type,px,py)=>{const e=new w.MouseEvent(type,{bubbles:true,button:0,clientX:px,clientY:py});Object.defineProperty(e,'pointerId',{value:1});return e;};
 const beforeDrag=saves;node.querySelector('rect').dispatchEvent(pointer('pointerdown',100,100));svg.dispatchEvent(pointer('pointermove',150,130));assert.equal(saves,beforeDrag);assert.equal(w.sdxModel(x).variables.find(v=>v.id===nodeId).x,beforeNode.x);assert.notEqual(svg.querySelector('[data-sdx-edge] path').getAttribute('d'),beforePath);
 svg.dispatchEvent(pointer('pointerup',150,130));assert.equal(saves,beforeDrag+1);assert.equal(w.sdxModel(x).variables.find(v=>v.id===nodeId).x,beforeNode.x+50);
 const savedBeforeView=saves;w.sdxToggleList();assert.ok(d.querySelector('.sdx-variable-list'));assert.equal(saves,savedBeforeView,'Cambiar la vista no escribe datos');

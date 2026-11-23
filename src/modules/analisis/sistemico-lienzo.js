@@ -11,6 +11,7 @@ function sdxBlank(){return {boundary:{question:'',inside:'',outside:'',influence
 function sdxModel(x,key=sdxUI.key){return x?.systemDynamicsV1?.models?.[key]||sdxBlank();}
 function sdxCurrentModel(x){const model=sdxModel(x);return model.snapshots?.find(s=>s.id===sdxUI.snapshot)?.model||model;}
 function sdxReady(){return typeof hcxPrepareNavigation!=='function'||hcxPrepareNavigation();}
+function sdxCancelConnection(){if(sdxUI.connect)sdxUI.notice='';sdxUI.connect=false;sdxUI.from='';sdxUI.to='';}
 function sdxMutate(label,fn,extra){
  const x=current();if(!x||sdxUI.snapshot)return false;
  const previous=sdxClone(sdxModel(x)),next=sdxClone(previous);
@@ -22,22 +23,28 @@ function sdxMutate(label,fn,extra){
 }
 function sdxUndo(){
  const x=current(),undo=sdxUI.undo;if(!x||!undo||undo.initiative!==String(x.id)||undo.key!==sdxUI.key||!sdxReady()||sdxUI.snapshot)return;
- x.systemDynamicsV1.models[undo.key]=undo.model;sdxUI.undo=null;sdxUI.selected='';sdxUI.selectedLink='';sdxUI.panel='';sdxUI.notice='Último cambio del diagrama deshecho';save();render();
+ x.systemDynamicsV1.models[undo.key]=undo.model;sdxCancelConnection();sdxUI.undo=null;sdxUI.selected='';sdxUI.selectedLink='';sdxUI.panel='';sdxUI.notice='Último cambio del diagrama deshecho';save();render();
 }
 function sdxOpen(panel,id=''){
- if(!sdxReady())return;sdxUI.panel=panel;sdxUI.selectedLink=panel==='link'?id:'';
+ if(!sdxReady())return;sdxCancelConnection();sdxUI.panel=panel;sdxUI.selectedLink=panel==='link'?id:'';
  if(panel==='variable'){sdxUI.selected=id;if(!id)sdxUI.source='';}sdxUI.focusPanel=true;render();
 }
-function sdxClose(){if(!sdxReady())return;sdxUI.panel='';sdxUI.focusPanel=false;render();const canvas=document.getElementById('sdx-canvas');if(canvas){canvas.setAttribute('tabindex','-1');canvas.focus({preventScroll:true});}}
-function sdxScope(key){if(!sdxReady()){const picker=document.activeElement;if(picker?.tagName==='SELECT')picker.value=sdxUI.key;return;}sdxUI.key=key;sdxUI.panel='';sdxUI.snapshot='';sdxUI.selected='';sdxUI.selectedLink='';sdxUI.cycle='';sdxUI.view=null;sdxUI.undo=null;sdxUI.notice='';render();}
+function sdxClose(){if(!sdxReady())return;sdxCancelConnection();sdxUI.panel='';sdxUI.focusPanel=false;render();const canvas=document.getElementById('sdx-canvas');if(canvas){canvas.setAttribute('tabindex','-1');canvas.focus({preventScroll:true});}}
+function sdxScope(key){if(!sdxReady()){const picker=document.activeElement;if(picker?.tagName==='SELECT')picker.value=sdxUI.key;return;}sdxCancelConnection();sdxUI.key=key;sdxUI.panel='';sdxUI.snapshot='';sdxUI.selected='';sdxUI.selectedLink='';sdxUI.cycle='';sdxUI.view=null;sdxUI.undo=null;sdxUI.notice='';render();}
 function sdxToggleList(){if(!sdxReady())return;sdxUI.list=!sdxUI.list;render();const target=document.querySelector?.(sdxUI.list?'.sdx-variable-list button':'#sdx-canvas');if(target){if(!sdxUI.list)target.setAttribute('tabindex','-1');target.focus({preventScroll:true});}}
-function sdxConnect(){if(sdxUI.snapshot||!sdxReady())return;sdxUI.connect=!sdxUI.connect;sdxUI.from='';sdxUI.panel='';sdxUI.notice=sdxUI.connect?'Elige primero la variable de origen y después la de destino.':'';render();}
+function sdxConnect(){
+ if(sdxUI.snapshot||!sdxReady())return;
+ const active=sdxUI.connect;sdxCancelConnection();sdxUI.connect=!active;sdxUI.selected='';sdxUI.selectedLink='';sdxUI.panel=active?'':'link';sdxUI.focusPanel=!active;
+ sdxUI.notice=active?'':'Elige origen y destino en el diagrama o en el formulario. Después pulsa Guardar relación.';render();
+}
 function sdxNodeClick(id){
+ // Repeated clicks on either endpoint keep the pending relation and its form intact.
+ if(sdxUI.connect&&(sdxUI.from===id||sdxUI.to===id))return;
  if(!sdxReady())return;
  if(sdxUI.connect&&!sdxUI.snapshot){
   if(!sdxUI.from){sdxUI.from=id;sdxUI.notice='Ahora elige la variable de destino.';render();return;}
   if(sdxUI.from===id)return;
-  sdxUI.to=id;sdxUI.connect=false;sdxUI.selectedLink='';sdxUI.panel='link';sdxUI.focusPanel=true;render();return;
+  sdxUI.to=id;sdxUI.selectedLink='';sdxUI.panel='link';sdxUI.focusPanel=true;sdxUI.notice='Define el sentido de la relación y pulsa Guardar relación.';render();return;
  }
  sdxUI.selected=id;sdxUI.selectedLink='';sdxUI.panel='variable';sdxUI.focusPanel=true;render();
 }
@@ -93,8 +100,8 @@ function sdxSaveLink(event){
  event.preventDefault();const data=Object.fromEntries(new FormData(event.target)),model=sdxModel(current());
  if(data.from===data.to||!model.variables.some(v=>v.id===data.from)||!model.variables.some(v=>v.id===data.to)){alert('Elige dos variables diferentes.');return;}
  const id=data.id||sdxId(),link={id,from:data.from,to:data.to,sign:['+','-'].includes(data.sign)?data.sign:'?',delay:String(data.delay||'').trim(),explanation:String(data.explanation||'').trim(),evidence:String(data.evidence||'').trim(),status:data.status==='Observación'?'Observación':'Hipótesis'};
- sdxUI.selectedLink=id;sdxUI.from='';sdxUI.to='';
- sdxMutate('Relación actualizada',m=>{const i=m.links.findIndex(e=>e.id===id);if(i<0)m.links.push(link);else m.links[i]=link;});
+ sdxCancelConnection();sdxUI.selectedLink=id;
+ sdxMutate(data.id?'Relación actualizada':'Relación guardada',m=>{const i=m.links.findIndex(e=>e.id===id);if(i<0)m.links.push(link);else m.links[i]=link;});
 }
 function sdxRemove(kind,id){
  if(sdxUI.snapshot||!confirm('¿Quitar este elemento del diagrama? Puedes deshacer el último cambio.'))return;
@@ -144,7 +151,7 @@ function sdxSaveSnapshot(event){
  event.preventDefault();const d=Object.fromEntries(new FormData(event.target));
  sdxMutate('Versión del diagrama registrada',m=>{const {snapshots,events,...model}=sdxClone(m);m.snapshots=[...(snapshots||[]),{id:sdxId(),name:String(d.name||'').trim()||'Versión',moment:['Antes','Durante','Después'].includes(d.moment)?d.moment:'Antes',date:new Date().toISOString(),model}];});
 }
-function sdxViewSnapshot(id){if(!sdxReady())return;sdxUI.snapshot=id;sdxUI.selected='';sdxUI.selectedLink='';sdxUI.cycle='';sdxUI.view=null;sdxUI.panel='history';render();}
+function sdxViewSnapshot(id){if(!sdxReady())return;sdxCancelConnection();sdxUI.snapshot=id;sdxUI.selected='';sdxUI.selectedLink='';sdxUI.cycle='';sdxUI.view=null;sdxUI.panel='history';render();}
 function sdxCompare(event){event.preventDefault();const d=Object.fromEntries(new FormData(event.target));sdxUI.compareA=d.a;sdxUI.compareB=d.b;render();}
 function sdxSourceChoice(select){
  const form=select.form,source=sdxSources(current()).find(c=>c.ref===select.value),hint=form.querySelector('.sdx-origin-preview');
@@ -206,7 +213,7 @@ function sdxSVG(model,x,mini=false){
  const paths=links.map(edge=>{const a=nodes.find(n=>n.id===edge.from),b=nodes.find(n=>n.id===edge.to);if(!a||!b)return '';const p=sdxPath(a,b,links.some(e=>e.from===edge.to&&e.to===edge.from));
  return `<g class="sdx-edge ${active?.links.includes(edge.id)?'is-cycle':''} ${sdxUI.selectedLink===edge.id?'is-selected':''}" data-sdx-edge="${safe(edge.id)}"><path d="${p.d}" marker-end="url(#sdx-arrow${mini?'-mini':''})"/><g class="sdx-edge-label" transform="translate(${p.x},${p.y})" role="button" tabindex="${mini?'-1':'0'}" data-id="${safe(edge.id)}" aria-label="Relación de ${safe(a.name)} a ${safe(b.name)}" onclick="sdxOpen('link',this.dataset.id)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sdxOpen('link',this.dataset.id)}"><title>${safe(edge.explanation||'Relación por contrastar')}${edge.delay?' · Demora: '+safe(edge.delay):''}</title><rect x="-18" y="-15" width="36" height="30" rx="10"/><text text-anchor="middle" y="5">${safe(edge.sign||'?')}</text>${edge.delay?'<text class="sdx-delay" x="24" y="5">//</text>':''}${model.levers?.some(l=>l.target===edge.id)?'<path class="sdx-lever-dot" d="M-25 -26 l6 6 -6 6 -6 -6z"/>':''}</g></g>`;}).join('');
  const cards=nodes.map((node,nodeIndex)=>{const lines=sdxWrap(node.name),trend=sdxTrend(x,node),latest=trend.latest,tag=latest?'Último: '+latest.value.toLocaleString('es-CO'):'Variable';
- return `<g class="sdx-node ${sdxUI.selected===node.id||sdxUI.from===node.id?'is-selected':''} ${active?.nodes.includes(node.id)?'is-cycle':''}" transform="translate(${Number(node.x)||0},${Number(node.y)||0})" data-sdx-node="${safe(node.id)}" data-id="${safe(node.id)}" tabindex="${mini?'-1':'0'}" role="button" aria-label="${safe(node.name)}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sdxNodeClick(this.dataset.id)}"><title>${safe(node.name)}</title><rect width="210" height="86" rx="14"/><clipPath id="sdx-text-${mini?'mini-':''}${nodeIndex}"><rect x="12" y="10" width="186" height="47"/></clipPath><text clip-path="url(#sdx-text-${mini?'mini-':''}${nodeIndex})" class="sdx-node-name" x="15" y="${lines.length>1?29:37}">${lines.map((line,i)=>`<tspan x="15" dy="${i?19:0}">${safe(line)}</tspan>`).join('')}</text><text class="sdx-node-tag" x="15" y="70">${safe(tag)}</text>${model.levers?.some(l=>l.target===node.id)?'<path class="sdx-lever-dot" d="M188 12 l6 6 -6 6 -6 -6z"/>':''}</g>`;}).join('');
+ return `<g class="sdx-node ${sdxUI.selected===node.id||sdxUI.connect&&(sdxUI.from===node.id||sdxUI.to===node.id)?'is-selected':''} ${active?.nodes.includes(node.id)?'is-cycle':''}" transform="translate(${Number(node.x)||0},${Number(node.y)||0})" data-sdx-node="${safe(node.id)}" data-id="${safe(node.id)}" tabindex="${mini?'-1':'0'}" role="button" aria-label="${safe(node.name)}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sdxNodeClick(this.dataset.id)}"><title>${safe(node.name)}</title><rect width="210" height="86" rx="14"/><clipPath id="sdx-text-${mini?'mini-':''}${nodeIndex}"><rect x="12" y="10" width="186" height="47"/></clipPath><text clip-path="url(#sdx-text-${mini?'mini-':''}${nodeIndex})" class="sdx-node-name" x="15" y="${lines.length>1?29:37}">${lines.map((line,i)=>`<tspan x="15" dy="${i?19:0}">${safe(line)}</tspan>`).join('')}</text><text class="sdx-node-tag" x="15" y="70">${safe(tag)}</text>${model.levers?.some(l=>l.target===node.id)?'<path class="sdx-lever-dot" d="M188 12 l6 6 -6 6 -6 -6z"/>':''}</g>`;}).join('');
  return `<svg ${mini?'class="sdx-template-svg"':'id="sdx-canvas" class="sdx-canvas"'} viewBox="${view.x} ${view.y} ${view.w} ${view.h}" role="group" aria-label="Diagrama de bucles entre variables"><defs><marker id="sdx-arrow${mini?'-mini':''}" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#69cfc8"/></marker></defs>${paths}${cards}</svg>`;
 }
 function sdxOptions(items,selected,empty='Sin vincular'){
@@ -220,7 +227,8 @@ function sdxVariablePanel(x,model,readonly){
  ${sdxSourceSummary(x,variable)}${variable.id?`<section class="sdx-trend"><h3>Ver tendencia</h3>${trend.indicator?`<p class="sdx-trend-value">${trend.latest?trend.latest.value.toLocaleString('es-CO'):'Sin mediciones'} <small>${safe(trend.indicator.unit||'')}</small></p>${sdxMiniTrend(trend)}<p class="sdx-hint">${trend.points.length>1?'Últimos registros observados':trend.latest?.date?'Un registro: todavía no hay una tendencia':trend.latest?'Valor actual sin fecha de medición':'Todavía no hay mediciones con fecha.'}</p>${trend.cutoff?'<p class="sdx-hint">La escala cambió. Se muestran registros posteriores al cambio.</p>':''}${trend.points.length?`<details><summary>Ver historial · ${trend.points.length}</summary><div class="sdx-history-table"><table><thead><tr><th>Fecha</th><th>Valor</th></tr></thead><tbody>${trend.points.slice().reverse().map(p=>`<tr><td>${safe(p.date.slice(0,10))}</td><td>${p.value.toLocaleString('es-CO')}</td></tr>`).join('')}</tbody></table></div></details>`:''}`:`<p class="sdx-hint">${variable.indicator?'El indicador vinculado ya no está disponible.':'Vincula un indicador para consultar sus mediciones aquí.'}</p>`}</section>${!readonly?`<div class="sdx-panel-actions"><button class="secondary" type="button" data-id="${safe(variable.id)}" onclick="sdxLever(this.dataset.id,'variable')">◇ Intervenir aquí</button><button class="sdx-text-button" type="button" data-id="${safe(variable.id)}" onclick="sdxRemove('variable',this.dataset.id)">Quitar del diagrama</button></div>`:''}`:''}`;
 }
 function sdxLinkPanel(model,readonly){
- const link=model.links.find(e=>e.id===sdxUI.selectedLink)||{id:'',from:sdxUI.from||model.variables[0]?.id||'',to:sdxUI.to||model.variables[1]?.id||'',sign:'?',status:'Hipótesis'};
+ const from=sdxUI.from||model.variables[0]?.id||'',to=sdxUI.to||model.variables.find(v=>v.id!==from)?.id||'';
+ const link=model.links.find(e=>e.id===sdxUI.selectedLink)||{id:'',from,to,sign:'?',status:'Hipótesis'};
  const options=id=>model.variables.map(v=>`<option value="${safe(v.id)}" ${v.id===id?'selected':''}>${safe(v.name)}</option>`).join('');
  return `<h2 id="sdx-panel-heading">Conectar variables</h2>${model.variables.length<2?'<p>Añade al menos dos variables para conectarlas.</p>':`<form onsubmit="sdxSaveLink(event)"><fieldset ${readonly?'disabled':''}><input type="hidden" name="id" value="${safe(link.id)}"><label>Si aumenta…<select name="from">${options(link.from)}</select></label><label>¿Qué variable cambia?<select name="to">${options(link.to)}</select></label><label>La segunda variable…<select name="sign"><option value="?" ${link.sign==='?'?'selected':''}>Todavía no lo sabemos</option><option value="+" ${link.sign==='+'?'selected':''}>También aumenta (+)</option><option value="-" ${link.sign==='-'?'selected':''}>Disminuye (−)</option></select></label><label>¿Por qué piensas que ocurre?<textarea name="explanation" rows="3" placeholder="Explica la relación">${safe(link.explanation||'')}</textarea></label><details ${link.delay||link.evidence?'open':''}><summary>Demora y evidencia</summary><label>¿Cuándo se notaría el efecto?<input name="delay" value="${safe(link.delay||'')}" placeholder="Ej. Después de unas semanas"></label><label>Fundamento<select name="status"><option ${link.status==='Hipótesis'?'selected':''}>Hipótesis</option><option ${link.status==='Observación'?'selected':''}>Observación</option></select></label><label>Fuente o evidencia<textarea name="evidence" rows="2">${safe(link.evidence||'')}</textarea></label></details><button class="primary" type="submit">Guardar relación</button></fieldset></form>${link.id&&!readonly?`<div class="sdx-panel-actions"><button class="secondary" type="button" data-id="${safe(link.id)}" onclick="sdxLever(this.dataset.id,'link')">◇ Intervenir aquí</button><button class="sdx-text-button" data-id="${safe(link.id)}" type="button" onclick="sdxRemove('link',this.dataset.id)">Quitar relación</button></div>`:''}`}`;
 }
@@ -289,7 +297,7 @@ function sdxMoveEdges(svg,model,id,x,y){
 }
 function sdxMount(root){
  const shell=root.querySelector?.('.sdx-shell');
- shell?.addEventListener('keydown',event=>{if(event.key==='Escape'){if(sdxUI.connect){sdxUI.connect=false;sdxUI.from='';sdxUI.notice='';render();}else if(sdxUI.panel)sdxClose();}});
+ shell?.addEventListener('keydown',event=>{if(event.key==='Escape'&&(sdxUI.connect||sdxUI.panel))sdxClose();});
  const svg=root.querySelector?.('#sdx-canvas');
  if(svg)svg.addEventListener('pointerdown',event=>{
   if(event.button!==0||event.target.closest('.sdx-edge-label'))return;
